@@ -1,22 +1,105 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+const safeNumber = (value) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const formatCurrency = (value) => new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD'
+}).format(safeNumber(value));
+
+const drawMetricCard = (doc, {
+    x,
+    y,
+    width,
+    height,
+    title,
+    value,
+    subtitle,
+    borderColor
+}) => {
+    doc.setDrawColor(...borderColor);
+    doc.setFillColor(248, 250, 252);
+    doc.roundedRect(x, y, width, height, 2, 2, 'FD');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(71, 85, 105);
+    doc.text(title, x + 3, y + 6);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.setTextColor(15, 23, 42);
+    doc.text(value, x + 3, y + 13);
+
+    if (subtitle) {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(100, 116, 139);
+        doc.text(subtitle, x + 3, y + 18);
+    }
+};
+
+const addSectionTitle = (doc, pageWidth, y, title, accentColor) => {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.setTextColor(15, 23, 42);
+    doc.text(title, 14, y);
+    doc.setDrawColor(...accentColor);
+    doc.setLineWidth(0.4);
+    doc.line(14, y + 1.5, pageWidth - 14, y + 1.5);
+};
+
 /**
- * Generates a professional financial report PDF with company branding
- * @param {Object} stats - Financial statistics from getReportStats
- * @param {string} monthName - Selected month name in Spanish
- * @param {string} year - Selected year
+ * Generates executive financial report PDF
+ * @param {Object} stats - Financial statistics
+ * @param {string} monthName - Month label
+ * @param {string} year - Year label
  */
 export const generateFinancialReport = async (stats, monthName, year) => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
 
-    // Colors
-    const primaryColor = [99, 102, 241]; // Indigo
-    const darkColor = [30, 41, 59]; // Slate-800
-    const mutedColor = [100, 116, 139]; // Slate-500
+    const primaryColor = [22, 78, 140];
+    const accentColor = [79, 70, 229];
+    const secondaryBlue = [37, 99, 235];
+    const lightBlue = [96, 165, 250];
+    const deepBlue = [30, 64, 175];
+    const darkColor = [15, 23, 42];
+    const mutedColor = [71, 85, 105];
+    const softBlueFill = [239, 246, 255];
+    const softPurpleFill = [238, 242, 255];
 
-    // Load logo image
+    const income = safeNumber(stats?.income);
+    const expenses = safeNumber(stats?.expenses);
+    const operatingResult = safeNumber(stats?.operatingResult);
+    const emergencyDeduction = safeNumber(stats?.emergencyFundDeduction);
+    const reinvestmentDeduction = safeNumber(stats?.reinvestmentDeduction);
+    const totalAutomaticDeductions = emergencyDeduction + reinvestmentDeduction;
+    const netProfit = safeNumber(stats?.netProfit);
+    const withdrawals = safeNumber(stats?.withdrawals);
+
+    const fundReinvestAssigned = safeNumber(stats?.fundReinvestAssigned);
+    const fundReinvestUsed = safeNumber(stats?.fundReinvestUsed);
+    const fundReinvestAvailable = safeNumber(stats?.fundReinvestAvailable);
+    const fundEmergencyAssigned = safeNumber(stats?.fundEmergencyAssigned);
+    const fundEmergencyUsed = safeNumber(stats?.fundEmergencyUsed);
+    const fundEmergencyAvailable = safeNumber(stats?.fundEmergencyAvailable);
+    const companyAvailableTotal = fundReinvestAvailable + fundEmergencyAvailable;
+
+    const fallbackPartnersAvailable = Math.max(0, netProfit - withdrawals);
+    const partnersAvailableTotal = Number.isFinite(Number(stats?.totalPartnersAvailable))
+        ? safeNumber(stats?.totalPartnersAvailable)
+        : fallbackPartnersAvailable;
+
+    const consolidatedAvailable = companyAvailableTotal + partnersAvailableTotal;
+    const partnersAvailability = Array.isArray(stats?.partnersAvailability) ? stats.partnersAvailability : [];
+
+    // Header with logo
     const logoPath = '/logo-native-new.png';
     let logoLoaded = false;
 
@@ -26,123 +109,266 @@ export const generateFinancialReport = async (stats, monthName, year) => {
 
         await new Promise((resolve, reject) => {
             img.onload = () => {
-                // Add logo (scaled down appropriately)
-                const logoWidth = 25;
+                const logoWidth = 23;
                 const logoHeight = (img.height / img.width) * logoWidth;
-                doc.addImage(img, 'PNG', 14, 10, logoWidth, logoHeight);
+                doc.addImage(img, 'PNG', 14, 9, logoWidth, logoHeight);
                 logoLoaded = true;
                 resolve();
             };
             img.onerror = reject;
             img.src = logoPath;
         });
-    } catch (e) {
-        console.log('Logo could not be loaded, continuing without it');
+    } catch {
+        // Continue without logo
     }
 
-    // Company name
-    const nameX = logoLoaded ? 45 : 14;
-    doc.setFontSize(22);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...darkColor);
-    doc.text('NATIVECODE SPA', nameX, 22);
+    const titleX = logoLoaded ? 41 : 14;
 
-    // Subtitle
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(20);
+    doc.setTextColor(...darkColor);
+    doc.text('NATIVECODE SPA', titleX, 20);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(...mutedColor);
+    doc.text('Informe Ejecutivo de Control Financiero', titleX, 25);
+
+    doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(...mutedColor);
-    doc.text('Sistema de Control Financiero', nameX, 28);
+    doc.text(`Período evaluado: ${monthName} ${year}`, 14, 35);
 
-    // Separator line
     doc.setDrawColor(...primaryColor);
-    doc.setLineWidth(0.5);
-    doc.line(14, 38, pageWidth - 14, 38);
+    doc.setLineWidth(0.6);
+    doc.line(14, 39, pageWidth - 14, 39);
 
-    // Report title
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...darkColor);
-    doc.text('Reporte Financiero', 14, 50);
+    // Executive metrics
+    addSectionTitle(doc, pageWidth, 47, 'Resumen Ejecutivo', primaryColor);
 
-    // Period
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(...mutedColor);
-    doc.text(`Período: ${monthName} ${year}`, 14, 58);
+    const cardGap = 5;
+    const cardWidth = (pageWidth - 28 - cardGap) / 2;
+    const cardHeight = 22;
 
-    // Format currency helper
-    const formatCurrency = (val) => {
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD'
-        }).format(val || 0);
-    };
+    drawMetricCard(doc, {
+        x: 14,
+        y: 51,
+        width: cardWidth,
+        height: cardHeight,
+        title: 'Ingresos Totales',
+        value: formatCurrency(income),
+        subtitle: 'Facturación del período',
+        borderColor: deepBlue
+    });
 
-    // Financial Summary Table
-    const tableData = [
-        ['Ingresos Totales', formatCurrency(stats?.income || 0)],
-        ['Gastos Operativos', formatCurrency(stats?.expenses || 0)],
-        ['Utilidad Operativa', formatCurrency(stats?.operatingResult || 0)],
-        ['', ''], // Separator row
-        ['Fondo de Emergencia', formatCurrency(stats?.emergencyFundDeduction || 0)],
-        ['Reinversión', formatCurrency(stats?.reinvestmentDeduction || 0)],
-        ['Total Deducciones', formatCurrency((stats?.emergencyFundDeduction || 0) + (stats?.reinvestmentDeduction || 0))],
-        ['', ''], // Separator row
-        ['Retiros de Socios', formatCurrency(stats?.withdrawals || 0)],
-        ['Utilidad Neta Disponible', formatCurrency(stats?.netProfit || 0)],
+    drawMetricCard(doc, {
+        x: 14 + cardWidth + cardGap,
+        y: 51,
+        width: cardWidth,
+        height: cardHeight,
+        title: 'Gastos Operativos',
+        value: formatCurrency(expenses),
+        subtitle: 'Costos fijos y variables',
+        borderColor: lightBlue
+    });
+
+    drawMetricCard(doc, {
+        x: 14,
+        y: 76,
+        width: cardWidth,
+        height: cardHeight,
+        title: 'Utilidad Operativa',
+        value: formatCurrency(operatingResult),
+        subtitle: 'Antes de deducciones y retiros',
+        borderColor: secondaryBlue
+    });
+
+    drawMetricCard(doc, {
+        x: 14 + cardWidth + cardGap,
+        y: 76,
+        width: cardWidth,
+        height: cardHeight,
+        title: 'Total Disponible Empresa',
+        value: formatCurrency(companyAvailableTotal),
+        subtitle: 'Fondos internos disponibles',
+        borderColor: accentColor
+    });
+
+    // Statement table
+    addSectionTitle(doc, pageWidth, 107, 'Estado de Resultados del Período', primaryColor);
+
+    const statementRows = [
+        ['Ingresos Totales', formatCurrency(income)],
+        ['Gastos Operativos', formatCurrency(expenses)],
+        ['Resultado Operativo', formatCurrency(operatingResult)],
+        ['Deducción Fondo de Emergencia', formatCurrency(emergencyDeduction)],
+        ['Deducción Reinversión', formatCurrency(reinvestmentDeduction)],
+        ['Total Deducciones Automáticas', formatCurrency(totalAutomaticDeductions)],
+        ['Utilidad Neta a Distribuir', formatCurrency(netProfit)],
+        ['Retiros de Socios (Período)', formatCurrency(withdrawals)],
+        ['Disponible para Socios', formatCurrency(partnersAvailableTotal)],
+        ['TOTAL DISPONIBLE EMPRESA', formatCurrency(companyAvailableTotal)],
+        ['TOTAL DISPONIBLE CONSOLIDADO', formatCurrency(consolidatedAvailable)]
     ];
 
-    const tableResult = autoTable(doc, {
-        startY: 68,
+    autoTable(doc, {
+        startY: 111,
         head: [['Concepto', 'Monto']],
-        body: tableData,
+        body: statementRows,
         theme: 'striped',
         headStyles: {
             fillColor: primaryColor,
             textColor: [255, 255, 255],
             fontStyle: 'bold',
-            fontSize: 11
+            fontSize: 10
         },
         bodyStyles: {
-            fontSize: 10,
-            textColor: darkColor
+            textColor: darkColor,
+            fontSize: 9
         },
         alternateRowStyles: {
-            fillColor: [248, 250, 252] // Slate-50
+            fillColor: [248, 250, 252]
         },
         columnStyles: {
-            0: { cellWidth: 110, fontStyle: 'normal' },
-            1: { cellWidth: 50, halign: 'right', fontStyle: 'bold' }
+            0: { cellWidth: 120 },
+            1: { cellWidth: 52, halign: 'right', fontStyle: 'bold' }
         },
         didParseCell: (data) => {
-            // Style the separator rows
-            if (data.row.raw[0] === '' && data.row.raw[1] === '') {
-                data.cell.styles.fillColor = [255, 255, 255];
-                data.cell.styles.minCellHeight = 3;
+            const rowLabel = Array.isArray(data.row.raw) ? data.row.raw[0] : '';
+            if (rowLabel === 'TOTAL DISPONIBLE EMPRESA') {
+                data.cell.styles.fillColor = softBlueFill;
+                data.cell.styles.textColor = deepBlue;
+                data.cell.styles.fontStyle = 'bold';
             }
-            // Highlight the final row
-            if (data.row.raw[0] === 'Utilidad Neta Disponible') {
-                data.cell.styles.fillColor = [99, 102, 241];
+            if (rowLabel === 'TOTAL DISPONIBLE CONSOLIDADO') {
+                data.cell.styles.fillColor = primaryColor;
                 data.cell.styles.textColor = [255, 255, 255];
                 data.cell.styles.fontStyle = 'bold';
-            }
-            // Highlight totals
-            if (data.row.raw[0] === 'Total Deducciones' || data.row.raw[0] === 'Utilidad Operativa') {
-                data.cell.styles.fontStyle = 'bold';
-                data.cell.styles.fillColor = [241, 245, 249]; // Slate-100
             }
         },
         margin: { left: 14, right: 14 }
     });
 
-    // Footer
-    const finalY = (doc.lastAutoTable?.finalY || 140) + 20;
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'italic');
-    doc.setTextColor(...mutedColor);
+    // Company funds section
+    let nextY = (doc.lastAutoTable?.finalY || 170) + 8;
+    if (nextY > pageHeight - 70) {
+        doc.addPage();
+        nextY = 20;
+    }
 
+    addSectionTitle(doc, pageWidth, nextY, 'Detalle de Fondos de Empresa', accentColor);
+
+    const fundsRows = [
+        ['Reinversión', formatCurrency(fundReinvestAssigned), formatCurrency(fundReinvestUsed), formatCurrency(fundReinvestAvailable)],
+        ['Emergencia', formatCurrency(fundEmergencyAssigned), formatCurrency(fundEmergencyUsed), formatCurrency(fundEmergencyAvailable)],
+        ['TOTAL', formatCurrency(fundReinvestAssigned + fundEmergencyAssigned), formatCurrency(fundReinvestUsed + fundEmergencyUsed), formatCurrency(companyAvailableTotal)]
+    ];
+
+    autoTable(doc, {
+        startY: nextY + 4,
+        head: [['Fondo', 'Asignado', 'Usado', 'Disponible']],
+        body: fundsRows,
+        theme: 'grid',
+        headStyles: {
+            fillColor: accentColor,
+            textColor: [255, 255, 255],
+            fontSize: 9
+        },
+        bodyStyles: {
+            textColor: darkColor,
+            fontSize: 9
+        },
+        columnStyles: {
+            0: { cellWidth: 52 },
+            1: { cellWidth: 43, halign: 'right' },
+            2: { cellWidth: 43, halign: 'right' },
+            3: { cellWidth: 44, halign: 'right', fontStyle: 'bold' }
+        },
+        didParseCell: (data) => {
+            const rowLabel = Array.isArray(data.row.raw) ? data.row.raw[0] : '';
+            if (rowLabel === 'TOTAL') {
+                data.cell.styles.fillColor = softPurpleFill;
+                data.cell.styles.textColor = accentColor;
+                data.cell.styles.fontStyle = 'bold';
+            }
+        },
+        margin: { left: 14, right: 14 }
+    });
+
+    // Partners availability section
+    nextY = (doc.lastAutoTable?.finalY || 210) + 8;
+    if (nextY > pageHeight - 80) {
+        doc.addPage();
+        nextY = 20;
+    }
+
+    addSectionTitle(doc, pageWidth, nextY, 'Disponibilidad por Socio', primaryColor);
+
+    const partnersRows = partnersAvailability.map((partner) => ([
+        partner.name || 'Sin nombre',
+        `${safeNumber(partner.percentage).toFixed(2)}%`,
+        formatCurrency(partner.assigned),
+        formatCurrency(partner.withdrawn),
+        formatCurrency(partner.available)
+    ]));
+
+    const partnersTableBody = partnersRows.length > 0
+        ? [...partnersRows, ['TOTAL DISPONIBLE SOCIOS', '', '', '', formatCurrency(partnersAvailableTotal)]]
+        : [['Sin socios configurados', '', '', '', formatCurrency(partnersAvailableTotal)]];
+
+    autoTable(doc, {
+        startY: nextY + 4,
+        head: [['Socio', '%', 'Asignado', 'Retirado', 'Disponible']],
+        body: partnersTableBody,
+        theme: 'striped',
+        headStyles: {
+            fillColor: primaryColor,
+            textColor: [255, 255, 255],
+            fontSize: 9
+        },
+        bodyStyles: {
+            textColor: darkColor,
+            fontSize: 8.7
+        },
+        columnStyles: {
+            0: { cellWidth: 61 },
+            1: { cellWidth: 16, halign: 'center' },
+            2: { cellWidth: 31, halign: 'right' },
+            3: { cellWidth: 31, halign: 'right' },
+            4: { cellWidth: 31, halign: 'right', fontStyle: 'bold' }
+        },
+        didParseCell: (data) => {
+            const rowLabel = Array.isArray(data.row.raw) ? data.row.raw[0] : '';
+            if (rowLabel === 'TOTAL DISPONIBLE SOCIOS') {
+                data.cell.styles.fillColor = deepBlue;
+                data.cell.styles.textColor = [255, 255, 255];
+                data.cell.styles.fontStyle = 'bold';
+            }
+        },
+        margin: { left: 14, right: 14 }
+    });
+
+    // Closing block
+    nextY = (doc.lastAutoTable?.finalY || 250) + 8;
+    if (nextY > pageHeight - 28) {
+        doc.addPage();
+        nextY = 20;
+    }
+
+    doc.setDrawColor(...primaryColor);
+    doc.setFillColor(...softBlueFill);
+    doc.roundedRect(14, nextY, pageWidth - 28, 14, 2, 2, 'FD');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(...darkColor);
+    doc.text(`Conclusión ejecutiva: Total disponible para la empresa ${formatCurrency(companyAvailableTotal)}.`, 17, nextY + 6);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(...mutedColor);
+    doc.text(`Total disponible socios ${formatCurrency(partnersAvailableTotal)} · Disponible consolidado ${formatCurrency(consolidatedAvailable)}.`, 17, nextY + 11);
+
+    // Footer
     const now = new Date();
-    const dateStr = now.toLocaleDateString('es-CL', {
+    const generatedAt = now.toLocaleDateString('es-CL', {
         year: 'numeric',
         month: 'long',
         day: 'numeric',
@@ -150,12 +376,13 @@ export const generateFinancialReport = async (stats, monthName, year) => {
         minute: '2-digit'
     });
 
-    doc.text(`Generado el: ${dateStr}`, 14, finalY);
-    doc.text('NATIVECODE SPA - Control Financiero', pageWidth - 14, finalY, { align: 'right' });
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(8.5);
+    doc.setTextColor(...mutedColor);
+    doc.text(`Generado: ${generatedAt}`, 14, pageHeight - 8);
+    doc.text('NATIVECODE SPA - Documento para evaluación ejecutiva', pageWidth - 14, pageHeight - 8, { align: 'right' });
 
-    // Save the PDF
-    const fileName = `Reporte_Financiero_${monthName}_${year}.pdf`;
+    const fileName = `Informe_Financiero_Ejecutivo_${monthName}_${year}.pdf`;
     doc.save(fileName);
-
     return fileName;
 };

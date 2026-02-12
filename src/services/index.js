@@ -122,6 +122,25 @@ export {
 } from './reportsService';
 
 // ============================================
+// FINANCE SERVICE (RESUMEN + VENCIMIENTOS)
+// ============================================
+
+export {
+    getFinancialSummary,
+    getDueAlerts
+} from './financeService';
+
+// ============================================
+// INVESTMENTS SERVICE
+// ============================================
+
+export {
+    getInvestments,
+    addInvestment,
+    deleteInvestment
+} from './investmentsService';
+
+// ============================================
 // CONFIG SERVICE
 // ============================================
 

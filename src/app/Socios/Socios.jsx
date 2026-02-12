@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { useFinance } from '../../context/FinanceContext';
+import { createElement, useState, useEffect } from 'react';
 import * as partnersService from '../../services/partnersService';
+import * as financeService from '../../services/financeService';
 import {
     Users,
     DollarSign,
@@ -13,44 +13,127 @@ import { cn } from '../../lib/utils';
 import { Input, Select } from '../../components/ui/FormElements';
 
 export default function Socios() {
-    const { data: financeData, updatePartnerPercentage, addWithdrawal, getFinancialStats } = useFinance();
-    const stats = getFinancialStats();
     const [isLoading, setIsLoading] = useState(false);
     const [partnersData, setPartnersData] = useState([]);
+    const [stats, setStats] = useState({
+        totalIncome: 0,
+        totalExpenses: 0,
+        emergencyFundDeduction: 0,
+        reinvestmentDeduction: 0,
+        netProfit: 0,
+        withdrawals: 0,
+        totalPartnerAssigned: 0,
+        totalPartnerWithdrawn: 0,
+        totalPartnerAvailable: 0
+    });
 
-    // Withdrawal Form State
     const [withdrawalForm, setWithdrawalForm] = useState({
         partnerId: '',
         amount: '',
         date: new Date().toISOString().split('T')[0]
     });
 
-    // Cargar socios desde backend cuando monta el componente
-    const [partnersLoaded, setPartnersLoaded] = useState(false);
-    if (!partnersLoaded) {
-        partnersService.getPartners().then(data => {
-            if (data && Array.isArray(data)) {
-                setPartnersData(data);
-            }
-            setPartnersLoaded(true);
-        });
-    }
+    const loadAllData = async () => {
+        const now = new Date();
+        const month = now.getMonth();
+        const year = now.getFullYear();
 
-    const formatCurrency = (val) => {
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD'
-        }).format(val || 0);
+        const [partners, summary] = await Promise.all([
+            partnersService.getPartners(),
+            financeService.getFinancialSummary(month, year)
+        ]);
+
+        const financialStats = {
+            totalIncome: Number(summary?.income || 0),
+            totalExpenses: Number(summary?.expenses || 0),
+            emergencyFundDeduction: Number(summary?.emergencyFundDeduction || 0),
+            reinvestmentDeduction: Number(summary?.reinvestmentDeduction || 0),
+            netProfit: Number(summary?.netProfit || 0),
+            withdrawals: Number(summary?.withdrawals || 0),
+            totalPartnerAssigned: 0,
+            totalPartnerWithdrawn: 0,
+            totalPartnerAvailable: 0
+        };
+
+        if (partners && Array.isArray(partners)) {
+            const enrichedPartners = await Promise.all(
+                partners.map(async (p) => {
+                    const [retiros, disponible] = await Promise.all([
+                        partnersService.getWithdrawals(p.id),
+                        partnersService.getAvailableAmount(p.id, month, year)
+                    ]);
+
+                    const porcentaje = Number(p.porcentaje_participacion || p.percentage || 0);
+                    const fallbackAsignado = Math.max(0, (financialStats.netProfit * porcentaje) / 100);
+
+                    return {
+                        ...p,
+                        name: p.nombre || p.name || 'Sin Nombre',
+                        percentage: porcentaje,
+                        assigned: Number(disponible?.asignado ?? fallbackAsignado),
+                        withdrawnPeriod: Number(disponible?.retirado ?? 0),
+                        available: Number(disponible?.disponible ?? Math.max(0, fallbackAsignado)),
+                        withdrawals: (retiros || []).map((r) => ({
+                            id: r.id,
+                            amount: Number(r.monto || 0),
+                            date: r.fecha_retiro,
+                            description: r.descripcion
+                        }))
+                    };
+                })
+            );
+
+            setPartnersData(enrichedPartners);
+            const partnerTotals = enrichedPartners.reduce((acc, partner) => ({
+                assigned: acc.assigned + Number(partner.assigned || 0),
+                withdrawn: acc.withdrawn + Number(partner.withdrawnPeriod || 0),
+                available: acc.available + Number(partner.available || 0)
+            }), { assigned: 0, withdrawn: 0, available: 0 });
+
+            setStats({
+                ...financialStats,
+                totalPartnerAssigned: partnerTotals.assigned,
+                totalPartnerWithdrawn: partnerTotals.withdrawn,
+                totalPartnerAvailable: partnerTotals.available
+            });
+        } else {
+            setPartnersData([]);
+            setStats({
+                ...financialStats,
+                totalPartnerAssigned: Math.max(0, financialStats.netProfit),
+                totalPartnerWithdrawn: Math.max(0, financialStats.withdrawals),
+                totalPartnerAvailable: Math.max(0, financialStats.netProfit - financialStats.withdrawals)
+            });
+        }
     };
 
-    const handlePercentageChange = async (id, val) => {
+    useEffect(() => {
+        const loadData = async () => {
+            try {
+                await loadAllData();
+            } catch (error) {
+                console.error('Error cargando datos de socios:', error);
+            }
+        };
+        loadData();
+    }, []);
+
+    const formatCurrency = (val) => {
+        return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val || 0);
+    };
+
+    const handlePercentageInput = (id, val) => {
+        setPartnersData((prev) => prev.map((p) =>
+            p.id === id ? { ...p, percentage: parseFloat(val) || 0 } : p
+        ));
+    };
+
+    const handlePercentageSave = async (id, val) => {
         setIsLoading(true);
         try {
             const result = await partnersService.updatePartnerPercentage(id, parseFloat(val));
             if (result && result.ok) {
-                updatePartnerPercentage(id, val);
-                const fresh = await partnersService.getPartners();
-                if (fresh) setPartnersData(fresh);
+                await loadAllData();
             }
         } catch (error) {
             console.error('Error actualizando porcentaje:', error);
@@ -66,7 +149,7 @@ export default function Socios() {
         setIsLoading(true);
         try {
             const result = await partnersService.addWithdrawal(
-                parseInt(withdrawalForm.partnerId),
+                parseInt(withdrawalForm.partnerId, 10),
                 {
                     monto: parseFloat(withdrawalForm.amount),
                     fecha_retiro: withdrawalForm.date,
@@ -75,23 +158,20 @@ export default function Socios() {
             );
 
             if (result && result.ok) {
-                addWithdrawal(
-                    parseInt(withdrawalForm.partnerId),
-                    parseFloat(withdrawalForm.amount),
-                    withdrawalForm.date
-                );
-
-                const fresh = await partnersService.getPartners();
-                if (fresh) setPartnersData(fresh);
-
+                await loadAllData();
                 alert('Retiro registrado exitosamente');
+                setWithdrawalForm({
+                    partnerId: '',
+                    amount: '',
+                    date: new Date().toISOString().split('T')[0]
+                });
+            } else {
+                const msg = result?.message || 'Error al registrar retiro';
+                const disponible = result?.error?.disponible;
+                alert(disponible !== undefined
+                    ? `${msg}. Disponible actual: ${formatCurrency(disponible)}`
+                    : msg);
             }
-
-            setWithdrawalForm({
-                partnerId: '',
-                amount: '',
-                date: new Date().toISOString().split('T')[0]
-            });
         } catch (error) {
             console.error('Error registrando retiro:', error);
             alert('Error al registrar retiro');
@@ -100,16 +180,16 @@ export default function Socios() {
         }
     };
 
-    const StatCard = ({ title, value, icon: Icon, trendColor, subtitle }) => (
+    const StatCard = ({ title, value, icon, trendColor, subtitle }) => (
         <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
             <div className="flex items-center justify-between mb-4">
                 <span className="text-sm font-medium text-muted-foreground">{title}</span>
                 <div className="p-2 bg-secondary rounded-lg text-foreground">
-                    <Icon size={16} />
+                    {icon ? createElement(icon, { size: 16 }) : null}
                 </div>
             </div>
             <div className="space-y-1">
-                <h3 className={cn("text-2xl font-bold tracking-tight text-foreground", trendColor)}>{value}</h3>
+                <h3 className={cn('text-2xl font-bold tracking-tight text-foreground', trendColor)}>{value}</h3>
                 {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
             </div>
         </div>
@@ -122,39 +202,30 @@ export default function Socios() {
                 <p className="text-sm text-muted-foreground mt-1">Utilidades y retiros de socios</p>
             </div>
 
-            {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatCard
-                    title="Ingresos Totales"
-                    value={formatCurrency(stats?.totalIncome || 0)}
-                    icon={DollarSign}
-                />
-                <StatCard
-                    title="Gastos Operativos"
-                    value={formatCurrency(stats?.totalExpenses || 0)}
-                    icon={Wallet}
-                />
+                <StatCard title="Ingresos Totales" value={formatCurrency(stats.totalIncome)} icon={DollarSign} />
+                <StatCard title="Gastos Operativos" value={formatCurrency(stats.totalExpenses)} icon={Wallet} />
                 <StatCard
                     title="Retenciones Empresa"
-                    value={formatCurrency((stats?.emergencyFundDeduction || 0) + (stats?.reinvestmentDeduction || 0))}
+                    value={formatCurrency(stats.emergencyFundDeduction + stats.reinvestmentDeduction)}
                     icon={ShieldCheck}
                     subtitle="Fondo Emergencia + Reinversión"
                 />
                 <StatCard
-                    title="Utilidad A Repartir"
-                    value={formatCurrency(stats?.netProfit || 0)}
+                    title="Total Disponible Socios"
+                    value={formatCurrency(stats.totalPartnerAvailable)}
                     icon={PieChart}
                     trendColor="text-[hsl(var(--gold))]"
+                    subtitle={`Asignado ${formatCurrency(stats.totalPartnerAssigned)} · Retirado ${formatCurrency(stats.totalPartnerWithdrawn)}`}
                 />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Partners Distribution */}
                 <div className="space-y-6">
                     {(partnersData || []).map((partner) => {
-                        const shareAmount = (stats.netProfit * (partner.percentage || 0)) / 100;
-                        const totalWithdrawn = (partner.withdrawals || []).reduce((acc, curr) => acc + curr.amount, 0);
-                        const available = shareAmount - totalWithdrawn;
+                        const shareAmount = Number(partner.assigned || 0);
+                        const totalWithdrawn = Number(partner.withdrawnPeriod || 0);
+                        const available = Number(partner.available || 0);
 
                         return (
                             <div key={partner.id} className="bg-card glass-card border border-border/50 rounded-2xl p-6 shadow-sm hover:shadow-lg transition-all duration-300 group">
@@ -171,7 +242,8 @@ export default function Socios() {
                                                     <input
                                                         type="number"
                                                         value={partner.percentage}
-                                                        onChange={(e) => handlePercentageChange(partner.id, e.target.value)}
+                                                        onChange={(e) => handlePercentageInput(partner.id, e.target.value)}
+                                                        onBlur={(e) => handlePercentageSave(partner.id, e.target.value)}
                                                         className="w-10 bg-transparent text-foreground text-sm font-bold text-center focus:outline-none"
                                                         min="0"
                                                         max="100"
@@ -182,7 +254,7 @@ export default function Socios() {
                                         </div>
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-1">Total Asignado</p>
+                                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-1">Asignado Mes</p>
                                         <p className="text-2xl font-bold text-foreground tracking-tight">{formatCurrency(shareAmount)}</p>
                                     </div>
                                 </div>
@@ -191,7 +263,7 @@ export default function Socios() {
                                     <div className="bg-foreground/5 rounded-xl p-4 border border-foreground/10 backdrop-blur-sm">
                                         <div className="flex items-center gap-2 mb-2">
                                             <div className="h-2 w-2 rounded-full bg-foreground/40"></div>
-                                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Retirado</p>
+                                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Retirado Mes</p>
                                         </div>
                                         <p className="text-lg font-bold text-foreground/70">{formatCurrency(totalWithdrawn)}</p>
                                     </div>
@@ -216,7 +288,6 @@ export default function Socios() {
                     })}
                 </div>
 
-                {/* Withdrawal Form */}
                 <div className="bg-card glass-card border border-border/50 rounded-2xl p-6 shadow-sm sticky top-24 h-fit">
                     <h3 className="text-lg font-semibold text-foreground mb-6 flex items-center gap-3">
                         <div className="p-2 bg-[hsl(var(--gold))]/20 rounded-lg text-[hsl(var(--gold))]">
@@ -233,7 +304,7 @@ export default function Socios() {
                             className="bg-secondary/30 focus:ring-primary/20"
                         >
                             <option value="">Seleccionar Socio...</option>
-                            {(partnersData || []).map(p => (
+                            {(partnersData || []).map((p) => (
                                 <option key={p.id} value={p.id}>{p.name}</option>
                             ))}
                         </Select>
@@ -243,7 +314,7 @@ export default function Socios() {
                             placeholder="0.00"
                             min="0"
                             step="0.01"
-                            onKeyDown={(e) => ["e", "E", "+", "-"].includes(e.key) && e.preventDefault()}
+                            onKeyDown={(e) => ['e', 'E', '+', '-'].includes(e.key) && e.preventDefault()}
                             value={withdrawalForm.amount}
                             onChange={(e) => setWithdrawalForm({ ...withdrawalForm, amount: e.target.value })}
                             required

@@ -140,20 +140,19 @@ export const updatePartnerPercentage = async (id, newPercentage) => {
  * @returns {Promise<boolean>} - true si se eliminó
  * 
  * IMPORTANTE:
- * - Todos sus retiros previos quedan en el historial (auditoría)
- * - Solo se elimina el registro del socio
- * - Backend debe hacer soft-delete (no borrar, solo marcar como inactivo)
+ * - El backend elimina el socio junto a su historial asociado
+ * - Acción irreversible
  */
 export const deletePartner = async (id) => {
     try {
         const confirmDelete = window.confirm(
-            '¿Estás seguro? El socio se eliminará pero sus retiros previos quedarán registrados.'
+            '¿Estás seguro? El socio y su historial asociado se eliminarán de forma permanente.'
         );
         
         if (!confirmDelete) return false;
         
         const result = await apiClient.delete(`/api/socios/${id}`);
-        return result?.success || false;
+        return result?.ok || result?.success || false;
     } catch (error) {
         console.error(`Error eliminando socio ${id}:`, error);
         return false;
@@ -220,7 +219,11 @@ export const addWithdrawal = async (partnerId, withdrawal) => {
         return data || null;
     } catch (error) {
         console.error(`Error registrando retiro para socio ${partnerId}:`, error);
-        return null;
+        return {
+            ok: false,
+            message: error?.message || 'Error registrando retiro',
+            error: error?.data || null
+        };
     }
 };
 
@@ -245,7 +248,7 @@ export const deleteWithdrawal = async (partnerId, withdrawalId) => {
         const result = await apiClient.delete(
             `/api/socios/${partnerId}/retiros/${withdrawalId}`
         );
-        return result?.success || false;
+        return result?.ok || result?.success || false;
     } catch (error) {
         console.error(`Error eliminando retiro ${withdrawalId}:`, error);
         return false;
@@ -279,7 +282,7 @@ export const getAvailableAmount = async (partnerId, month = null, year = null) =
     try {
         const params = new URLSearchParams();
         if (month !== null) params.append('mes', month);
-        if (year !== null) params.append('año', year);
+        if (year !== null) params.append('year', year);
         
         const query = params.toString();
         const url = query

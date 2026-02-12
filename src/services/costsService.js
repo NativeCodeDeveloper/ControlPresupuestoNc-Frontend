@@ -110,7 +110,7 @@ export const updateFixedCost = async (id, updates) => {
 export const deleteFixedCost = async (id) => {
     try {
         const result = await apiClient.delete(`/api/costos-fijos/${id}`);
-        return result?.success || false;
+        return result?.ok || result?.success || false;
     } catch (error) {
         console.error(`Error eliminando costo fijo ${id}:`, error);
         return false;
@@ -177,7 +177,7 @@ export const addVariableCost = async (cost) => {
 export const deleteVariableCost = async (id) => {
     try {
         const result = await apiClient.delete(`/api/costos-variables/${id}`);
-        return result?.success || false;
+        return result?.ok || result?.success || false;
     } catch (error) {
         console.error(`Error eliminando costo variable ${id}:`, error);
         return false;
@@ -228,7 +228,7 @@ export const addService = async (name) => {
 export const deleteService = async (id) => {
     try {
         const result = await apiClient.delete(`/api/servicios/${id}`);
-        return result?.success || false;
+        return result?.ok || result?.success || false;
     } catch (error) {
         console.error(`Error eliminando servicio ${id}:`, error);
         return false;
@@ -279,7 +279,7 @@ export const addVariableCostType = async (name) => {
 export const deleteVariableCostType = async (id) => {
     try {
         const result = await apiClient.delete(`/api/tipos-costos/${id}`);
-        return result?.success || false;
+        return result?.ok || result?.success || false;
     } catch (error) {
         console.error(`Error eliminando tipo de costo ${id}:`, error);
         return false;

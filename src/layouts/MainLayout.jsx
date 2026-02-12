@@ -1,27 +1,34 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
+    House,
     LayoutDashboard,
     TrendingUp,
     TrendingDown,
     PieChart,
     Settings,
     Menu,
-    X,
-    Users
+    Users,
+    PiggyBank
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { cn } from '../lib/utils';
 
 export default function MainLayout({ children }) {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const location = useLocation();
 
+    if (location.pathname === '/') {
+        return children;
+    }
+
     const menuItems = [
-        { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
+        { icon: House, label: 'Inicio', path: '/' },
+        { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
         { icon: TrendingUp, label: 'Proyectos / Ingresos', path: '/ingresos' },
-        { icon: TrendingDown, label: 'Gastos', path: '/gastos' },
+        { icon: TrendingDown, label: 'Gastos / Pagos', path: '/gastos' },
         { icon: Users, label: 'Socios', path: '/socios' },
+        { icon: PiggyBank, label: 'Inversiones', path: '/inversiones' },
         { icon: PieChart, label: 'Reportes', path: '/reportes' },
         { icon: Settings, label: 'Configuración', path: '/config' },
     ];
@@ -31,10 +38,7 @@ export default function MainLayout({ children }) {
             {/* Mobile Overlay */}
             <AnimatePresence>
                 {isSidebarOpen && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
+                    <div
                         onClick={() => setIsSidebarOpen(false)}
                         className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
                     />

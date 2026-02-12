@@ -160,7 +160,7 @@ export const updateProject = async (id, updates) => {
 export const updateProjectStatus = async (id, newStatus) => {
     try {
         const data = await apiClient.patch(`/api/proyectos/${id}/estado`, {
-            status: newStatus
+            estado_proyecto_id: newStatus
         });
         return data || null;
     } catch (error) {
@@ -190,7 +190,7 @@ export const deleteProject = async (id) => {
         if (!confirmDelete) return false;
         
         const result = await apiClient.delete(`/api/proyectos/${id}`);
-        return result?.success || false;
+        return result?.ok || result?.success || false;
     } catch (error) {
         console.error(`Error eliminando proyecto ${id}:`, error);
         return false;
@@ -281,7 +281,7 @@ export const deleteProjectPayment = async (projectId, paymentId) => {
         const result = await apiClient.delete(
             `/api/proyectos/${projectId}/pagos/${paymentId}`
         );
-        return result?.success || false;
+        return result?.ok || result?.success || false;
     } catch (error) {
         console.error(`Error eliminando pago ${paymentId}:`, error);
         return false;
@@ -316,7 +316,7 @@ export const addProjectType = async (type) => {
 export const deleteProjectType = async (type) => {
     try {
         const result = await apiClient.delete(`/api/proyectos/tipos/${type}`);
-        return result?.success || false;
+        return result?.ok || result?.success || false;
     } catch (error) {
         console.error('Error eliminando tipo de proyecto:', error);
         return false;
@@ -346,7 +346,7 @@ export const addProjectStatus = async (status) => {
 export const deleteProjectStatus = async (status) => {
     try {
         const result = await apiClient.delete(`/api/proyectos/estados/${status}`);
-        return result?.success || false;
+        return result?.ok || result?.success || false;
     } catch (error) {
         console.error('Error eliminando estado de proyecto:', error);
         return false;

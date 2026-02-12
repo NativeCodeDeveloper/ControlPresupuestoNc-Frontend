@@ -1,8 +1,7 @@
-import { useFinance } from '../../context/FinanceContext';
+import { useState, useEffect } from 'react';
 import * as configService from '../../services/configService';
-import * as projectsService from '../../services/projectsService';
+import * as partnersService from '../../services/partnersService';
 import * as costsService from '../../services/costsService';
-import { useState } from 'react';
 import {
     Settings,
     Shield,
@@ -16,64 +15,81 @@ import {
 } from 'lucide-react';
 
 export default function Config() {
-    const {
-        data,
-        addProjectType,
-        removeProjectType,
-        addProjectStatus,
-        removeProjectStatus,
-        addService,
-        removeService,
-        addVariableCostType,
-        removeVariableCostType,
-        updateFinancialConfig,
-        addPartner,
-        removePartner,
-        resetData
-    } = useFinance();
-
     // Estados para datos del backend
     const [isLoading, setIsLoading] = useState(false);
-    const [projectTypesData, setProjectTypesData] = useState(data?.projectTypes || []);
-    const [projectStatusesData, setProjectStatusesData] = useState(data?.projectStatuses || []);
-    const [servicesData, setServicesData] = useState(data?.services || []);
-    const [variableCostTypesData, setVariableCostTypesData] = useState(data?.variableCostTypes || []);
+    const [projectTypesData, setProjectTypesData] = useState([]);
+    const [projectStatusesData, setProjectStatusesData] = useState([]);
+    const [servicesData, setServicesData] = useState([]);
+    const [variableCostTypesData, setVariableCostTypesData] = useState([]);
+    const [partnersData, setPartnersData] = useState([]);
+    const [financialConfig, setFinancialConfig] = useState({
+        emergencyFundPercentage: 0,
+        reinvestmentPercentage: 0
+    });
+
+    // Normalizar socio del backend
+    const normalizePartner = (p) => ({
+        ...p,
+        name: p.nombre || p.name || 'Sin Nombre',
+        percentage: parseFloat(p.porcentaje_participacion || p.percentage || 0)
+    });
 
     // Cargar datos del backend cuando monta
-    const [configLoaded, setConfigLoaded] = useState(false);
-    if (!configLoaded) {
-        Promise.all([
-            configService.getProjectTypes().then(d => {
-                if (d && Array.isArray(d) && d.length > 0) setProjectTypesData(d);
-            }),
-            configService.getProjectStatuses().then(d => {
-                if (d && Array.isArray(d) && d.length > 0) setProjectStatusesData(d);
-            }),
-            costsService.getServices().then(d => {
-                if (d && Array.isArray(d) && d.length > 0) setServicesData(d);
-            }),
-            configService.getVariableCostTypes().then(d => {
-                if (d && Array.isArray(d) && d.length > 0) setVariableCostTypesData(d);
-            }),
-            configService.getFinancialConfig().then(d => {
-                if (d && d.porcentaje_fondo_emergencia !== undefined) {
-                    updateFinancialConfig('emergencyFundPercentage', d.porcentaje_fondo_emergencia);
-                    updateFinancialConfig('reinvestmentPercentage', d.porcentaje_reinversion);
-                }
-            })
-        ]).then(() => setConfigLoaded(true));
-    }
+    useEffect(() => {
+        const loadData = async () => {
+            try {
+                const [types, statuses, services, costTypes, config, partners] = await Promise.all([
+                    configService.getProjectTypes(),
+                    configService.getProjectStatuses(),
+                    costsService.getServices(),
+                    configService.getVariableCostTypes(),
+                    configService.getFinancialConfig(),
+                    partnersService.getPartners()
+                ]);
 
-    // Funciones helper para interactuar con backend
+                if (types && Array.isArray(types)) setProjectTypesData(types);
+                if (statuses && Array.isArray(statuses)) setProjectStatusesData(statuses);
+                if (services && Array.isArray(services)) setServicesData(services);
+                if (costTypes && Array.isArray(costTypes)) setVariableCostTypesData(costTypes);
+                if (config && config.porcentaje_fondo_emergencia !== undefined) {
+                    setFinancialConfig({
+                        emergencyFundPercentage: parseFloat(config.porcentaje_fondo_emergencia || 0),
+                        reinvestmentPercentage: parseFloat(config.porcentaje_reinversion || 0)
+                    });
+                }
+                if (partners && Array.isArray(partners)) setPartnersData(partners.map(normalizePartner));
+            } catch (error) {
+                console.error('Error cargando configuración:', error);
+            }
+        };
+        loadData();
+    }, []);
+
+    // Guardar configuración financiera al backend
+    const handleFinancialConfigChange = (key, value) => {
+        setFinancialConfig(prev => ({ ...prev, [key]: value }));
+    };
+
+    const handleFinancialConfigSave = async () => {
+        try {
+            await configService.updateFinancialConfig({
+                porcentaje_fondo_emergencia: parseFloat(financialConfig.emergencyFundPercentage || 0),
+                porcentaje_reinversion: parseFloat(financialConfig.reinvestmentPercentage || 0)
+            });
+        } catch (error) {
+            console.error('Error guardando config financiera:', error);
+        }
+    };
+
+    // === TIPOS DE PROYECTO ===
     const handleAddProjectType = async (name) => {
         if (!name.trim()) return;
         setIsLoading(true);
         try {
             const result = await configService.addProjectType({ nombre: name });
             if (result && result.ok) {
-                addProjectType(name);
                 const fresh = await configService.getProjectTypes();
-                if (fresh && Array.isArray(fresh) && fresh.length > 0) setProjectTypesData(fresh);
+                if (fresh && Array.isArray(fresh)) setProjectTypesData(fresh);
             }
         } catch (error) {
             console.error('Error agregando tipo proyecto:', error);
@@ -82,18 +98,151 @@ export default function Config() {
         }
     };
 
+    const handleRemoveProjectType = async (type) => {
+        const id = typeof type === 'string' ? null : type.id;
+        if (!id) return;
+        setIsLoading(true);
+        try {
+            const deleted = await configService.deleteProjectType(id);
+            if (deleted) {
+                const fresh = await configService.getProjectTypes();
+                if (fresh && Array.isArray(fresh)) setProjectTypesData(fresh);
+            }
+        } catch (error) {
+            console.error('Error eliminando tipo proyecto:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // === ESTADOS DE PROYECTO ===
+    const handleAddProjectStatus = async (name) => {
+        if (!name.trim()) return;
+        setIsLoading(true);
+        try {
+            const result = await configService.addProjectStatus({ nombre: name });
+            if (result && result.ok) {
+                const fresh = await configService.getProjectStatuses();
+                if (fresh && Array.isArray(fresh)) setProjectStatusesData(fresh);
+            }
+        } catch (error) {
+            console.error('Error agregando estado proyecto:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleRemoveProjectStatus = async (status) => {
+        const id = typeof status === 'string' ? null : status.id;
+        if (!id) return;
+        setIsLoading(true);
+        try {
+            const deleted = await configService.deleteProjectStatus(id);
+            if (deleted) {
+                const fresh = await configService.getProjectStatuses();
+                if (fresh && Array.isArray(fresh)) setProjectStatusesData(fresh);
+            }
+        } catch (error) {
+            console.error('Error eliminando estado proyecto:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // === SERVICIOS ===
     const handleAddService = async (name) => {
         if (!name.trim()) return;
         setIsLoading(true);
         try {
             const result = await costsService.addService(name);
             if (result && result.ok) {
-                addService(name);
                 const fresh = await costsService.getServices();
-                if (fresh) setServicesData(fresh);
+                if (fresh && Array.isArray(fresh)) setServicesData(fresh);
             }
         } catch (error) {
             console.error('Error agregando servicio:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleRemoveService = async (service) => {
+        const id = typeof service === 'string' ? null : service.id;
+        if (!id) return;
+        setIsLoading(true);
+        try {
+            const deleted = await costsService.deleteService(id);
+            if (deleted) {
+                const fresh = await costsService.getServices();
+                if (fresh && Array.isArray(fresh)) setServicesData(fresh);
+            }
+        } catch (error) {
+            console.error('Error eliminando servicio:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // === TIPOS DE COSTOS VARIABLES ===
+    const handleAddVariableCostType = async (name) => {
+        if (!name.trim()) return;
+        setIsLoading(true);
+        try {
+            const result = await configService.addVariableCostType({ nombre: name });
+            if (result && result.ok) {
+                const fresh = await configService.getVariableCostTypes();
+                if (fresh && Array.isArray(fresh)) setVariableCostTypesData(fresh);
+            }
+        } catch (error) {
+            console.error('Error agregando tipo costo variable:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleRemoveVariableCostType = async (type) => {
+        const id = typeof type === 'string' ? null : type.id;
+        if (!id) return;
+        setIsLoading(true);
+        try {
+            const deleted = await configService.deleteVariableCostType(id);
+            if (deleted) {
+                const fresh = await configService.getVariableCostTypes();
+                if (fresh && Array.isArray(fresh)) setVariableCostTypesData(fresh);
+            }
+        } catch (error) {
+            console.error('Error eliminando tipo costo variable:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // === SOCIOS ===
+    const handleAddPartner = async (name) => {
+        if (!name.trim()) return;
+        setIsLoading(true);
+        try {
+            const result = await partnersService.addPartner({ nombre: name, porcentaje_participacion: 0 });
+            if (result && result.ok) {
+                const fresh = await partnersService.getPartners();
+                if (fresh && Array.isArray(fresh)) setPartnersData(fresh.map(normalizePartner));
+            }
+        } catch (error) {
+            console.error('Error agregando socio:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleRemovePartner = async (partner) => {
+        const deleted = await partnersService.deletePartner(partner.id);
+        if (!deleted) return;
+        setIsLoading(true);
+        try {
+            const fresh = await partnersService.getPartners();
+            if (fresh && Array.isArray(fresh)) setPartnersData(fresh.map(normalizePartner));
+        } catch (error) {
+            console.error('Error eliminando socio:', error);
         } finally {
             setIsLoading(false);
         }
@@ -142,8 +291,9 @@ export default function Config() {
                                 <div className="relative flex-1">
                                     <input
                                         type="number"
-                                        value={data.financialConfigs?.emergencyFundPercentage || 0}
-                                        onChange={(e) => updateFinancialConfig('emergencyFundPercentage', e.target.value)}
+                                        value={financialConfig.emergencyFundPercentage}
+                                        onChange={(e) => handleFinancialConfigChange('emergencyFundPercentage', e.target.value)}
+                                        onBlur={handleFinancialConfigSave}
                                         className="w-full bg-[hsl(var(--emerald-premium))]/10 border border-[hsl(var(--emerald-premium))]/30 rounded-lg px-3 py-2 text-center font-bold text-lg focus:outline-none focus:ring-2 focus:ring-[hsl(var(--emerald-premium))]/30 text-[hsl(var(--emerald-premium))]"
                                         min="0"
                                         max="100"
@@ -165,8 +315,9 @@ export default function Config() {
                                 <div className="relative flex-1">
                                     <input
                                         type="number"
-                                        value={data.financialConfigs?.reinvestmentPercentage || 0}
-                                        onChange={(e) => updateFinancialConfig('reinvestmentPercentage', e.target.value)}
+                                        value={financialConfig.reinvestmentPercentage}
+                                        onChange={(e) => handleFinancialConfigChange('reinvestmentPercentage', e.target.value)}
+                                        onBlur={handleFinancialConfigSave}
                                         className="w-full bg-[hsl(var(--purple-premium))]/10 border border-[hsl(var(--purple-premium))]/30 rounded-lg px-3 py-2 text-center font-bold text-lg focus:outline-none focus:ring-2 focus:ring-[hsl(var(--purple-premium))]/30 text-[hsl(var(--purple-premium))]"
                                         min="0"
                                         max="100"
@@ -219,7 +370,7 @@ export default function Config() {
                                 <div key={key} className="flex items-center gap-2 bg-secondary/50 border border-border px-3 py-1.5 rounded-full text-sm animate-in zoom-in-50 duration-200">
                                     <span>{name}</span>
                                     <button
-                                        onClick={() => removeService(name)}
+                                        onClick={() => handleRemoveService(service)}
                                         className="text-muted-foreground hover:text-destructive transition-colors"
                                     >
                                         &times;
@@ -244,17 +395,18 @@ export default function Config() {
                                 className="flex-1 bg-secondary/50 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter') {
-                                        addVariableCostType(e.currentTarget.value);
+                                        handleAddVariableCostType(e.currentTarget.value);
                                         e.currentTarget.value = '';
                                     }
                                 }}
                             />
                             <button
-                                className="bg-[hsl(var(--copper))] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[hsl(var(--copper-light))] transition-colors shadow-sm"
+                                disabled={isLoading}
+                                className="bg-[hsl(var(--copper))] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[hsl(var(--copper-light))] transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                                 onClick={(e) => {
                                     const input = e.currentTarget.previousSibling;
                                     if (input.value) {
-                                        addVariableCostType(input.value);
+                                        handleAddVariableCostType(input.value);
                                         input.value = '';
                                     }
                                 }}
@@ -270,7 +422,7 @@ export default function Config() {
                                 <div key={key} className="flex items-center gap-2 bg-[hsl(var(--copper))]/10 border border-[hsl(var(--copper))]/20 px-3 py-1.5 rounded-full text-sm text-[hsl(var(--copper))]">
                                     <span>{name}</span>
                                     <button
-                                        onClick={() => removeVariableCostType(name)}
+                                        onClick={() => handleRemoveVariableCostType(type)}
                                         className="text-[hsl(var(--copper))]/70 hover:text-destructive transition-colors"
                                     >
                                         &times;
@@ -319,7 +471,7 @@ export default function Config() {
                                 <div key={key} className="flex items-center gap-2 bg-secondary/50 border border-border px-3 py-1.5 rounded-full text-sm">
                                     <span>{name}</span>
                                     <button
-                                        onClick={() => removeProjectType(name)}
+                                        onClick={() => handleRemoveProjectType(type)}
                                         className="text-muted-foreground hover:text-destructive transition-colors"
                                     >
                                         &times;
@@ -344,17 +496,18 @@ export default function Config() {
                                 className="flex-1 bg-secondary/50 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter') {
-                                        addProjectStatus(e.currentTarget.value);
+                                        handleAddProjectStatus(e.currentTarget.value);
                                         e.currentTarget.value = '';
                                     }
                                 }}
                             />
                             <button
-                                className="bg-[hsl(var(--turquoise-premium))] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[hsl(var(--turquoise-light))] transition-colors shadow-sm"
+                                disabled={isLoading}
+                                className="bg-[hsl(var(--turquoise-premium))] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[hsl(var(--turquoise-light))] transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                                 onClick={(e) => {
                                     const input = e.currentTarget.previousSibling;
                                     if (input.value) {
-                                        addProjectStatus(input.value);
+                                        handleAddProjectStatus(input.value);
                                         input.value = '';
                                     }
                                 }}
@@ -370,7 +523,7 @@ export default function Config() {
                                 <div key={key} className="flex items-center gap-2 bg-[hsl(var(--turquoise-premium))]/10 border border-[hsl(var(--turquoise-premium))]/20 px-3 py-1.5 rounded-full text-sm text-[hsl(var(--turquoise-premium))]">
                                     <span>{name}</span>
                                     <button
-                                        onClick={() => removeProjectStatus(name)}
+                                        onClick={() => handleRemoveProjectStatus(status)}
                                         className="text-[hsl(var(--turquoise-premium))]/70 hover:text-destructive transition-colors"
                                     >
                                         &times;
@@ -391,17 +544,18 @@ export default function Config() {
                                 className="flex-1 bg-secondary/50 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter') {
-                                        addPartner(e.currentTarget.value);
+                                        handleAddPartner(e.currentTarget.value);
                                         e.currentTarget.value = '';
                                     }
                                 }}
                             />
                             <button
-                                className="bg-[hsl(var(--gold))] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[hsl(var(--gold-dark))] transition-colors shadow-sm"
+                                disabled={isLoading}
+                                className="bg-[hsl(var(--gold))] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[hsl(var(--gold-dark))] transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                                 onClick={(e) => {
                                     const input = e.currentTarget.previousSibling;
                                     if (input.value) {
-                                        addPartner(input.value);
+                                        handleAddPartner(input.value);
                                         input.value = '';
                                     }
                                 }}
@@ -410,7 +564,7 @@ export default function Config() {
                             </button>
                         </div>
                         <div className="flex flex-col gap-2">
-                            {data.partners?.map(partner => (
+                            {(partnersData || []).map(partner => (
                                 <div key={partner.id} className="flex items-center justify-between bg-secondary/50 border border-border px-4 py-3 rounded-lg text-sm">
                                     <div className="flex items-center gap-3">
                                         <div className="h-8 w-8 rounded-full bg-foreground/10 flex items-center justify-center text-foreground font-bold">
@@ -422,10 +576,9 @@ export default function Config() {
                                         </div>
                                     </div>
                                     <button
-                                        onClick={() => {
-                                            if (window.confirm(`¿Eliminar a ${partner.name}?`)) removePartner(partner.id);
-                                        }}
-                                        className="text-muted-foreground hover:text-destructive transition-colors p-2"
+                                        onClick={() => handleRemovePartner(partner)}
+                                        disabled={isLoading}
+                                        className="text-muted-foreground hover:text-destructive transition-colors p-2 disabled:opacity-50"
                                         title="Eliminar Socio"
                                     >
                                         <Trash2 size={16} />
@@ -435,26 +588,6 @@ export default function Config() {
                         </div>
                     </div>
                 </Section>
-
-                {/* Danger Zone */}
-                <div className="mt-12 pt-8 border-t border-destructive/20">
-                    <h3 className="text-destructive font-bold text-lg mb-4 flex items-center gap-2">
-                        <Trash2 size={20} /> Zona de Peligro
-                    </h3>
-                    <div className="bg-destructive/5 border border-destructive/20 rounded-xl p-6">
-                        <h4 className="font-semibold text-destructive mb-2">Eliminar todos los datos</h4>
-                        <p className="text-sm text-muted-foreground mb-4">
-                            Esta acción eliminará permanentemente todos los proyectos, gastos, configuraciones y registros.
-                            No se puede deshacer.
-                        </p>
-                        <button
-                            onClick={resetData}
-                            className="bg-destructive text-destructive-foreground px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-all"
-                        >
-                            Eliminar Todo y Reiniciar
-                        </button>
-                    </div>
-                </div>
             </div>
         </div>
     );

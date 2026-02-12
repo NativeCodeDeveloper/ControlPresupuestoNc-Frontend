@@ -44,11 +44,31 @@
 // CONFIGURACIÓN (cambiar para backend)
 // ========================================
 
-// Conectar a backend local
-const API_URL = 'http://localhost:3000';
+// Conectar a backend local (lee de .env o usa default)
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 // Token de autenticación (FUTURO: obtener del login)
 let authToken = null;
+
+const buildApiError = async (response) => {
+    let data = null;
+    let message = `HTTP ${response.status}: ${response.statusText}`;
+
+    try {
+        data = await response.json();
+        if (data?.message) {
+            message = data.message;
+        }
+    } catch (parseError) {
+        void parseError;
+        // noop: mantiene mensaje por status.
+    }
+
+    const error = new Error(message);
+    error.status = response.status;
+    error.data = data;
+    return error;
+};
 
 /**
  * setAuthToken - Guardar token de autenticación
@@ -106,9 +126,7 @@ const apiClient = {
                 }
             });
 
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
+            if (!response.ok) throw await buildApiError(response);
 
             const data = await response.json();
             return data;
@@ -133,9 +151,7 @@ const apiClient = {
                 body: JSON.stringify(data)
             });
 
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
+            if (!response.ok) throw await buildApiError(response);
 
             const result = await response.json();
             return result;
@@ -160,9 +176,7 @@ const apiClient = {
                 body: JSON.stringify(data)
             });
 
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
+            if (!response.ok) throw await buildApiError(response);
 
             const result = await response.json();
             return result;
@@ -187,9 +201,7 @@ const apiClient = {
                 body: JSON.stringify(data)
             });
 
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
+            if (!response.ok) throw await buildApiError(response);
 
             const result = await response.json();
             return result;
@@ -213,9 +225,7 @@ const apiClient = {
                 }
             });
 
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
+            if (!response.ok) throw await buildApiError(response);
 
             const result = await response.json();
             return result;

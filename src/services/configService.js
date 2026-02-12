@@ -142,7 +142,7 @@ export const deleteProjectType = async (id) => {
         if (!confirmDelete) return false;
         
         const result = await apiClient.delete(`/api/catalogos/tipos-proyecto/${id}`);
-        return result?.success || false;
+        return result?.ok || result?.success || false;
     } catch (error) {
         console.error(`Error eliminando tipo de proyecto ${id}:`, error);
         return false;
@@ -178,6 +178,30 @@ export const getProjectStatuses = async () => {
     } catch (error) {
         console.error('Error obteniendo estados de proyecto:', error);
         return [];
+    }
+};
+
+export const addProjectStatus = async (status) => {
+    try {
+        const data = await apiClient.post('/api/catalogos/estados-proyecto', status);
+        return data || null;
+    } catch (error) {
+        console.error('Error creando estado de proyecto:', error);
+        return null;
+    }
+};
+
+export const deleteProjectStatus = async (id) => {
+    try {
+        const confirmDelete = window.confirm(
+            '¿Estás seguro? No se puede eliminar si hay proyectos usando este estado.'
+        );
+        if (!confirmDelete) return false;
+        const result = await apiClient.delete(`/api/catalogos/estados-proyecto/${id}`);
+        return result?.ok || result?.success || false;
+    } catch (error) {
+        console.error(`Error eliminando estado de proyecto ${id}:`, error);
+        return false;
     }
 };
 
@@ -246,7 +270,7 @@ export const deleteService = async (id) => {
         if (!confirmDelete) return false;
         
         const result = await apiClient.delete(`/api/catalogos/servicios/${id}`);
-        return result?.success || false;
+        return result?.ok || result?.success || false;
     } catch (error) {
         console.error(`Error eliminando servicio ${id}:`, error);
         return false;
@@ -318,7 +342,7 @@ export const deleteVariableCostType = async (id) => {
         const result = await apiClient.delete(
             `/api/catalogos/tipos-costo-variable/${id}`
         );
-        return result?.success || false;
+        return result?.ok || result?.success || false;
     } catch (error) {
         console.error(`Error eliminando tipo de costo ${id}:`, error);
         return false;
