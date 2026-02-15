@@ -14,6 +14,8 @@ import { Input, Select } from '../../components/ui/FormElements';
 
 export default function Socios() {
     const [isLoading, setIsLoading] = useState(false);
+    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
+    const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth().toString());
     const [partnersData, setPartnersData] = useState([]);
     const [stats, setStats] = useState({
         totalIncome: 0,
@@ -33,15 +35,34 @@ export default function Socios() {
         date: new Date().toISOString().split('T')[0]
     });
 
-    const loadAllData = async () => {
-        const now = new Date();
-        const month = now.getMonth();
-        const year = now.getFullYear();
-
+    const loadAllData = async (month, year) => {
         const [partners, summary] = await Promise.all([
-            partnersService.getPartners(),
+            partnersService.getPartners({ all: true }),
             financeService.getFinancialSummary(month, year)
         ]);
+
+        const summaryAvailability = Array.isArray(summary?.partnersAvailability)
+            ? summary.partnersAvailability.map((item) => ({
+                id: Number(item?.id),
+                assigned: Number(item?.assigned ?? item?.asignado ?? 0),
+                withdrawn: Number(item?.withdrawn ?? item?.retirado ?? 0),
+                available: Number(item?.available ?? item?.disponible ?? 0)
+            }))
+            : [];
+
+        const summaryTotals = summaryAvailability.reduce((acc, item) => ({
+            assigned: acc.assigned + Number(item.assigned || 0),
+            withdrawn: acc.withdrawn + Number(item.withdrawn || 0),
+            available: acc.available + Number(item.available || 0)
+        }), { assigned: 0, withdrawn: 0, available: 0 });
+
+        const summaryTotalPartnersAvailable = Number(summary?.totalPartnersAvailable);
+
+        const canonicalAssigned = Number(summary?.netProfit ?? summaryTotals.assigned);
+        const canonicalWithdrawn = Number(summary?.withdrawals ?? summaryTotals.withdrawn);
+        const canonicalAvailable = Number.isFinite(summaryTotalPartnersAvailable)
+            ? summaryTotalPartnersAvailable
+            : Number(summary?.partnersAvailable ?? summaryTotals.available);
 
         const financialStats = {
             totalIncome: Number(summary?.income || 0),
@@ -50,73 +71,66 @@ export default function Socios() {
             reinvestmentDeduction: Number(summary?.reinvestmentDeduction || 0),
             netProfit: Number(summary?.netProfit || 0),
             withdrawals: Number(summary?.withdrawals || 0),
-            totalPartnerAssigned: 0,
-            totalPartnerWithdrawn: 0,
-            totalPartnerAvailable: 0
+            totalPartnerAssigned: canonicalAssigned,
+            totalPartnerWithdrawn: canonicalWithdrawn,
+            totalPartnerAvailable: canonicalAvailable
         };
 
+        const summaryAvailabilityMap = new Map(
+            summaryAvailability.map((item) => [Number(item.id), item])
+        );
+
         if (partners && Array.isArray(partners)) {
+            const shouldFetchPerPartnerAvailability = summaryAvailabilityMap.size === 0;
+
             const enrichedPartners = await Promise.all(
                 partners.map(async (p) => {
-                    const [retiros, disponible] = await Promise.all([
-                        partnersService.getWithdrawals(p.id),
-                        partnersService.getAvailableAmount(p.id, month, year)
-                    ]);
-
+                    const partnerId = Number(p.id);
                     const porcentaje = Number(p.porcentaje_participacion || p.percentage || 0);
                     const fallbackAsignado = Math.max(0, (financialStats.netProfit * porcentaje) / 100);
+                    const summaryData = summaryAvailabilityMap.get(partnerId);
+
+                    let availabilityData = null;
+                    if (!summaryData && shouldFetchPerPartnerAvailability) {
+                        availabilityData = await partnersService.getAvailableAmount(partnerId, month, year);
+                    }
 
                     return {
                         ...p,
                         name: p.nombre || p.name || 'Sin Nombre',
                         percentage: porcentaje,
-                        assigned: Number(disponible?.asignado ?? fallbackAsignado),
-                        withdrawnPeriod: Number(disponible?.retirado ?? 0),
-                        available: Number(disponible?.disponible ?? Math.max(0, fallbackAsignado)),
-                        withdrawals: (retiros || []).map((r) => ({
-                            id: r.id,
-                            amount: Number(r.monto || 0),
-                            date: r.fecha_retiro,
-                            description: r.descripcion
-                        }))
+                        assigned: Number(summaryData?.assigned ?? availabilityData?.asignado ?? fallbackAsignado),
+                        withdrawnPeriod: Number(summaryData?.withdrawn ?? availabilityData?.retirado ?? 0),
+                        available: Number(summaryData?.available ?? availabilityData?.disponible ?? Math.max(0, fallbackAsignado))
                     };
                 })
             );
 
             setPartnersData(enrichedPartners);
-            const partnerTotals = enrichedPartners.reduce((acc, partner) => ({
-                assigned: acc.assigned + Number(partner.assigned || 0),
-                withdrawn: acc.withdrawn + Number(partner.withdrawnPeriod || 0),
-                available: acc.available + Number(partner.available || 0)
-            }), { assigned: 0, withdrawn: 0, available: 0 });
-
-            setStats({
-                ...financialStats,
-                totalPartnerAssigned: partnerTotals.assigned,
-                totalPartnerWithdrawn: partnerTotals.withdrawn,
-                totalPartnerAvailable: partnerTotals.available
-            });
+            setStats(financialStats);
         } else {
             setPartnersData([]);
-            setStats({
-                ...financialStats,
-                totalPartnerAssigned: Math.max(0, financialStats.netProfit),
-                totalPartnerWithdrawn: Math.max(0, financialStats.withdrawals),
-                totalPartnerAvailable: Math.max(0, financialStats.netProfit - financialStats.withdrawals)
-            });
+            setStats(financialStats);
         }
     };
 
     useEffect(() => {
         const loadData = async () => {
             try {
-                await loadAllData();
+                await loadAllData(parseInt(selectedMonth, 10), parseInt(selectedYear, 10));
             } catch (error) {
                 console.error('Error cargando datos de socios:', error);
             }
         };
         loadData();
-    }, []);
+    }, [selectedMonth, selectedYear]);
+
+    const months = [
+        'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+        'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+    ];
+    const currentYear = new Date().getFullYear();
+    const yearOptions = [currentYear - 2, currentYear - 1, currentYear, currentYear + 1];
 
     const formatCurrency = (val) => {
         return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val || 0);
@@ -133,7 +147,7 @@ export default function Socios() {
         try {
             const result = await partnersService.updatePartnerPercentage(id, parseFloat(val));
             if (result && result.ok) {
-                await loadAllData();
+                await loadAllData(parseInt(selectedMonth, 10), parseInt(selectedYear, 10));
             }
         } catch (error) {
             console.error('Error actualizando porcentaje:', error);
@@ -158,7 +172,7 @@ export default function Socios() {
             );
 
             if (result && result.ok) {
-                await loadAllData();
+                await loadAllData(parseInt(selectedMonth, 10), parseInt(selectedYear, 10));
                 alert('Retiro registrado exitosamente');
                 setWithdrawalForm({
                     partnerId: '',
@@ -180,11 +194,11 @@ export default function Socios() {
         }
     };
 
-    const StatCard = ({ title, value, icon, trendColor, subtitle }) => (
+    const StatCard = ({ title, value, icon, trendColor, subtitle, iconTone = 'bg-secondary text-foreground' }) => (
         <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
             <div className="flex items-center justify-between mb-4">
                 <span className="text-sm font-medium text-muted-foreground">{title}</span>
-                <div className="p-2 bg-secondary rounded-lg text-foreground">
+                <div className={`p-2 rounded-lg ${iconTone}`}>
                     {icon ? createElement(icon, { size: 16 }) : null}
                 </div>
             </div>
@@ -197,19 +211,52 @@ export default function Socios() {
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
-            <div>
-                <h2 className="text-2xl font-semibold tracking-tight text-foreground">Distribución</h2>
-                <p className="text-sm text-muted-foreground mt-1">Utilidades y retiros de socios</p>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-border/50 pb-6">
+                <div>
+                    <h2 className="text-2xl font-semibold tracking-tight text-foreground">Distribución</h2>
+                    <p className="text-sm text-muted-foreground mt-1">Utilidades y retiros de socios</p>
+                </div>
+                <div className="flex gap-4">
+                    <div className="w-40">
+                        <Select
+                            value={selectedMonth}
+                            onChange={(e) => setSelectedMonth(e.target.value)}
+                            className="bg-card/50 backdrop-blur-sm border-border/50"
+                        >
+                            {months.map((m, i) => <option key={i} value={i}>{m}</option>)}
+                        </Select>
+                    </div>
+                    <div className="w-32">
+                        <Select
+                            value={selectedYear}
+                            onChange={(e) => setSelectedYear(e.target.value)}
+                            className="bg-card/50 backdrop-blur-sm border-border/50"
+                        >
+                            {yearOptions.map((y) => <option key={y} value={y}>{y}</option>)}
+                        </Select>
+                    </div>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatCard title="Ingresos Totales" value={formatCurrency(stats.totalIncome)} icon={DollarSign} />
-                <StatCard title="Gastos Operativos" value={formatCurrency(stats.totalExpenses)} icon={Wallet} />
+                <StatCard
+                    title="Ingresos Totales"
+                    value={formatCurrency(stats.totalIncome)}
+                    icon={DollarSign}
+                    iconTone="bg-[hsl(var(--emerald-premium))]/12 text-[hsl(var(--emerald-premium))]"
+                />
+                <StatCard
+                    title="Gastos Operativos"
+                    value={formatCurrency(stats.totalExpenses)}
+                    icon={Wallet}
+                    iconTone="bg-[hsl(var(--copper))]/12 text-[hsl(var(--copper))]"
+                />
                 <StatCard
                     title="Retenciones Empresa"
                     value={formatCurrency(stats.emergencyFundDeduction + stats.reinvestmentDeduction)}
                     icon={ShieldCheck}
                     subtitle="Fondo Emergencia + Reinversión"
+                    iconTone="bg-[hsl(var(--corporate-blue))]/12 text-[hsl(var(--corporate-blue))]"
                 />
                 <StatCard
                     title="Total Disponible Socios"
@@ -217,6 +264,7 @@ export default function Socios() {
                     icon={PieChart}
                     trendColor="text-[hsl(var(--gold))]"
                     subtitle={`Asignado ${formatCurrency(stats.totalPartnerAssigned)} · Retirado ${formatCurrency(stats.totalPartnerWithdrawn)}`}
+                    iconTone="bg-[hsl(var(--gold))]/14 text-[hsl(var(--gold))]"
                 />
             </div>
 

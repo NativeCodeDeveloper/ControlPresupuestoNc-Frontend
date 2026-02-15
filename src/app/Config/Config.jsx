@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { createElement, useState, useEffect } from 'react';
 import * as configService from '../../services/configService';
 import * as partnersService from '../../services/partnersService';
 import * as costsService from '../../services/costsService';
@@ -7,6 +7,7 @@ import {
     Shield,
     PiggyBank,
     TrendingUp,
+    Save,
     Users,
     Trash2,
     Bell,
@@ -17,6 +18,7 @@ import {
 export default function Config() {
     // Estados para datos del backend
     const [isLoading, setIsLoading] = useState(false);
+    const [isSavingFinancialConfig, setIsSavingFinancialConfig] = useState(false);
     const [projectTypesData, setProjectTypesData] = useState([]);
     const [projectStatusesData, setProjectStatusesData] = useState([]);
     const [servicesData, setServicesData] = useState([]);
@@ -71,13 +73,33 @@ export default function Config() {
     };
 
     const handleFinancialConfigSave = async () => {
+        if (isSavingFinancialConfig) return;
+        setIsSavingFinancialConfig(true);
         try {
-            await configService.updateFinancialConfig({
+            const result = await configService.updateFinancialConfig({
                 porcentaje_fondo_emergencia: parseFloat(financialConfig.emergencyFundPercentage || 0),
                 porcentaje_reinversion: parseFloat(financialConfig.reinvestmentPercentage || 0)
             });
+
+            if (result?.ok && result?.data) {
+                setFinancialConfig({
+                    emergencyFundPercentage: parseFloat(result.data.porcentaje_fondo_emergencia || 0),
+                    reinvestmentPercentage: parseFloat(result.data.porcentaje_reinversion || 0)
+                });
+                return;
+            }
+
+            const freshConfig = await configService.getFinancialConfig();
+            if (freshConfig && freshConfig.porcentaje_fondo_emergencia !== undefined) {
+                setFinancialConfig({
+                    emergencyFundPercentage: parseFloat(freshConfig.porcentaje_fondo_emergencia || 0),
+                    reinvestmentPercentage: parseFloat(freshConfig.porcentaje_reinversion || 0)
+                });
+            }
         } catch (error) {
             console.error('Error guardando config financiera:', error);
+        } finally {
+            setIsSavingFinancialConfig(false);
         }
     };
 
@@ -248,11 +270,11 @@ export default function Config() {
         }
     };
 
-    const Section = ({ title, icon: Icon, children }) => (
+    const Section = ({ title, icon, children }) => (
         <div className="bg-card glass-card border border-border/50 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300">
             <div className="px-6 py-5 border-b border-border/50 bg-secondary/20 flex items-center gap-3 backdrop-blur-sm">
                 <div className="p-2 bg-foreground/10 rounded-lg text-foreground">
-                    <Icon size={18} />
+                    {icon ? createElement(icon, { size: 18 }) : null}
                 </div>
                 <h3 className="font-semibold text-foreground tracking-tight">{title}</h3>
             </div>
@@ -327,6 +349,17 @@ export default function Config() {
                             </div>
                             <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium">Crecimiento / Marketing</p>
                         </div>
+                    </div>
+                    <div className="mt-5 flex justify-end">
+                        <button
+                            type="button"
+                            onClick={handleFinancialConfigSave}
+                            disabled={isSavingFinancialConfig}
+                            className="inline-flex items-center gap-2 bg-[hsl(var(--corporate-blue))] text-white text-sm font-semibold px-4 py-2.5 rounded-lg border border-[hsl(var(--corporate-blue))] shadow-sm hover:opacity-95 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--corporate-blue))]/30 disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                            <Save size={16} />
+                            {isSavingFinancialConfig ? 'Guardando...' : 'Guardar porcentajes'}
+                        </button>
                     </div>
                 </Section>
 

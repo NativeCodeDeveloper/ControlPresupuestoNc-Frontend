@@ -25,6 +25,17 @@
 
 import apiClient from './apiClient';
 
+const isNotFoundDelete = (error) => Number(error?.status) === 404;
+const toQueryString = (params = {}) => {
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+        if (value === undefined || value === null || value === '') return;
+        query.append(key, String(value));
+    });
+    const queryString = query.toString();
+    return queryString ? `?${queryString}` : '';
+};
+
 // ========================================
 // SOCIOS
 // ========================================
@@ -39,9 +50,9 @@ import apiClient from './apiClient';
  * - withdrawals: histórico de retiros
  * - disponible: dinero que puede retirar este mes
  */
-export const getPartners = async () => {
+export const getPartners = async (params = {}) => {
     try {
-        const data = await apiClient.get('/api/socios');
+        const data = await apiClient.get(`/api/socios${toQueryString(params)}`);
         return data || null;
     } catch (error) {
         console.error('Error obteniendo socios:', error);
@@ -146,7 +157,7 @@ export const updatePartnerPercentage = async (id, newPercentage) => {
 export const deletePartner = async (id) => {
     try {
         const confirmDelete = window.confirm(
-            '¿Estás seguro? El socio y su historial asociado se eliminarán de forma permanente.'
+            '¿Estás seguro? El socio se desactivará y dejará de verse en el sistema.'
         );
         
         if (!confirmDelete) return false;
@@ -154,6 +165,7 @@ export const deletePartner = async (id) => {
         const result = await apiClient.delete(`/api/socios/${id}`);
         return result?.ok || result?.success || false;
     } catch (error) {
+        if (isNotFoundDelete(error)) return true;
         console.error(`Error eliminando socio ${id}:`, error);
         return false;
     }
@@ -169,9 +181,9 @@ export const deletePartner = async (id) => {
  * @param {number|string} partnerId - ID del socio
  * @returns {Promise<Array>} - Lista de retiros
  */
-export const getWithdrawals = async (partnerId) => {
+export const getWithdrawals = async (partnerId, params = {}) => {
     try {
-        const data = await apiClient.get(`/api/socios/${partnerId}/retiros`);
+        const data = await apiClient.get(`/api/socios/${partnerId}/retiros${toQueryString(params)}`);
         return data || [];
     } catch (error) {
         console.error(`Error obteniendo retiros del socio ${partnerId}:`, error);
@@ -250,6 +262,7 @@ export const deleteWithdrawal = async (partnerId, withdrawalId) => {
         );
         return result?.ok || result?.success || false;
     } catch (error) {
+        if (isNotFoundDelete(error)) return true;
         console.error(`Error eliminando retiro ${withdrawalId}:`, error);
         return false;
     }

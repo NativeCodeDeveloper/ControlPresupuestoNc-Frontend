@@ -94,7 +94,7 @@ export default function Inversiones() {
     };
 
     const handleDelete = async (id) => {
-        if (!window.confirm('¿Eliminar este registro?')) return;
+        if (!window.confirm('¿Desactivar este registro?')) return;
         setIsLoading(true);
         try {
             const ok = await investmentsService.deleteInvestment(id);
@@ -198,8 +198,9 @@ export default function Inversiones() {
                             <button
                                 type="submit"
                                 disabled={isLoading}
-                                className="w-full bg-[hsl(var(--corporate-blue))] text-white font-medium py-2.5 rounded-lg hover:opacity-90 transition-colors disabled:opacity-50"
+                                className="w-full inline-flex items-center justify-center gap-2 bg-[hsl(var(--corporate-blue))] text-white font-semibold py-2.5 rounded-lg border border-[hsl(var(--corporate-blue))] shadow-sm hover:opacity-95 active:scale-[0.98] transition-colors focus:outline-none focus:ring-2 focus:ring-[hsl(var(--corporate-blue))]/30 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
+                                <PlusCircle size={16} />
                                 {isLoading ? 'Guardando...' : 'Registrar Movimiento'}
                             </button>
                         </form>

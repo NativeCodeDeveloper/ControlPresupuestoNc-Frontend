@@ -23,14 +23,14 @@ export default function MainLayout({ children }) {
     }
 
     const menuItems = [
-        { icon: House, label: 'Inicio', path: '/' },
-        { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
-        { icon: TrendingUp, label: 'Proyectos / Ingresos', path: '/ingresos' },
-        { icon: TrendingDown, label: 'Gastos / Pagos', path: '/gastos' },
-        { icon: Users, label: 'Socios', path: '/socios' },
-        { icon: PiggyBank, label: 'Inversiones', path: '/inversiones' },
-        { icon: PieChart, label: 'Reportes', path: '/reportes' },
-        { icon: Settings, label: 'Configuración', path: '/config' },
+        { icon: House, label: 'Inicio', path: '/', tone: 'text-[hsl(var(--corporate-blue))]', activeBg: 'bg-[hsl(var(--corporate-blue))]/12' },
+        { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard', tone: 'text-[hsl(var(--turquoise-premium))]', activeBg: 'bg-[hsl(var(--turquoise-premium))]/14' },
+        { icon: TrendingUp, label: 'Proyectos / Ingresos', path: '/ingresos', tone: 'text-[hsl(var(--emerald-premium))]', activeBg: 'bg-[hsl(var(--emerald-premium))]/14' },
+        { icon: TrendingDown, label: 'Gastos / Pagos', path: '/gastos', tone: 'text-[hsl(var(--copper))]', activeBg: 'bg-[hsl(var(--copper))]/14' },
+        { icon: Users, label: 'Socios', path: '/socios', tone: 'text-[hsl(var(--gold))]', activeBg: 'bg-[hsl(var(--gold))]/16' },
+        { icon: PiggyBank, label: 'Inversiones', path: '/inversiones', tone: 'text-[hsl(var(--purple-premium))]', activeBg: 'bg-[hsl(var(--purple-premium))]/14' },
+        { icon: PieChart, label: 'Reportes', path: '/reportes', tone: 'text-[hsl(var(--corporate-blue))]', activeBg: 'bg-[hsl(var(--corporate-blue))]/12' },
+        { icon: Settings, label: 'Configuración', path: '/config', tone: 'text-muted-foreground', activeBg: 'bg-foreground/8' },
     ];
 
     return (
@@ -81,15 +81,20 @@ export default function MainLayout({ children }) {
                                     className={cn(
                                         "flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-150 text-[13px]",
                                         isActive
-                                            ? "bg-[hsl(var(--corporate-blue))]/10 text-foreground font-medium"
+                                            ? `${item.activeBg} text-foreground font-medium`
                                             : "text-muted-foreground hover:text-foreground hover:bg-foreground/5"
                                     )}
                                 >
-                                    <item.icon
-                                        size={16}
-                                        strokeWidth={isActive ? 2 : 1.5}
-                                        className={isActive ? "text-[hsl(var(--corporate-blue))]" : ""}
-                                    />
+                                    <span className={cn(
+                                        "h-6 w-6 rounded-md flex items-center justify-center transition-colors",
+                                        isActive ? "bg-white/70 dark:bg-black/10" : "bg-foreground/5"
+                                    )}>
+                                        <item.icon
+                                            size={16}
+                                            strokeWidth={isActive ? 2 : 1.7}
+                                            className={isActive ? item.tone : `${item.tone} opacity-85`}
+                                        />
+                                    </span>
                                     <span>{item.label}</span>
                                 </Link>
                             );

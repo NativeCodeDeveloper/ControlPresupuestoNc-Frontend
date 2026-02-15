@@ -31,6 +31,17 @@
 
 import apiClient from './apiClient';
 
+const isNotFoundDelete = (error) => Number(error?.status) === 404;
+const toQueryString = (params = {}) => {
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+        if (value === undefined || value === null || value === '') return;
+        query.append(key, String(value));
+    });
+    const queryString = query.toString();
+    return queryString ? `?${queryString}` : '';
+};
+
 // ========================================
 // COSTOS FIJOS (Gastos recurrentes)
 // ========================================
@@ -40,9 +51,9 @@ import apiClient from './apiClient';
  * 
  * @returns {Promise<Array>} - Lista de costos fijos
  */
-export const getFixedCosts = async () => {
+export const getFixedCosts = async (params = {}) => {
     try {
-        const data = await apiClient.get('/api/costos-fijos');
+        const data = await apiClient.get(`/api/costos-fijos${toQueryString(params)}`);
         return data || null;
     } catch (error) {
         console.error('Error obteniendo costos fijos:', error);
@@ -112,6 +123,7 @@ export const deleteFixedCost = async (id) => {
         const result = await apiClient.delete(`/api/costos-fijos/${id}`);
         return result?.ok || result?.success || false;
     } catch (error) {
+        if (isNotFoundDelete(error)) return true;
         console.error(`Error eliminando costo fijo ${id}:`, error);
         return false;
     }
@@ -126,9 +138,9 @@ export const deleteFixedCost = async (id) => {
  * 
  * @returns {Promise<Array>} - Lista de costos variables
  */
-export const getVariableCosts = async () => {
+export const getVariableCosts = async (params = {}) => {
     try {
-        const data = await apiClient.get('/api/costos-variables');
+        const data = await apiClient.get(`/api/costos-variables${toQueryString(params)}`);
         return data || null;
     } catch (error) {
         console.error('Error obteniendo costos variables:', error);
@@ -179,6 +191,7 @@ export const deleteVariableCost = async (id) => {
         const result = await apiClient.delete(`/api/costos-variables/${id}`);
         return result?.ok || result?.success || false;
     } catch (error) {
+        if (isNotFoundDelete(error)) return true;
         console.error(`Error eliminando costo variable ${id}:`, error);
         return false;
     }
@@ -193,9 +206,9 @@ export const deleteVariableCost = async (id) => {
  * 
  * @returns {Promise<Array>} - Lista de servicios
  */
-export const getServices = async () => {
+export const getServices = async (params = {}) => {
     try {
-        const data = await apiClient.get('/api/servicios');
+        const data = await apiClient.get(`/api/servicios${toQueryString(params)}`);
         return data || [];
     } catch (error) {
         console.error('Error obteniendo servicios:', error);
@@ -230,6 +243,7 @@ export const deleteService = async (id) => {
         const result = await apiClient.delete(`/api/servicios/${id}`);
         return result?.ok || result?.success || false;
     } catch (error) {
+        if (isNotFoundDelete(error)) return true;
         console.error(`Error eliminando servicio ${id}:`, error);
         return false;
     }
@@ -244,9 +258,9 @@ export const deleteService = async (id) => {
  * 
  * @returns {Promise<Array>} - Lista de tipos
  */
-export const getVariableCostTypes = async () => {
+export const getVariableCostTypes = async (params = {}) => {
     try {
-        const data = await apiClient.get('/api/tipos-costos');
+        const data = await apiClient.get(`/api/tipos-costos${toQueryString(params)}`);
         return data || [];
     } catch (error) {
         console.error('Error obteniendo tipos de costos:', error);
@@ -281,6 +295,7 @@ export const deleteVariableCostType = async (id) => {
         const result = await apiClient.delete(`/api/tipos-costos/${id}`);
         return result?.ok || result?.success || false;
     } catch (error) {
+        if (isNotFoundDelete(error)) return true;
         console.error(`Error eliminando tipo de costo ${id}:`, error);
         return false;
     }

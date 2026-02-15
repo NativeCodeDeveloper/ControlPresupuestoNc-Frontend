@@ -75,7 +75,10 @@ export const generateFinancialReport = async (stats, monthName, year) => {
     const softPurpleFill = [238, 242, 255];
 
     const income = safeNumber(stats?.income);
-    const expenses = safeNumber(stats?.expenses);
+    const fixedCosts = safeNumber(stats?.fixedCosts);
+    const fixedCostsCommitted = safeNumber(stats?.fixedCostsCommitted ?? fixedCosts);
+    const variableCosts = safeNumber(stats?.variableCosts);
+    const expenses = fixedCosts + variableCosts;
     const operatingResult = safeNumber(stats?.operatingResult);
     const emergencyDeduction = safeNumber(stats?.emergencyFundDeduction);
     const reinvestmentDeduction = safeNumber(stats?.reinvestmentDeduction);
@@ -92,11 +95,14 @@ export const generateFinancialReport = async (stats, monthName, year) => {
     const companyAvailableTotal = fundReinvestAvailable + fundEmergencyAvailable;
 
     const fallbackPartnersAvailable = Math.max(0, netProfit - withdrawals);
-    const partnersAvailableTotal = Number.isFinite(Number(stats?.totalPartnersAvailable))
+    const partnersAvailablePeriod = Number.isFinite(Number(stats?.totalPartnersAvailable))
         ? safeNumber(stats?.totalPartnersAvailable)
         : fallbackPartnersAvailable;
+    const partnersAvailableAccumulated = Number.isFinite(Number(stats?.totalPartnersAvailableAccumulated))
+        ? safeNumber(stats?.totalPartnersAvailableAccumulated)
+        : partnersAvailablePeriod;
 
-    const consolidatedAvailable = companyAvailableTotal + partnersAvailableTotal;
+    const consolidatedAvailable = companyAvailableTotal + partnersAvailableAccumulated;
     const partnersAvailability = Array.isArray(stats?.partnersAvailability) ? stats.partnersAvailability : [];
 
     // Header with logo
@@ -198,14 +204,18 @@ export const generateFinancialReport = async (stats, monthName, year) => {
 
     const statementRows = [
         ['Ingresos Totales', formatCurrency(income)],
-        ['Gastos Operativos', formatCurrency(expenses)],
+        ['Costos Fijos', formatCurrency(fixedCosts)],
+        ['Costos Fijos Vigentes (Compromiso)', formatCurrency(fixedCostsCommitted)],
+        ['Costos Variables', formatCurrency(variableCosts)],
+        ['Gastos Operativos (Fijos + Variables)', formatCurrency(expenses)],
         ['Resultado Operativo', formatCurrency(operatingResult)],
         ['Deducción Fondo de Emergencia', formatCurrency(emergencyDeduction)],
         ['Deducción Reinversión', formatCurrency(reinvestmentDeduction)],
         ['Total Deducciones Automáticas', formatCurrency(totalAutomaticDeductions)],
         ['Utilidad Neta a Distribuir', formatCurrency(netProfit)],
         ['Retiros de Socios (Período)', formatCurrency(withdrawals)],
-        ['Disponible para Socios', formatCurrency(partnersAvailableTotal)],
+        ['Disponible para Socios (Período)', formatCurrency(partnersAvailablePeriod)],
+        ['Pozo Socios Acumulado', formatCurrency(partnersAvailableAccumulated)],
         ['TOTAL DISPONIBLE EMPRESA', formatCurrency(companyAvailableTotal)],
         ['TOTAL DISPONIBLE CONSOLIDADO', formatCurrency(consolidatedAvailable)]
     ];
@@ -312,8 +322,8 @@ export const generateFinancialReport = async (stats, monthName, year) => {
     ]));
 
     const partnersTableBody = partnersRows.length > 0
-        ? [...partnersRows, ['TOTAL DISPONIBLE SOCIOS', '', '', '', formatCurrency(partnersAvailableTotal)]]
-        : [['Sin socios configurados', '', '', '', formatCurrency(partnersAvailableTotal)]];
+        ? [...partnersRows, ['TOTAL DISPONIBLE SOCIOS', '', '', '', formatCurrency(partnersAvailablePeriod)]]
+        : [['Sin socios configurados', '', '', '', formatCurrency(partnersAvailablePeriod)]];
 
     autoTable(doc, {
         startY: nextY + 4,
@@ -364,7 +374,7 @@ export const generateFinancialReport = async (stats, monthName, year) => {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8.5);
     doc.setTextColor(...mutedColor);
-    doc.text(`Total disponible socios ${formatCurrency(partnersAvailableTotal)} · Disponible consolidado ${formatCurrency(consolidatedAvailable)}.`, 17, nextY + 11);
+    doc.text(`Socios período ${formatCurrency(partnersAvailablePeriod)} · Pozo socios acumulado ${formatCurrency(partnersAvailableAccumulated)} · Consolidado ${formatCurrency(consolidatedAvailable)}.`, 17, nextY + 11);
 
     // Footer
     const now = new Date();

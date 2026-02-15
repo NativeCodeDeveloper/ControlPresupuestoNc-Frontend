@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 /**
  * FinanceContext.jsx
  * 
@@ -269,7 +270,7 @@ export const FinanceProvider = ({ children }) => {
 
             // APLICAR IMPACTO SEGÚN TIPO DE TRANSACCIÓN
             switch (transaction.type) {
-                case 'project_income':
+                case 'project_income': {
                     // Buscar el proyecto por ID
                     const existingProjIndex = newState.projects.findIndex(
                         p => p.id === parseInt(transaction.projectId)
@@ -291,8 +292,9 @@ export const FinanceProvider = ({ children }) => {
                     newState.income = (prev.income || 0) + amount;
                     newState.balance = (prev.balance || 0) + amount;
                     break;
+                }
 
-                case 'fixed_cost':
+                case 'fixed_cost': {
                     // Normalizar campo de fecha (paymentDate → date)
                     const fixedCostToAdd = {
                         ...transaction,
@@ -308,6 +310,7 @@ export const FinanceProvider = ({ children }) => {
                         newState.services = [...(prev.services || []), transaction.category];
                     }
                     break;
+                }
 
                 case 'variable_cost':
                     newState.variableCosts = [...newState.variableCosts, transaction];

@@ -1,6 +1,5 @@
 import { createElement, useState, useEffect } from 'react';
 import * as financeService from '../../services/financeService';
-import * as costsService from '../../services/costsService';
 import {
     DollarSign,
     TrendingUp,
@@ -17,6 +16,7 @@ import {
     Tooltip,
     ResponsiveContainer
 } from 'recharts';
+import { Select } from '../../components/ui/FormElements';
 
 const StatCard = ({ title, value, icon, color, change }) => (
     <div className="bg-card border border-border rounded-xl p-6 shadow-sm hover:border-border/80 transition-colors duration-200">
@@ -45,7 +45,10 @@ const EMPTY_STATS = {
     emergencyFundDeduction: 0,
     reinvestmentDeduction: 0,
     netProfit: 0,
+    withdrawals: 0,
+    partnersAvailable: 0,
     totalFixedCosts: 0,
+    totalFixedCostsCommitted: 0,
     totalVariableCosts: 0
 };
 
@@ -55,194 +58,76 @@ const calcChange = (current, previous) => {
     return Math.round(((current - previous) / previous) * 100);
 };
 
-const toAmount = (value) => {
-    if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
-    if (typeof value === 'string') {
-        const cleaned = value.replace(/[^0-9,.-]/g, '');
-        if (!cleaned) return 0;
+const mapSummaryToStats = (summary) => {
+    const totalIncome = Number(summary?.income || 0);
+    const totalFixedCosts = Number(summary?.fixedCosts || 0);
+    const totalFixedCostsCommitted = Number(summary?.fixedCostsCommitted ?? totalFixedCosts);
+    const totalVariableCosts = Number(summary?.variableCosts || 0);
+    const totalExpenses = Number(summary?.expenses ?? (totalFixedCosts + totalVariableCosts));
+    const emergencyFundDeduction = Number(summary?.emergencyFundDeduction || 0);
+    const reinvestmentDeduction = Number(summary?.reinvestmentDeduction || 0);
+    const netProfit = Number(summary?.netProfit || 0);
+    const withdrawals = Number(summary?.withdrawals || 0);
 
-        const hasComma = cleaned.includes(',');
-        const hasDot = cleaned.includes('.');
-        let normalized = cleaned;
-
-        if (hasComma && hasDot) {
-            normalized = cleaned.lastIndexOf(',') > cleaned.lastIndexOf('.')
-                ? cleaned.replace(/\./g, '').replace(',', '.')
-                : cleaned.replace(/,/g, '');
-        } else if (hasComma && !hasDot) {
-            normalized = cleaned.replace(',', '.');
-        }
-
-        const parsed = Number(normalized);
-        return Number.isFinite(parsed) ? parsed : 0;
-    }
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : 0;
-};
-
-const normalizeDate = (value) => {
-    if (!value) return null;
-
-    if (value instanceof Date) {
-        if (Number.isNaN(value.getTime())) return null;
-        return new Date(value.getFullYear(), value.getMonth(), value.getDate());
-    }
-
-    if (typeof value === 'string') {
-        const trimmed = value.trim();
-        if (!trimmed) return null;
-
-        let match = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})/);
-        if (match) {
-            return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
-        }
-
-        match = trimmed.match(/^(\d{2})[/-](\d{2})[/-](\d{4})$/);
-        if (match) {
-            return new Date(Number(match[3]), Number(match[2]) - 1, Number(match[1]));
-        }
-    }
-
-    const parsed = new Date(value);
-    if (Number.isNaN(parsed.getTime())) return null;
-    return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
-};
-
-const getFrequencyStepMonths = (frequency) => {
-    const value = String(frequency || 'Mensual').toLowerCase();
-    if (value.includes('trimes')) return 3;
-    if (value.includes('anual')) return 12;
-    return 1;
-};
-
-const buildDateInMonth = (year, monthIndex, dayOfMonth) => {
-    const lastDay = new Date(year, monthIndex + 1, 0).getDate();
-    const safeDay = Math.min(Math.max(1, Number(dayOfMonth) || 1), lastDay);
-    return new Date(year, monthIndex, safeDay);
-};
-
-const computeNextFixedDueDate = (cost, referenceDate = new Date()) => {
-    const ref = normalizeDate(referenceDate);
-    const start = normalizeDate(cost?.fecha_inicio) || ref;
-    const end = normalizeDate(cost?.fecha_fin);
-    const paymentDay = Number(cost?.fecha_pago || start.getDate());
-    const stepMonths = getFrequencyStepMonths(cost?.frecuencia);
-
-    let due = buildDateInMonth(start.getFullYear(), start.getMonth(), paymentDay);
-    if (due < start) {
-        const moved = new Date(start.getFullYear(), start.getMonth() + stepMonths, 1);
-        due = buildDateInMonth(moved.getFullYear(), moved.getMonth(), paymentDay);
-    }
-
-    while (due < ref) {
-        const moved = new Date(due.getFullYear(), due.getMonth() + stepMonths, 1);
-        due = buildDateInMonth(moved.getFullYear(), moved.getMonth(), paymentDay);
-    }
-
-    if (end && due > end) return null;
-    return due;
-};
-
-const fixedCostOccursInPeriod = (cost, year, monthIndex) => {
-    const periodStart = new Date(year, monthIndex, 1);
-    const periodEnd = new Date(year, monthIndex + 1, 0);
-    const start = normalizeDate(cost?.fecha_inicio);
-    const end = normalizeDate(cost?.fecha_fin);
-
-    if (end && end < periodStart) return false;
-    if (start && start > periodEnd) return false;
-    if (start && start >= periodStart && start <= periodEnd) return true;
-
-    const dueDate = computeNextFixedDueDate(cost, periodStart);
-    if (!dueDate) return false;
-    return dueDate >= periodStart && dueDate <= periodEnd;
-};
-
-const getMonthCosts = (fixedCosts, variableCosts, year, monthIndex) => {
-    const periodStart = new Date(year, monthIndex, 1);
-    const periodEnd = new Date(year, monthIndex + 1, 0);
-
-    const fixed = (Array.isArray(fixedCosts) ? fixedCosts : [])
-        .filter((cost) => fixedCostOccursInPeriod(cost, year, monthIndex))
-        .reduce((sum, cost) => sum + toAmount(cost?.monto), 0);
-
-    const variable = (Array.isArray(variableCosts) ? variableCosts : [])
-        .filter((cost) => {
-            const date = normalizeDate(cost?.fecha || cost?.date || cost?.created_at);
-            return date && date >= periodStart && date <= periodEnd;
-        })
-        .reduce((sum, cost) => sum + toAmount(cost?.monto), 0);
+    const summaryTotalPartnersAvailable = Number(summary?.totalPartnersAvailable);
+    const fallbackPartnersAvailable = Number(summary?.partnersAvailable ?? Math.max(0, netProfit - withdrawals));
+    const partnersAvailable = Number.isFinite(summaryTotalPartnersAvailable)
+        ? summaryTotalPartnersAvailable
+        : fallbackPartnersAvailable;
 
     return {
-        fixed,
-        variable,
-        expenses: fixed + variable
+        totalIncome,
+        totalFixedCosts,
+        totalFixedCostsCommitted,
+        totalVariableCosts,
+        totalExpenses,
+        emergencyFundDeduction,
+        reinvestmentDeduction,
+        netProfit,
+        withdrawals,
+        partnersAvailable
     };
 };
 
 export default function Dashboard() {
+    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
+    const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth().toString());
     const [stats, setStats] = useState(EMPTY_STATS);
     const [monthChange, setMonthChange] = useState({
         income: null,
         expenses: null,
         retentions: null,
-        netProfit: null
+        partnersAvailable: null
     });
     const [cashFlowData, setCashFlowData] = useState([]);
     const [dataLoaded, setDataLoaded] = useState(false);
 
     useEffect(() => {
         const loadData = async () => {
+            setDataLoaded(false);
             try {
-                const now = new Date();
-                const currentMonth = now.getMonth();
-                const currentYear = now.getFullYear();
+                const currentMonth = parseInt(selectedMonth, 10);
+                const currentYear = parseInt(selectedYear, 10);
                 const previous = new Date(currentYear, currentMonth - 1, 1);
 
-                const [currentSummary, previousSummary, fixedCostsData, variableCostsData] = await Promise.all([
+                const [currentSummary, previousSummary] = await Promise.all([
                     financeService.getFinancialSummary(currentMonth, currentYear),
-                    financeService.getFinancialSummary(previous.getMonth(), previous.getFullYear()),
-                    costsService.getFixedCosts(),
-                    costsService.getVariableCosts()
+                    financeService.getFinancialSummary(previous.getMonth(), previous.getFullYear())
                 ]);
 
-                const currentCosts = getMonthCosts(fixedCostsData, variableCostsData, currentYear, currentMonth);
-                const previousCosts = getMonthCosts(fixedCostsData, variableCostsData, previous.getFullYear(), previous.getMonth());
+                const currentStats = mapSummaryToStats(currentSummary);
+                const previousStats = mapSummaryToStats(previousSummary);
 
-                const currentIncome = Number(currentSummary?.income || 0);
-                const currentOperatingResult = currentIncome - currentCosts.expenses;
-                const currentBaseForDeductions = Math.max(0, currentOperatingResult);
-                const currentEmergencyPct = Number(currentSummary?.config?.porcentaje_fondo_emergencia || 0);
-                const currentReinvestPct = Number(currentSummary?.config?.porcentaje_reinversion || 0);
-                const currentEmergencyDeduction = (currentBaseForDeductions * currentEmergencyPct) / 100;
-                const currentReinvestDeduction = (currentBaseForDeductions * currentReinvestPct) / 100;
-
-                const currentStats = {
-                    totalIncome: currentIncome,
-                    totalFixedCosts: currentCosts.fixed,
-                    totalVariableCosts: currentCosts.variable,
-                    totalExpenses: currentCosts.expenses,
-                    emergencyFundDeduction: currentEmergencyDeduction,
-                    reinvestmentDeduction: currentReinvestDeduction,
-                    netProfit: currentOperatingResult - currentEmergencyDeduction - currentReinvestDeduction
-                };
                 setStats(currentStats);
 
-                const previousIncome = Number(previousSummary?.income || 0);
-                const previousExpenses = previousCosts.expenses;
-                const previousOperatingResult = previousIncome - previousExpenses;
-                const previousBaseForDeductions = Math.max(0, previousOperatingResult);
-                const previousEmergencyPct = Number(previousSummary?.config?.porcentaje_fondo_emergencia || 0);
-                const previousReinvestPct = Number(previousSummary?.config?.porcentaje_reinversion || 0);
-                const previousRetentions = (previousBaseForDeductions * previousEmergencyPct) / 100
-                    + (previousBaseForDeductions * previousReinvestPct) / 100;
-                const previousNet = previousOperatingResult - previousRetentions;
-
                 setMonthChange({
-                    income: calcChange(currentStats.totalIncome, previousIncome),
-                    expenses: calcChange(currentStats.totalExpenses, previousExpenses),
-                    retentions: calcChange(currentStats.emergencyFundDeduction + currentStats.reinvestmentDeduction, previousRetentions),
-                    netProfit: calcChange(currentStats.netProfit, previousNet)
+                    income: calcChange(currentStats.totalIncome, previousStats.totalIncome),
+                    expenses: calcChange(currentStats.totalExpenses, previousStats.totalExpenses),
+                    retentions: calcChange(
+                        currentStats.emergencyFundDeduction + currentStats.reinvestmentDeduction,
+                        previousStats.emergencyFundDeduction + previousStats.reinvestmentDeduction
+                    ),
+                    partnersAvailable: calcChange(currentStats.partnersAvailable, previousStats.partnersAvailable)
                 });
 
                 const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
@@ -261,18 +146,15 @@ export default function Dashboard() {
                 );
 
                 setCashFlowData(
-                    summaries.map((summary, idx) => ({
-                        name: monthRequests[idx].label,
-                        income: Number(summary?.income || 0),
-                        expenses: getMonthCosts(
-                            fixedCostsData,
-                            variableCostsData,
-                            monthRequests[idx].year,
-                            monthRequests[idx].month
-                        ).expenses
-                    }))
+                    summaries.map((summary, idx) => {
+                        const monthStats = mapSummaryToStats(summary);
+                        return {
+                            name: monthRequests[idx].label,
+                            income: monthStats.totalIncome,
+                            expenses: monthStats.totalExpenses
+                        };
+                    })
                 );
-
             } catch (error) {
                 console.error('Error cargando datos del dashboard:', error);
                 setStats(EMPTY_STATS);
@@ -283,7 +165,14 @@ export default function Dashboard() {
         };
 
         loadData();
-    }, []);
+    }, [selectedMonth, selectedYear]);
+
+    const months = [
+        'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+        'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+    ];
+    const currentYear = new Date().getFullYear();
+    const yearOptions = [currentYear - 2, currentYear - 1, currentYear, currentYear + 1];
 
     const formatCurrency = (val) => {
         return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val || 0);
@@ -291,9 +180,31 @@ export default function Dashboard() {
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
-            <div>
-                <h2 className="text-2xl font-semibold tracking-tight text-foreground">Dashboard</h2>
-                <p className="text-sm text-muted-foreground mt-1">Resumen financiero general</p>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-border/50 pb-6">
+                <div>
+                    <h2 className="text-2xl font-semibold tracking-tight text-foreground">Dashboard</h2>
+                    <p className="text-sm text-muted-foreground mt-1">Resumen financiero general</p>
+                </div>
+                <div className="flex gap-4">
+                    <div className="w-40">
+                        <Select
+                            value={selectedMonth}
+                            onChange={(e) => setSelectedMonth(e.target.value)}
+                            className="bg-card/50 backdrop-blur-sm border-border/50"
+                        >
+                            {months.map((m, i) => <option key={i} value={i}>{m}</option>)}
+                        </Select>
+                    </div>
+                    <div className="w-32">
+                        <Select
+                            value={selectedYear}
+                            onChange={(e) => setSelectedYear(e.target.value)}
+                            className="bg-card/50 backdrop-blur-sm border-border/50"
+                        >
+                            {yearOptions.map((y) => <option key={y} value={y}>{y}</option>)}
+                        </Select>
+                    </div>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -303,8 +214,8 @@ export default function Dashboard() {
                     color="bg-[hsl(var(--copper))]/10 text-[hsl(var(--copper))]" change={monthChange.expenses} />
                 <StatCard title="Retenciones (Fondo + Reinv.)" value={formatCurrency(stats.emergencyFundDeduction + stats.reinvestmentDeduction)} icon={TrendingUp}
                     color="bg-[hsl(var(--purple-premium))]/10 text-[hsl(var(--purple-premium))]" change={monthChange.retentions} />
-                <StatCard title="Utilidad Neta (Socios)" value={formatCurrency(stats.netProfit)} icon={TrendingUp}
-                    color="bg-[hsl(var(--gold))]/10 text-[hsl(var(--gold))]" change={monthChange.netProfit} />
+                <StatCard title="Neto a Repartir (Real)" value={formatCurrency(stats.partnersAvailable)} icon={TrendingUp}
+                    color="bg-[hsl(var(--gold))]/10 text-[hsl(var(--gold))]" change={monthChange.partnersAvailable} />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -352,6 +263,10 @@ export default function Dashboard() {
                                         width: `${stats.totalExpenses > 0 ? Math.round((stats.totalVariableCosts / stats.totalExpenses) * 100) : 0}%`
                                     }}
                                 />
+                            </div>
+                            <div className="flex justify-between text-sm mt-4">
+                                <span className="text-muted-foreground">Fijos Vigentes (Compromiso)</span>
+                                <span className="font-medium text-[hsl(var(--corporate-blue))]">{formatCurrency(stats.totalFixedCostsCommitted)}</span>
                             </div>
                         </div>
                     ) : (

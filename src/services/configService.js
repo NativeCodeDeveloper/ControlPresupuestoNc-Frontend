@@ -29,6 +29,9 @@
 
 import apiClient from './apiClient';
 
+const isNotFoundDelete = (error) => Number(error?.status) === 404;
+const EXTERNAL_API_URL = import.meta.env.VITE_API_URL || '';
+
 // ========================================
 // CONFIGURACIÓN FINANCIERA
 // ========================================
@@ -136,7 +139,7 @@ export const addProjectType = async (type) => {
 export const deleteProjectType = async (id) => {
     try {
         const confirmDelete = window.confirm(
-            '¿Estás seguro? No se puede eliminar si hay proyectos usando este tipo.'
+            '¿Estás seguro? El tipo se desactivará en el catálogo (si no está en uso).'
         );
         
         if (!confirmDelete) return false;
@@ -144,6 +147,7 @@ export const deleteProjectType = async (id) => {
         const result = await apiClient.delete(`/api/catalogos/tipos-proyecto/${id}`);
         return result?.ok || result?.success || false;
     } catch (error) {
+        if (isNotFoundDelete(error)) return true;
         console.error(`Error eliminando tipo de proyecto ${id}:`, error);
         return false;
     }
@@ -194,12 +198,13 @@ export const addProjectStatus = async (status) => {
 export const deleteProjectStatus = async (id) => {
     try {
         const confirmDelete = window.confirm(
-            '¿Estás seguro? No se puede eliminar si hay proyectos usando este estado.'
+            '¿Estás seguro? El estado se desactivará en el catálogo (si no está en uso).'
         );
         if (!confirmDelete) return false;
         const result = await apiClient.delete(`/api/catalogos/estados-proyecto/${id}`);
         return result?.ok || result?.success || false;
     } catch (error) {
+        if (isNotFoundDelete(error)) return true;
         console.error(`Error eliminando estado de proyecto ${id}:`, error);
         return false;
     }
@@ -264,7 +269,7 @@ export const addService = async (service) => {
 export const deleteService = async (id) => {
     try {
         const confirmDelete = window.confirm(
-            '¿Estás seguro? Se eliminará el servicio del catálogo.'
+            '¿Estás seguro? El servicio se desactivará en el catálogo.'
         );
         
         if (!confirmDelete) return false;
@@ -272,6 +277,7 @@ export const deleteService = async (id) => {
         const result = await apiClient.delete(`/api/catalogos/servicios/${id}`);
         return result?.ok || result?.success || false;
     } catch (error) {
+        if (isNotFoundDelete(error)) return true;
         console.error(`Error eliminando servicio ${id}:`, error);
         return false;
     }
@@ -334,7 +340,7 @@ export const addVariableCostType = async (type) => {
 export const deleteVariableCostType = async (id) => {
     try {
         const confirmDelete = window.confirm(
-            '¿Estás seguro? Se eliminará el tipo de costo del catálogo.'
+            '¿Estás seguro? El tipo de costo se desactivará en el catálogo.'
         );
         
         if (!confirmDelete) return false;
@@ -344,6 +350,7 @@ export const deleteVariableCostType = async (id) => {
         );
         return result?.ok || result?.success || false;
     } catch (error) {
+        if (isNotFoundDelete(error)) return true;
         console.error(`Error eliminando tipo de costo ${id}:`, error);
         return false;
     }
@@ -416,7 +423,7 @@ export const resetAllData = async () => {
 export const exportAllData = async () => {
     try {
         const response = await fetch(
-            `${process.env.REACT_APP_API_URL}/api/admin/export`,
+            `${EXTERNAL_API_URL}/api/admin/export`,
             { method: 'GET' }
         );
         
@@ -440,7 +447,7 @@ export const importData = async (jsonFile) => {
         formData.append('file', jsonFile);
         
         const response = await fetch(
-            `${process.env.REACT_APP_API_URL}/api/admin/import`,
+            `${EXTERNAL_API_URL}/api/admin/import`,
             {
                 method: 'POST',
                 body: formData

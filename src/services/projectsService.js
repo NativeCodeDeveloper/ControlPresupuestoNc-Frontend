@@ -33,6 +33,17 @@
 
 import apiClient from './apiClient';
 
+const isNotFoundDelete = (error) => Number(error?.status) === 404;
+const toQueryString = (params = {}) => {
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+        if (value === undefined || value === null || value === '') return;
+        query.append(key, String(value));
+    });
+    const queryString = query.toString();
+    return queryString ? `?${queryString}` : '';
+};
+
 /**
  * getProjects - Obtener todos los proyectos
  * 
@@ -48,9 +59,9 @@ import apiClient from './apiClient';
  * 2. Retorna datos desde MySQL
  * 3. Componente usa datos del servidor automáticamente
  */
-export const getProjects = async () => {
+export const getProjects = async (params = {}) => {
     try {
-        const data = await apiClient.get('/api/proyectos');
+        const data = await apiClient.get(`/api/proyectos${toQueryString(params)}`);
         
         // ACTUALENTE: No hay backend, retorna null
         // Componentes manejarán esto obteniendo datos de Context
@@ -184,7 +195,7 @@ export const updateProjectStatus = async (id, newStatus) => {
 export const deleteProject = async (id) => {
     try {
         const confirmDelete = window.confirm(
-            '¿Estás seguro? Se eliminarán todos los datos del proyecto incluidos pagos.'
+            '¿Estás seguro? El proyecto se desactivará y no aparecerá en listados.'
         );
         
         if (!confirmDelete) return false;
@@ -192,6 +203,7 @@ export const deleteProject = async (id) => {
         const result = await apiClient.delete(`/api/proyectos/${id}`);
         return result?.ok || result?.success || false;
     } catch (error) {
+        if (isNotFoundDelete(error)) return true;
         console.error(`Error eliminando proyecto ${id}:`, error);
         return false;
     }
@@ -206,9 +218,9 @@ export const deleteProject = async (id) => {
  * FUTURO BACKEND:
  * GET /api/proyectos/123/pagos
  */
-export const getProjectPayments = async (id) => {
+export const getProjectPayments = async (id, params = {}) => {
     try {
-        const data = await apiClient.get(`/api/proyectos/${id}/pagos`);
+        const data = await apiClient.get(`/api/proyectos/${id}/pagos${toQueryString(params)}`);
         return data || [];
     } catch (error) {
         console.error(`Error obteniendo pagos del proyecto ${id}:`, error);

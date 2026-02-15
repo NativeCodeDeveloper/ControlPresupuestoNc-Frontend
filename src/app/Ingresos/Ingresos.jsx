@@ -197,7 +197,7 @@ export default function Ingresos() {
     };
 
     const handleDeleteProject = async (id) => {
-        if (!window.confirm('¿Estás seguro de que quieres eliminar este proyecto? Esta acción no se puede deshacer.')) return;
+        if (!window.confirm('¿Desactivar este proyecto? Dejará de verse en los listados activos.')) return;
         setIsLoading(true);
         try {
             await projectsService.deleteProject(id);

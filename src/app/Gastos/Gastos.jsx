@@ -170,7 +170,7 @@ export default function Gastos() {
     };
 
     const handleDeleteFixed = async (id) => {
-        if (!window.confirm('¿Eliminar este gasto fijo?')) return;
+        if (!window.confirm('¿Desactivar este gasto fijo?')) return;
         setIsLoading(true);
         try {
             await costsService.deleteFixedCost(id);
@@ -188,7 +188,7 @@ export default function Gastos() {
     };
 
     const handleDeleteVariable = async (id) => {
-        if (!window.confirm('¿Eliminar este gasto variable?')) return;
+        if (!window.confirm('¿Desactivar este gasto variable?')) return;
         setIsLoading(true);
         try {
             await costsService.deleteVariableCost(id);
@@ -222,15 +222,85 @@ export default function Gastos() {
         return 1;
     };
 
+    const normalizeDateOnly = (value) => {
+        if (!value) return null;
+        const parsed = new Date(value);
+        if (Number.isNaN(parsed.getTime())) return null;
+        return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+    };
+
+    const getNextDueDateFromReference = (cost, referenceDate = new Date()) => {
+        const ref = normalizeDateOnly(referenceDate) || new Date();
+        const start = normalizeDateOnly(cost?.fecha_inicio) || ref;
+        const end = normalizeDateOnly(cost?.fecha_fin);
+        const paymentDay = Number(cost?.fecha_pago || start.getDate());
+        const step = getFrequencyStep(cost?.frecuencia);
+        let due;
+
+        if (step > 1) {
+            due = buildDateInMonth(start.getFullYear(), start.getMonth() + step, paymentDay);
+        } else {
+            due = buildDateInMonth(start.getFullYear(), start.getMonth(), paymentDay);
+            if (due < start) {
+                due = buildDateInMonth(start.getFullYear(), start.getMonth() + step, paymentDay);
+            }
+        }
+
+        let guard = 0;
+        while (due < ref && guard < 600) {
+            due = buildDateInMonth(due.getFullYear(), due.getMonth() + step, paymentDay);
+            guard += 1;
+        }
+        if (guard >= 600) return null;
+        if (end && due > end) return null;
+        return due;
+    };
+
+    const fixedCostImpactsMonth = (cost, year, monthIndex) => {
+        const periodStart = new Date(year, monthIndex, 1);
+        const periodEnd = new Date(year, monthIndex + 1, 0);
+        const start = normalizeDateOnly(cost?.fecha_inicio);
+        const end = normalizeDateOnly(cost?.fecha_fin);
+
+        if (end && end < periodStart) return false;
+        if (start && start > periodEnd) return false;
+
+        const dueDate = getNextDueDateFromReference(cost, periodStart);
+        if (!dueDate) return false;
+        return dueDate >= periodStart && dueDate <= periodEnd;
+    };
+
+    const fixedFormDraft = {
+        frecuencia: fixedForm.frequency,
+        fecha_pago: Number.parseInt(fixedForm.paymentDay || '1', 10) || 1,
+        fecha_inicio: fixedForm.startDate,
+        fecha_fin: null
+    };
+    const now = new Date();
+    const fixedFormNextDue = getNextDueDateFromReference(fixedFormDraft, now);
+    const fixedFormImpactsCurrentMonth = fixedCostImpactsMonth(
+        fixedFormDraft,
+        now.getFullYear(),
+        now.getMonth()
+    );
+    const fixedFormPreviewTone = fixedFormImpactsCurrentMonth
+        ? 'border-[hsl(var(--emerald-premium))]/35 bg-[hsl(var(--emerald-premium))]/8'
+        : 'border-[hsl(var(--gold))]/35 bg-[hsl(var(--gold))]/10';
+
     const getNextFixedDueDate = (cost) => {
         const today = new Date();
         const ref = new Date(today.getFullYear(), today.getMonth(), today.getDate());
         const start = cost.fecha_inicio ? new Date(cost.fecha_inicio) : ref;
-        let due = buildDateInMonth(start.getFullYear(), start.getMonth(), cost.fecha_pago || start.getDate());
         const step = getFrequencyStep(cost.frecuencia);
+        let due;
 
-        if (due < start) {
+        if (step > 1) {
             due = buildDateInMonth(start.getFullYear(), start.getMonth() + step, cost.fecha_pago || start.getDate());
+        } else {
+            due = buildDateInMonth(start.getFullYear(), start.getMonth(), cost.fecha_pago || start.getDate());
+            if (due < start) {
+                due = buildDateInMonth(start.getFullYear(), start.getMonth() + step, cost.fecha_pago || start.getDate());
+            }
         }
 
         while (due < ref) {
@@ -292,6 +362,26 @@ export default function Gastos() {
             label: 'Programado',
             rowClass: 'border-[hsl(var(--turquoise-premium))]/45 bg-[hsl(var(--turquoise-premium))]/10',
             badgeClass: 'bg-[hsl(var(--turquoise-premium))]/20 text-[hsl(var(--turquoise-light))] border-[hsl(var(--turquoise-premium))]/40'
+        };
+    };
+
+    const getFrequencyTone = (frequency) => {
+        const value = String(frequency || 'Mensual').toLowerCase();
+        if (value.includes('trimes')) {
+            return {
+                badgeClass: 'bg-[hsl(var(--purple-premium))]/12 text-[hsl(var(--purple-premium))] border-[hsl(var(--purple-premium))]/30',
+                dotClass: 'bg-[hsl(var(--purple-premium))]'
+            };
+        }
+        if (value.includes('anual')) {
+            return {
+                badgeClass: 'bg-[hsl(var(--gold))]/14 text-[hsl(var(--gold))] border-[hsl(var(--gold))]/35',
+                dotClass: 'bg-[hsl(var(--gold))]'
+            };
+        }
+        return {
+            badgeClass: 'bg-[hsl(var(--emerald-premium))]/12 text-[hsl(var(--emerald-premium))] border-[hsl(var(--emerald-premium))]/30',
+            dotClass: 'bg-[hsl(var(--emerald-premium))]'
         };
     };
 
@@ -379,12 +469,47 @@ export default function Gastos() {
                                         {frequencies.map(f => <option key={f} value={f}>{f}</option>)}
                                     </Select>
                                 </div>
+                                <div className="rounded-xl border border-border/60 bg-secondary/20 px-3 py-2.5">
+                                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+                                        Leyenda de frecuencia
+                                    </p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {frequencies.map((freq) => {
+                                            const tone = getFrequencyTone(freq);
+                                            return (
+                                                <span
+                                                    key={freq}
+                                                    className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-1 rounded-lg border ${tone.badgeClass}`}
+                                                >
+                                                    <span className={`h-1.5 w-1.5 rounded-full ${tone.dotClass}`} />
+                                                    {freq}
+                                                </span>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <Input label="Día de Pago" type="number" min="1" max="31"
                                         value={fixedForm.paymentDay}
                                         onChange={(e) => setFixedForm({ ...fixedForm, paymentDay: e.target.value })} required />
                                     <Input label="Fecha Inicio" type="date" value={fixedForm.startDate}
                                         onChange={(e) => setFixedForm({ ...fixedForm, startDate: e.target.value })} required />
+                                </div>
+                                <div className={`rounded-xl border px-3 py-2.5 ${fixedFormPreviewTone}`}>
+                                    <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                                        <AlertTriangle size={13} />
+                                        {fixedFormImpactsCurrentMonth
+                                            ? 'Impacta el mes actual'
+                                            : 'No impacta el mes actual'}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        {fixedFormNextDue
+                                            ? `Próximo cargo: ${fixedFormNextDue.toLocaleDateString('es-CL')}`
+                                            : 'Sin próximo cargo programado'}
+                                    </p>
+                                    <p className="text-[11px] text-muted-foreground mt-1">
+                                        Aunque no impacte este mes, queda visible como compromiso fijo vigente en reportes/dashboard.
+                                    </p>
                                 </div>
                                 <button type="submit" disabled={isLoading}
                                     className="w-full bg-[hsl(var(--copper))] text-white font-medium py-2.5 rounded-lg hover:bg-[hsl(var(--copper-light))] transition-colors mt-4 disabled:opacity-50 disabled:cursor-not-allowed">
@@ -440,9 +565,14 @@ export default function Gastos() {
                                                 <span className="text-[10px] font-bold text-white bg-[hsl(var(--copper))] px-2 py-0.5 rounded-lg border border-[hsl(var(--copper))] uppercase tracking-wider">
                                                     {cost.servicio_nombre || 'Varios'}
                                                 </span>
-                                                <span className="text-[10px] text-muted-foreground flex items-center gap-1 bg-secondary/50 px-2 py-0.5 rounded-lg border border-border/50">
-                                                    <Repeat size={10} /> {cost.frecuencia || 'Mensual'}
-                                                </span>
+                                                {(() => {
+                                                    const tone = getFrequencyTone(cost.frecuencia || 'Mensual');
+                                                    return (
+                                                        <span className={`text-[10px] flex items-center gap-1 px-2 py-0.5 rounded-lg border ${tone.badgeClass}`}>
+                                                            <Repeat size={10} /> {cost.frecuencia || 'Mensual'}
+                                                        </span>
+                                                    );
+                                                })()}
                                             </div>
                                             <h4 className="font-semibold text-foreground text-lg tracking-tight">{cost.servicio_nombre || cost.proveedor || 'Costo Fijo'}</h4>
                                             {cost.proveedor && <p className="text-sm text-muted-foreground mb-1">{cost.proveedor}</p>}

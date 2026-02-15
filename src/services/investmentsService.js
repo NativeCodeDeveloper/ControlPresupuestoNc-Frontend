@@ -1,8 +1,19 @@
 import apiClient from './apiClient';
 
-export const getInvestments = async () => {
+const isNotFoundDelete = (error) => Number(error?.status) === 404;
+const toQueryString = (params = {}) => {
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+        if (value === undefined || value === null || value === '') return;
+        query.append(key, String(value));
+    });
+    const queryString = query.toString();
+    return queryString ? `?${queryString}` : '';
+};
+
+export const getInvestments = async (params = {}) => {
     try {
-        const data = await apiClient.get('/api/inversiones');
+        const data = await apiClient.get(`/api/inversiones${toQueryString(params)}`);
         return data || [];
     } catch (error) {
         console.error('Error obteniendo inversiones:', error);
@@ -25,6 +36,7 @@ export const deleteInvestment = async (id) => {
         const result = await apiClient.delete(`/api/inversiones/${id}`);
         return result?.ok || result?.success || false;
     } catch (error) {
+        if (isNotFoundDelete(error)) return true;
         console.error(`Error eliminando inversión ${id}:`, error);
         return false;
     }

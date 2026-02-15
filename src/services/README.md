@@ -11,6 +11,67 @@ Este directorio implementa el **Service Layer Pattern**, que separa la lógica d
 
 ---
 
+## 🧭 Guía de Consumo API (Paginación)
+
+El backend ahora soporta paginación en listados para evitar respuestas masivas.
+
+### Parámetros estándar
+
+- `limit`: cantidad por página
+- `page`: página base 1
+- `offset`: desplazamiento absoluto
+- `all=true`: desactiva paginación
+
+### Endpoints principales paginados
+
+- `/api/socios`
+- `/api/proyectos`
+- `/api/proyectos/:id/pagos`
+- `/api/costos-fijos`
+- `/api/costos-fijos/activos`
+- `/api/costos-variables`
+- `/api/costos-variables/tipo/:tipo_costo_id`
+- `/api/costos-variables/proyecto/:proyecto_id`
+- `/api/servicios`
+- `/api/inversiones`
+- `/api/socios/:id/retiros`
+
+### Headers de respuesta
+
+Cuando hay paginación activa, backend devuelve:
+
+- `x-pagination-limit`
+- `x-pagination-offset`
+
+### Uso desde servicios (ya habilitado)
+
+```javascript
+import * as projectsService from './projectsService';
+import * as partnersService from './partnersService';
+import * as costsService from './costsService';
+import * as investmentsService from './investmentsService';
+
+await projectsService.getProjects({ limit: 50, page: 1 });
+await projectsService.getProjectPayments(projectId, { limit: 25, page: 1 });
+
+await partnersService.getPartners({ limit: 100, page: 1 });
+await partnersService.getWithdrawals(partnerId, { limit: 20, page: 1 });
+
+await costsService.getFixedCosts({ limit: 100, page: 1 });
+await costsService.getVariableCosts({ limit: 100, page: 1 });
+await costsService.getServices({ all: true }); // catálogo pequeño
+
+await investmentsService.getInvestments({ limit: 100, page: 1 });
+```
+
+### Recomendación práctica
+
+- Tablas: usar `limit/page`.
+- Catálogos chicos: `all=true`.
+- Evitar `all=true` en datos transaccionales grandes.
+
+---
+
 ## 🏗️ Estructura de Carpeta
 
 ```

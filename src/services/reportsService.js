@@ -16,6 +16,7 @@
  */
 
 import apiClient from './apiClient';
+const EXTERNAL_API_URL = import.meta.env.VITE_API_URL || '';
 
 // ========================================
 // ESTADÍSTICAS FINANCIERAS GENERALES
@@ -321,7 +322,7 @@ export const exportReportToPDF = async (reportType, params) => {
     try {
         const queryParams = new URLSearchParams({ tipo: reportType, ...params });
         const response = await fetch(
-            `${process.env.REACT_APP_API_URL}/api/reportes/export/pdf?${queryParams}`,
+            `${EXTERNAL_API_URL}/api/reportes/export/pdf?${queryParams}`,
             { method: 'GET' }
         );
         
@@ -344,7 +345,7 @@ export const exportReportToCSV = async (reportType, params) => {
     try {
         const queryParams = new URLSearchParams({ tipo: reportType, ...params });
         const response = await fetch(
-            `${process.env.REACT_APP_API_URL}/api/reportes/export/csv?${queryParams}`,
+            `${EXTERNAL_API_URL}/api/reportes/export/csv?${queryParams}`,
             { method: 'GET' }
         );
         
@@ -443,4 +444,3 @@ export const exportReportToCSV = async (reportType, params) => {
  * Margen:
  * ($40,000 / $100,000) × 100 = 40%
  */
-
