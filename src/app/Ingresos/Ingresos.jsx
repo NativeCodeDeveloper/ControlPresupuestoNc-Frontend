@@ -1,3 +1,5 @@
+'use client';
+
 import { useState, useEffect } from 'react';
 import * as projectsService from '../../services/projectsService';
 import * as configService from '../../services/configService';
@@ -13,7 +15,9 @@ import {
     User,
     ChevronDown,
     ChevronUp,
-    Receipt
+    Receipt,
+    Pencil,
+    X
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Input, Select } from '../../components/ui/FormElements';
@@ -51,6 +55,16 @@ export default function Ingresos() {
 
     const [projectTypesData, setProjectTypesData] = useState([]);
     const [projectStatusesData, setProjectStatusesData] = useState([]);
+
+    const [editProject, setEditProject] = useState(null);
+    const [editForm, setEditForm] = useState({});
+    const [isEditLoading, setIsEditLoading] = useState(false);
+
+    const fmtPreview = (val) => {
+        const n = Math.round(parseFloat(val) || 0);
+        if (!n) return null;
+        return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(n);
+    };
 
     const projectTypes = projectTypesData.length > 0
         ? projectTypesData.map(t => t.nombre)
@@ -125,7 +139,7 @@ export default function Ingresos() {
                 email_cliente: projectForm.clientEmail,
                 telefono_cliente: projectForm.clientPhone,
                 profesion_cliente: projectForm.clientProfession || null,
-                monto_acordado: parseFloat(projectForm.agreedAmount || 0),
+                monto_acordado: Math.round(parseFloat(projectForm.agreedAmount || 0)),
                 fecha_creacion: new Date().toISOString().split('T')[0],
                 fecha_entrega: projectForm.deliveryDate || null,
                 observaciones: projectForm.observations || null
@@ -171,7 +185,7 @@ export default function Ingresos() {
 
             const result = await projectsService.addProjectPayment(incomeForm.projectId, {
                 concepto: description,
-                monto: parseFloat(incomeForm.amount),
+                monto: Math.round(parseFloat(incomeForm.amount)),
                 fecha_pago: incomeForm.date
             });
 
@@ -217,6 +231,67 @@ export default function Ingresos() {
             await reloadProjects();
         } catch (error) {
             console.error('Error actualizando estado:', error);
+        }
+    };
+
+    const handleEditOpen = (project) => {
+        setEditProject(project);
+        setEditForm({
+            name: project.nombre || '',
+            type: project.tipo_nombre || projectTypes[0] || 'Web',
+            status: project.estado_nombre || 'Lead',
+            agreedAmount: project.monto_acordado || '',
+            clientName: project.nombre_cliente || '',
+            clientRut: project.rut_cliente || '',
+            clientPhone: project.telefono_cliente || '',
+            clientEmail: project.email_cliente || '',
+            clientProfession: project.profesion_cliente || '',
+            deliveryDate: project.fecha_entrega ? project.fecha_entrega.split('T')[0] : '',
+            observations: project.observaciones || ''
+        });
+    };
+
+    const handleEditClose = () => {
+        setEditProject(null);
+        setEditForm({});
+    };
+
+    const handleEditSubmit = async (e) => {
+        e.preventDefault();
+        if (!editProject) return;
+        setIsEditLoading(true);
+        try {
+            const tipoFound = projectTypesData.find(t => t.nombre === editForm.type);
+            const estadoFound = projectStatusesData.find(s => s.nombre === editForm.status);
+            const tipo_proyecto_id = tipoFound ? tipoFound.id : undefined;
+            const estado_proyecto_id = estadoFound ? estadoFound.id : undefined;
+
+            const updates = {
+                nombre: editForm.name,
+                nombre_cliente: editForm.clientName,
+                rut_cliente: editForm.clientRut,
+                email_cliente: editForm.clientEmail,
+                telefono_cliente: editForm.clientPhone,
+                profesion_cliente: editForm.clientProfession || null,
+                monto_acordado: Math.round(parseFloat(editForm.agreedAmount || 0)),
+                fecha_entrega: editForm.deliveryDate || null,
+                observaciones: editForm.observations || null
+            };
+            if (tipo_proyecto_id) updates.tipo_proyecto_id = tipo_proyecto_id;
+            if (estado_proyecto_id) updates.estado_proyecto_id = estado_proyecto_id;
+
+            const result = await projectsService.updateProject(editProject.id, updates);
+            if (result && (result.ok || result.id)) {
+                await reloadProjects();
+                handleEditClose();
+            } else {
+                alert('Error al actualizar el proyecto');
+            }
+        } catch (error) {
+            console.error('Error actualizando proyecto:', error);
+            alert('Error al actualizar el proyecto');
+        } finally {
+            setIsEditLoading(false);
         }
     };
 
@@ -294,9 +369,14 @@ export default function Ingresos() {
                                         {projectStatuses.map(s => <option key={s} value={s}>{s}</option>)}
                                     </Select>
                                 </div>
-                                <Input label="Monto Acordado" type="number" placeholder="0.00" min="0" step="0.01"
-                                    onKeyDown={(e) => ["e", "E", "+", "-"].includes(e.key) && e.preventDefault()}
-                                    value={projectForm.agreedAmount} onChange={(e) => setProjectForm({ ...projectForm, agreedAmount: e.target.value })} required />
+                                <div>
+                                    <Input label="Monto Acordado" type="number" placeholder="0" min="0" step="1"
+                                        onKeyDown={(e) => ["e", "E", "+", "-"].includes(e.key) && e.preventDefault()}
+                                        value={projectForm.agreedAmount} onChange={(e) => setProjectForm({ ...projectForm, agreedAmount: e.target.value })} required />
+                                    {fmtPreview(projectForm.agreedAmount) && (
+                                        <p className="text-[11px] text-[hsl(var(--emerald-premium))] mt-1 font-medium">{fmtPreview(projectForm.agreedAmount)}</p>
+                                    )}
+                                </div>
 
                                 <div className="pt-4 border-t border-border">
                                     <h4 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
@@ -337,9 +417,14 @@ export default function Ingresos() {
                                         <option key={p.id} value={p.id}>{p.nombre}</option>
                                     ))}
                                 </Select>
-                                <Input label="Monto del Pago" type="number" placeholder="0.00" min="0" step="0.01"
-                                    onKeyDown={(e) => ["e", "E", "+", "-"].includes(e.key) && e.preventDefault()}
-                                    value={incomeForm.amount} onChange={(e) => setIncomeForm({ ...incomeForm, amount: e.target.value })} required />
+                                <div>
+                                    <Input label="Monto del Pago" type="number" placeholder="0" min="0" step="1"
+                                        onKeyDown={(e) => ["e", "E", "+", "-"].includes(e.key) && e.preventDefault()}
+                                        value={incomeForm.amount} onChange={(e) => setIncomeForm({ ...incomeForm, amount: e.target.value })} required />
+                                    {fmtPreview(incomeForm.amount) && (
+                                        <p className="text-[11px] text-[hsl(var(--emerald-premium))] mt-1 font-medium">{fmtPreview(incomeForm.amount)}</p>
+                                    )}
+                                </div>
                                 <Input label="Concepto del pago" placeholder="Ej: Dashboard, Landing Page, Anticipo 50%"
                                     value={incomeForm.description} onChange={(e) => setIncomeForm({ ...incomeForm, description: e.target.value })} required />
                                 <Input label="Fecha" type="date" value={incomeForm.date}
@@ -426,7 +511,7 @@ export default function Ingresos() {
                                             </div>
                                             <div className="flex flex-col items-end gap-2">
                                                 <div className="relative group/status">
-                                                    <span className={cn("text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border cursor-pointer", getStatusColor(project.estado_nombre))}>
+                                                    <span className={cn("text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border cursor-pointer whitespace-nowrap", getStatusColor(project.estado_nombre))}>
                                                         {project.estado_nombre}
                                                     </span>
                                                     <select className="absolute inset-0 opacity-0 cursor-pointer"
@@ -435,21 +520,27 @@ export default function Ingresos() {
                                                         {projectStatuses.map(s => <option key={s} value={s}>{s}</option>)}
                                                     </select>
                                                 </div>
-                                                <button onClick={() => handleDeleteProject(project.id)}
-                                                    className="text-muted-foreground hover:text-destructive transition-colors p-1" title="Eliminar Proyecto">
-                                                    <Trash2 size={14} />
-                                                </button>
+                                                <div className="flex items-center gap-1">
+                                                    <button onClick={() => handleEditOpen(project)}
+                                                        className="text-muted-foreground hover:text-primary transition-colors p-1" title="Editar Proyecto">
+                                                        <Pencil size={14} />
+                                                    </button>
+                                                    <button onClick={() => handleDeleteProject(project.id)}
+                                                        className="text-muted-foreground hover:text-destructive transition-colors p-1" title="Eliminar Proyecto">
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
 
                                         <div className="space-y-3 mb-5">
                                             <div className="flex justify-between text-sm">
                                                 <span className="text-muted-foreground">Acordado</span>
-                                                <span className="text-foreground font-medium">${agreedAmount.toLocaleString()}</span>
+                                                <span className="text-foreground font-medium">{agreedAmount.toLocaleString('es-CL')}</span>
                                             </div>
                                             <div className="flex justify-between text-sm">
                                                 <span className="text-muted-foreground">Pagado</span>
-                                                <span className="text-[hsl(var(--emerald-premium))] font-medium">${totalPaid.toLocaleString()}</span>
+                                                <span className="text-[hsl(var(--emerald-premium))] font-medium">{totalPaid.toLocaleString('es-CL')}</span>
                                             </div>
                                         </div>
 
@@ -480,7 +571,7 @@ export default function Ingresos() {
                                                                     </p>
                                                                 </div>
                                                                 <span className="text-sm font-bold text-[hsl(var(--emerald-premium))] ml-2">
-                                                                    +${parseFloat(payment.monto || 0).toLocaleString()}
+                                                                    +{Math.round(parseFloat(payment.monto || 0)).toLocaleString('es-CL')}
                                                                 </span>
                                                             </div>
                                                         ))}
@@ -503,6 +594,77 @@ export default function Ingresos() {
                     )}
                 </div>
             </div>
+
+        {/* Edit Project Modal */}
+        {editProject && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+                onClick={(e) => e.target === e.currentTarget && handleEditClose()}>
+                <div className="bg-card border border-border rounded-xl shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
+                    <div className="flex items-center justify-between p-5 border-b border-border sticky top-0 bg-card z-10">
+                        <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                            <Pencil size={18} className="text-primary" />
+                            Editar Proyecto
+                        </h3>
+                        <button onClick={handleEditClose}
+                            className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-secondary">
+                            <X size={18} />
+                        </button>
+                    </div>
+                    <form onSubmit={handleEditSubmit} className="p-5 space-y-4">
+                        <Input label="Nombre del Proyecto" placeholder="Ej: E-commerce Cliente X"
+                            value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} required />
+                        <div className="grid grid-cols-2 gap-4">
+                            <Select label="Tipo" value={editForm.type}
+                                onChange={(e) => setEditForm({ ...editForm, type: e.target.value })} required>
+                                {projectTypes.map(t => <option key={t} value={t}>{t}</option>)}
+                            </Select>
+                            <Select label="Estado" value={editForm.status}
+                                onChange={(e) => setEditForm({ ...editForm, status: e.target.value })} required>
+                                {projectStatuses.map(s => <option key={s} value={s}>{s}</option>)}
+                            </Select>
+                        </div>
+                        <Input label="Monto Acordado" type="number" placeholder="0" min="0" step="1"
+                            onKeyDown={(e) => ["e", "E", "+", "-"].includes(e.key) && e.preventDefault()}
+                            value={editForm.agreedAmount} onChange={(e) => setEditForm({ ...editForm, agreedAmount: e.target.value })} required />
+
+                        <div className="pt-3 border-t border-border">
+                            <h4 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
+                                <User size={14} /> Datos del Cliente
+                            </h4>
+                            <div className="space-y-3">
+                                <Input label="Nombre Completo" placeholder="Nombre del cliente"
+                                    value={editForm.clientName} onChange={(e) => setEditForm({ ...editForm, clientName: e.target.value })} required />
+                                <div className="grid grid-cols-2 gap-3">
+                                    <Input label="RUT / ID" placeholder="12.345.678-9"
+                                        value={editForm.clientRut} onChange={(e) => setEditForm({ ...editForm, clientRut: e.target.value })} required />
+                                    <Input label="Teléfono" placeholder="+56 9..."
+                                        value={editForm.clientPhone} onChange={(e) => setEditForm({ ...editForm, clientPhone: e.target.value })} required />
+                                </div>
+                                <Input label="Email" type="email" placeholder="cliente@email.com"
+                                    value={editForm.clientEmail} onChange={(e) => setEditForm({ ...editForm, clientEmail: e.target.value })} required />
+                                <Input label="Profesión / Giro (Opcional)" placeholder="Ej: Abogado, Retail..."
+                                    value={editForm.clientProfession} onChange={(e) => setEditForm({ ...editForm, clientProfession: e.target.value })} />
+                                <Input label="Fecha de Entrega (Opcional)" type="date"
+                                    value={editForm.deliveryDate} onChange={(e) => setEditForm({ ...editForm, deliveryDate: e.target.value })} />
+                                <Input label="Observaciones (Opcional)" placeholder="Notas del proyecto/cliente"
+                                    value={editForm.observations} onChange={(e) => setEditForm({ ...editForm, observations: e.target.value })} />
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3 pt-2">
+                            <button type="button" onClick={handleEditClose}
+                                className="flex-1 py-2.5 rounded-lg border border-border text-muted-foreground hover:bg-secondary transition-colors text-sm font-medium">
+                                Cancelar
+                            </button>
+                            <button type="submit" disabled={isEditLoading}
+                                className="flex-1 bg-primary text-primary-foreground font-medium py-2.5 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm">
+                                {isEditLoading ? 'Guardando...' : 'Guardar Cambios'}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        )}
         </div>
     );
 }

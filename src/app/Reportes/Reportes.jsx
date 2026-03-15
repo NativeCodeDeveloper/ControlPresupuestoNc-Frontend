@@ -1,3 +1,5 @@
+'use client';
+
 import { createElement, useState, useEffect } from 'react';
 import * as financeService from '../../services/financeService';
 import {
@@ -155,9 +157,10 @@ export default function Reportes() {
         if (node) node.scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
 
-    const formatCurrency = (val) => new Intl.NumberFormat('en-US', {
+    const formatCurrency = (val) => new Intl.NumberFormat('es-CL', {
         style: 'currency',
-        currency: 'USD'
+        currency: 'CLP',
+        maximumFractionDigits: 0
     }).format(Number(val || 0));
 
     const totalAutomaticDeductions = stats.emergencyFundDeduction + stats.reinvestmentDeduction;

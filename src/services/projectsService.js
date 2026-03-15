@@ -307,7 +307,7 @@ export const deleteProjectPayment = async (projectId, paymentId) => {
 
 export const getProjectTypes = async () => {
     try {
-        const data = await apiClient.get('/api/proyectos/tipos');
+        const data = await apiClient.get('/api/catalogos/tipos-proyecto');
         return data || [];
     } catch (error) {
         console.error('Error obteniendo tipos de proyecto:', error);
@@ -317,7 +317,7 @@ export const getProjectTypes = async () => {
 
 export const addProjectType = async (type) => {
     try {
-        const data = await apiClient.post('/api/proyectos/tipos', { name: type });
+        const data = await apiClient.post('/api/catalogos/tipos-proyecto', { name: type });
         return data || null;
     } catch (error) {
         console.error('Error creando tipo de proyecto:', error);
@@ -325,9 +325,9 @@ export const addProjectType = async (type) => {
     }
 };
 
-export const deleteProjectType = async (type) => {
+export const deleteProjectType = async (id) => {
     try {
-        const result = await apiClient.delete(`/api/proyectos/tipos/${type}`);
+        const result = await apiClient.delete(`/api/catalogos/tipos-proyecto/${id}`);
         return result?.ok || result?.success || false;
     } catch (error) {
         console.error('Error eliminando tipo de proyecto:', error);
@@ -337,7 +337,7 @@ export const deleteProjectType = async (type) => {
 
 export const getProjectStatuses = async () => {
     try {
-        const data = await apiClient.get('/api/proyectos/estados');
+        const data = await apiClient.get('/api/catalogos/estados-proyecto');
         return data || [];
     } catch (error) {
         console.error('Error obteniendo estados de proyecto:', error);
@@ -347,7 +347,7 @@ export const getProjectStatuses = async () => {
 
 export const addProjectStatus = async (status) => {
     try {
-        const data = await apiClient.post('/api/proyectos/estados', { name: status });
+        const data = await apiClient.post('/api/catalogos/estados-proyecto', { name: status });
         return data || null;
     } catch (error) {
         console.error('Error creando estado de proyecto:', error);
@@ -355,9 +355,9 @@ export const addProjectStatus = async (status) => {
     }
 };
 
-export const deleteProjectStatus = async (status) => {
+export const deleteProjectStatus = async (id) => {
     try {
-        const result = await apiClient.delete(`/api/proyectos/estados/${status}`);
+        const result = await apiClient.delete(`/api/catalogos/estados-proyecto/${id}`);
         return result?.ok || result?.success || false;
     } catch (error) {
         console.error('Error eliminando estado de proyecto:', error);

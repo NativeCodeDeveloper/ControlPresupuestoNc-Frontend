@@ -1,3 +1,5 @@
+'use client';
+
 import { useState, useEffect } from 'react';
 import * as costsService from '../../services/costsService';
 import * as projectsService from '../../services/projectsService';
@@ -11,7 +13,9 @@ import {
     Calendar,
     Repeat,
     AlertTriangle,
-    BellRing
+    BellRing,
+    Pencil,
+    X
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Input, Select } from '../../components/ui/FormElements';
@@ -25,6 +29,12 @@ export default function Gastos() {
     const [variableTypesFromBD, setVariableTypesFromBD] = useState([]);
     const [projectsFromBD, setProjectsFromBD] = useState([]);
     const [dueAlerts, setDueAlerts] = useState([]);
+
+    const [editFixed, setEditFixed] = useState(null);
+    const [editFixedForm, setEditFixedForm] = useState({});
+    const [editVariable, setEditVariable] = useState(null);
+    const [editVariableForm, setEditVariableForm] = useState({});
+    const [isEditLoading, setIsEditLoading] = useState(false);
 
     const [fixedForm, setFixedForm] = useState({
         category: 'Infraestructura',
@@ -44,6 +54,12 @@ export default function Gastos() {
         date: new Date().toISOString().split('T')[0],
         dueDate: ''
     });
+
+    const fmtPreview = (val) => {
+        const n = Math.round(parseFloat(val) || 0);
+        if (!n) return null;
+        return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(n);
+    };
 
     const defaultCategories = ['Infraestructura', 'Software / IA', 'Marketing / Ads', 'Servicios', 'Suscripciones', 'Otros'];
     const defaultVariableTypes = ['Freelancer', 'Plugin', 'Comisión', 'Marketing / Ads', 'Servicio Puntual'];
@@ -90,7 +106,7 @@ export default function Gastos() {
             const result = await costsService.addFixedCost({
                 nombre: fixedForm.service,
                 proveedor: fixedForm.provider,
-                monto: parseFloat(fixedForm.amount),
+                monto: Math.round(parseFloat(fixedForm.amount)),
                 frecuencia: fixedForm.frequency,
                 categoria: fixedForm.category,
                 fecha_pago: parseInt(fixedForm.paymentDay || '1', 10),
@@ -135,7 +151,7 @@ export default function Gastos() {
             const result = await costsService.addVariableCost({
                 proyecto_id: variableForm.projectId || null,
                 tipo: variableForm.type,
-                monto: parseFloat(variableForm.amount),
+                monto: Math.round(parseFloat(variableForm.amount)),
                 observaciones: variableForm.observations,
                 fecha: variableForm.date,
                 fecha_vencimiento: variableForm.dueDate || null
@@ -235,15 +251,14 @@ export default function Gastos() {
         const end = normalizeDateOnly(cost?.fecha_fin);
         const paymentDay = Number(cost?.fecha_pago || start.getDate());
         const step = getFrequencyStep(cost?.frecuencia);
-        let due;
 
-        if (step > 1) {
-            due = buildDateInMonth(start.getFullYear(), start.getMonth() + step, paymentDay);
+        // Primer vencimiento puede ser en el mes de inicio para TODA frecuencia.
+        const firstDue = buildDateInMonth(start.getFullYear(), start.getMonth(), paymentDay);
+        let due;
+        if (firstDue >= start) {
+            due = firstDue;
         } else {
-            due = buildDateInMonth(start.getFullYear(), start.getMonth(), paymentDay);
-            if (due < start) {
-                due = buildDateInMonth(start.getFullYear(), start.getMonth() + step, paymentDay);
-            }
+            due = buildDateInMonth(start.getFullYear(), start.getMonth() + step, paymentDay);
         }
 
         let guard = 0;
@@ -294,13 +309,12 @@ export default function Gastos() {
         const step = getFrequencyStep(cost.frecuencia);
         let due;
 
-        if (step > 1) {
-            due = buildDateInMonth(start.getFullYear(), start.getMonth() + step, cost.fecha_pago || start.getDate());
+        const payDay = cost.fecha_pago || start.getDate();
+        const firstDue = buildDateInMonth(start.getFullYear(), start.getMonth(), payDay);
+        if (firstDue >= start) {
+            due = firstDue;
         } else {
-            due = buildDateInMonth(start.getFullYear(), start.getMonth(), cost.fecha_pago || start.getDate());
-            if (due < start) {
-                due = buildDateInMonth(start.getFullYear(), start.getMonth() + step, cost.fecha_pago || start.getDate());
-            }
+            due = buildDateInMonth(start.getFullYear(), start.getMonth() + step, payDay);
         }
 
         while (due < ref) {
@@ -363,6 +377,106 @@ export default function Gastos() {
             rowClass: 'border-[hsl(var(--turquoise-premium))]/45 bg-[hsl(var(--turquoise-premium))]/10',
             badgeClass: 'bg-[hsl(var(--turquoise-premium))]/20 text-[hsl(var(--turquoise-light))] border-[hsl(var(--turquoise-premium))]/40'
         };
+    };
+
+    const handleEditFixedOpen = (cost) => {
+        setEditFixed(cost);
+        setEditFixedForm({
+            service: cost.servicio_nombre || cost.nombre || '',
+            provider: cost.proveedor || '',
+            amount: cost.monto || '',
+            frequency: cost.frecuencia || 'Mensual',
+            paymentDay: String(cost.fecha_pago || 1),
+            startDate: cost.fecha_inicio ? cost.fecha_inicio.split('T')[0] : ''
+        });
+    };
+
+    const handleEditFixedClose = () => { setEditFixed(null); setEditFixedForm({}); };
+
+    const handleEditFixedSubmit = async (e) => {
+        e.preventDefault();
+        if (!editFixed) return;
+        setIsEditLoading(true);
+        try {
+            const serviceFound = servicesFromBD.find(s => (typeof s === 'string' ? s : s.nombre) === editFixedForm.service);
+            // Backend requires servicio_id — use found service id, or fall back to the original cost's servicio_id
+            const servicio_id = (serviceFound && serviceFound.id) ? serviceFound.id : editFixed.servicio_id;
+            const updates = {
+                servicio_id,
+                proveedor: editFixedForm.provider,
+                monto: Math.round(parseFloat(editFixedForm.amount || 0)),
+                frecuencia: editFixedForm.frequency,
+                fecha_pago: parseInt(editFixedForm.paymentDay || '1', 10),
+                fecha_inicio: editFixedForm.startDate
+            };
+
+            const result = await costsService.updateFixedCost(editFixed.id, updates);
+            if (result && (result.ok || result.id)) {
+                const [freshData, dueData] = await Promise.all([
+                    costsService.getFixedCosts(),
+                    financeService.getDueAlerts(10)
+                ]);
+                if (freshData) setFixedCostsData(freshData);
+                if (dueData?.items) setDueAlerts(dueData.items);
+                handleEditFixedClose();
+            } else {
+                alert('Error al actualizar el costo fijo');
+            }
+        } catch (error) {
+            console.error('Error actualizando costo fijo:', error);
+            alert('Error al actualizar el costo fijo');
+        } finally {
+            setIsEditLoading(false);
+        }
+    };
+
+    const handleEditVariableOpen = (cost) => {
+        setEditVariable(cost);
+        setEditVariableForm({
+            projectId: cost.proyecto_id || '',
+            type: cost.tipo_nombre || variableTypes[0] || 'Freelancer',
+            amount: cost.monto || '',
+            date: cost.fecha ? cost.fecha.split('T')[0] : '',
+            dueDate: cost.fecha_vencimiento ? cost.fecha_vencimiento.split('T')[0] : '',
+            observations: cost.observaciones || cost.concepto || ''
+        });
+    };
+
+    const handleEditVariableClose = () => { setEditVariable(null); setEditVariableForm({}); };
+
+    const handleEditVariableSubmit = async (e) => {
+        e.preventDefault();
+        if (!editVariable) return;
+        setIsEditLoading(true);
+        try {
+            const typeFound = variableTypesFromBD.find(t => (typeof t === 'string' ? t : t.nombre) === editVariableForm.type);
+            const updates = {
+                proyecto_id: editVariableForm.projectId || null,
+                monto: Math.round(parseFloat(editVariableForm.amount || 0)),
+                fecha: editVariableForm.date,
+                fecha_vencimiento: editVariableForm.dueDate || null,
+                observaciones: editVariableForm.observations || null
+            };
+            if (typeFound && typeFound.id) updates.tipo_costo_id = typeFound.id;
+
+            const result = await costsService.updateVariableCost(editVariable.id, updates);
+            if (result && (result.ok || result.id)) {
+                const [freshData, dueData] = await Promise.all([
+                    costsService.getVariableCosts(),
+                    financeService.getDueAlerts(10)
+                ]);
+                if (freshData) setVariableCostsData(freshData);
+                if (dueData?.items) setDueAlerts(dueData.items);
+                handleEditVariableClose();
+            } else {
+                alert('Error al actualizar el costo variable');
+            }
+        } catch (error) {
+            console.error('Error actualizando costo variable:', error);
+            alert('Error al actualizar el costo variable');
+        } finally {
+            setIsEditLoading(false);
+        }
     };
 
     const getFrequencyTone = (frequency) => {
@@ -461,9 +575,14 @@ export default function Gastos() {
                                     {serviceOptions.map(c => <option key={c} value={c}>{c}</option>)}
                                 </Select>
                                 <div className="grid grid-cols-2 gap-4">
-                                    <Input label="Monto" type="number" placeholder="0.00" min="0" step="0.01"
-                                        onKeyDown={(e) => ["e", "E", "+", "-"].includes(e.key) && e.preventDefault()}
-                                        value={fixedForm.amount} onChange={(e) => setFixedForm({ ...fixedForm, amount: e.target.value })} required />
+                                    <div>
+                                        <Input label="Monto" type="number" placeholder="0" min="0" step="1"
+                                            onKeyDown={(e) => ["e", "E", "+", "-"].includes(e.key) && e.preventDefault()}
+                                            value={fixedForm.amount} onChange={(e) => setFixedForm({ ...fixedForm, amount: e.target.value })} required />
+                                        {fmtPreview(fixedForm.amount) && (
+                                            <p className="text-[11px] text-[hsl(var(--emerald-premium))] mt-1 font-medium">{fmtPreview(fixedForm.amount)}</p>
+                                        )}
+                                    </div>
                                     <Select label="Frecuencia" value={fixedForm.frequency}
                                         onChange={(e) => setFixedForm({ ...fixedForm, frequency: e.target.value })}>
                                         {frequencies.map(f => <option key={f} value={f}>{f}</option>)}
@@ -527,9 +646,14 @@ export default function Gastos() {
                                     onChange={(e) => setVariableForm({ ...variableForm, type: e.target.value })}>
                                     {variableTypes.map(t => <option key={t} value={t}>{t}</option>)}
                                 </Select>
-                                <Input label="Monto" type="number" placeholder="0.00" min="0" step="0.01"
-                                    onKeyDown={(e) => ["e", "E", "+", "-"].includes(e.key) && e.preventDefault()}
-                                    value={variableForm.amount} onChange={(e) => setVariableForm({ ...variableForm, amount: e.target.value })} required />
+                                <div>
+                                    <Input label="Monto" type="number" placeholder="0" min="0" step="1"
+                                        onKeyDown={(e) => ["e", "E", "+", "-"].includes(e.key) && e.preventDefault()}
+                                        value={variableForm.amount} onChange={(e) => setVariableForm({ ...variableForm, amount: e.target.value })} required />
+                                    {fmtPreview(variableForm.amount) && (
+                                        <p className="text-[11px] text-[hsl(var(--emerald-premium))] mt-1 font-medium">{fmtPreview(variableForm.amount)}</p>
+                                    )}
+                                </div>
                                 <Input label="Fecha" type="date" value={variableForm.date}
                                     onChange={(e) => setVariableForm({ ...variableForm, date: e.target.value })} required />
                                 <Input label="Fecha Vencimiento (Opcional)" type="date" value={variableForm.dueDate}
@@ -591,13 +715,20 @@ export default function Gastos() {
                                         </div>
                                         <div className="flex flex-col items-end gap-2">
                                             <span className="font-bold text-[hsl(var(--copper))] text-lg">
-                                                -${parseFloat(cost.monto || 0).toLocaleString()}
+                                                -{Math.round(parseFloat(cost.monto || 0)).toLocaleString('es-CL')}
                                             </span>
-                                            <button onClick={() => handleDeleteFixed(cost.id)}
-                                                className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-all p-2 bg-secondary/50 rounded-lg hover:bg-destructive/10"
-                                                title="Eliminar Gasto">
-                                                <Trash2 size={16} />
-                                            </button>
+                                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                                <button onClick={() => handleEditFixedOpen(cost)}
+                                                    className="text-muted-foreground hover:text-primary p-2 bg-secondary/50 rounded-lg hover:bg-primary/10"
+                                                    title="Editar Gasto">
+                                                    <Pencil size={14} />
+                                                </button>
+                                                <button onClick={() => handleDeleteFixed(cost.id)}
+                                                    className="text-muted-foreground hover:text-destructive p-2 bg-secondary/50 rounded-lg hover:bg-destructive/10"
+                                                    title="Eliminar Gasto">
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 ))}
@@ -633,13 +764,20 @@ export default function Gastos() {
                                         </div>
                                         <div className="flex flex-col items-end gap-2">
                                             <span className="font-bold text-[hsl(var(--copper))]">
-                                                -${parseFloat(cost.monto || 0).toLocaleString()}
+                                                -{Math.round(parseFloat(cost.monto || 0)).toLocaleString('es-CL')}
                                             </span>
-                                            <button onClick={() => handleDeleteVariable(cost.id)}
-                                                className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity p-1"
-                                                title="Eliminar Gasto">
-                                                <Trash2 size={16} />
-                                            </button>
+                                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button onClick={() => handleEditVariableOpen(cost)}
+                                                    className="text-muted-foreground hover:text-primary p-1 rounded hover:bg-primary/10"
+                                                    title="Editar Gasto">
+                                                    <Pencil size={14} />
+                                                </button>
+                                                <button onClick={() => handleDeleteVariable(cost.id)}
+                                                    className="text-muted-foreground hover:text-destructive p-1"
+                                                    title="Eliminar Gasto">
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 ))}
@@ -648,6 +786,107 @@ export default function Gastos() {
                     )}
                 </div>
             </div>
+
+        {/* Edit Fixed Cost Modal */}
+        {editFixed && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+                onClick={(e) => e.target === e.currentTarget && handleEditFixedClose()}>
+                <div className="bg-card border border-border rounded-xl shadow-xl w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
+                    <div className="flex items-center justify-between p-5 border-b border-border sticky top-0 bg-card z-10">
+                        <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                            <Pencil size={18} className="text-primary" />
+                            Editar Costo Fijo
+                        </h3>
+                        <button onClick={handleEditFixedClose}
+                            className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-secondary">
+                            <X size={18} />
+                        </button>
+                    </div>
+                    <form onSubmit={handleEditFixedSubmit} className="p-5 space-y-4">
+                        <Select label="Servicio / Categoría" value={editFixedForm.service}
+                            onChange={(e) => setEditFixedForm({ ...editFixedForm, service: e.target.value })}>
+                            {serviceOptions.map(c => <option key={c} value={c}>{c}</option>)}
+                        </Select>
+                        <Input label="Proveedor" placeholder="Ej: Kinsta, AWS..."
+                            value={editFixedForm.provider} onChange={(e) => setEditFixedForm({ ...editFixedForm, provider: e.target.value })} />
+                        <div className="grid grid-cols-2 gap-4">
+                            <Input label="Monto" type="number" placeholder="0" min="0" step="1"
+                                onKeyDown={(e) => ["e", "E", "+", "-"].includes(e.key) && e.preventDefault()}
+                                value={editFixedForm.amount} onChange={(e) => setEditFixedForm({ ...editFixedForm, amount: e.target.value })} required />
+                            <Select label="Frecuencia" value={editFixedForm.frequency}
+                                onChange={(e) => setEditFixedForm({ ...editFixedForm, frequency: e.target.value })}>
+                                {frequencies.map(f => <option key={f} value={f}>{f}</option>)}
+                            </Select>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <Input label="Día de Pago" type="number" min="1" max="31"
+                                value={editFixedForm.paymentDay} onChange={(e) => setEditFixedForm({ ...editFixedForm, paymentDay: e.target.value })} required />
+                            <Input label="Fecha Inicio" type="date"
+                                value={editFixedForm.startDate} onChange={(e) => setEditFixedForm({ ...editFixedForm, startDate: e.target.value })} required />
+                        </div>
+                        <div className="flex gap-3 pt-2">
+                            <button type="button" onClick={handleEditFixedClose}
+                                className="flex-1 py-2.5 rounded-lg border border-border text-muted-foreground hover:bg-secondary transition-colors text-sm font-medium">
+                                Cancelar
+                            </button>
+                            <button type="submit" disabled={isEditLoading}
+                                className="flex-1 bg-primary text-primary-foreground font-medium py-2.5 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 text-sm">
+                                {isEditLoading ? 'Guardando...' : 'Guardar Cambios'}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        )}
+
+        {/* Edit Variable Cost Modal */}
+        {editVariable && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+                onClick={(e) => e.target === e.currentTarget && handleEditVariableClose()}>
+                <div className="bg-card border border-border rounded-xl shadow-xl w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
+                    <div className="flex items-center justify-between p-5 border-b border-border sticky top-0 bg-card z-10">
+                        <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                            <Pencil size={18} className="text-primary" />
+                            Editar Costo Variable
+                        </h3>
+                        <button onClick={handleEditVariableClose}
+                            className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-secondary">
+                            <X size={18} />
+                        </button>
+                    </div>
+                    <form onSubmit={handleEditVariableSubmit} className="p-5 space-y-4">
+                        <Select label="Proyecto Asociado (Opcional)" value={editVariableForm.projectId}
+                            onChange={(e) => setEditVariableForm({ ...editVariableForm, projectId: e.target.value })}>
+                            <option value="">General / Sin proyecto</option>
+                            {projects.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+                        </Select>
+                        <Select label="Tipo de Gasto" value={editVariableForm.type}
+                            onChange={(e) => setEditVariableForm({ ...editVariableForm, type: e.target.value })}>
+                            {variableTypes.map(t => <option key={t} value={t}>{t}</option>)}
+                        </Select>
+                        <Input label="Monto" type="number" placeholder="0" min="0" step="1"
+                            onKeyDown={(e) => ["e", "E", "+", "-"].includes(e.key) && e.preventDefault()}
+                            value={editVariableForm.amount} onChange={(e) => setEditVariableForm({ ...editVariableForm, amount: e.target.value })} required />
+                        <Input label="Fecha" type="date"
+                            value={editVariableForm.date} onChange={(e) => setEditVariableForm({ ...editVariableForm, date: e.target.value })} required />
+                        <Input label="Fecha Vencimiento (Opcional)" type="date"
+                            value={editVariableForm.dueDate} onChange={(e) => setEditVariableForm({ ...editVariableForm, dueDate: e.target.value })} />
+                        <Input label="Observaciones" placeholder="Detalles adicionales..."
+                            value={editVariableForm.observations} onChange={(e) => setEditVariableForm({ ...editVariableForm, observations: e.target.value })} />
+                        <div className="flex gap-3 pt-2">
+                            <button type="button" onClick={handleEditVariableClose}
+                                className="flex-1 py-2.5 rounded-lg border border-border text-muted-foreground hover:bg-secondary transition-colors text-sm font-medium">
+                                Cancelar
+                            </button>
+                            <button type="submit" disabled={isEditLoading}
+                                className="flex-1 bg-primary text-primary-foreground font-medium py-2.5 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 text-sm">
+                                {isEditLoading ? 'Guardando...' : 'Guardar Cambios'}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        )}
         </div>
     );
 }

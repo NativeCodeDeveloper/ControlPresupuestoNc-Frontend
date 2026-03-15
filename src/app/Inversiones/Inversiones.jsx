@@ -1,3 +1,5 @@
+'use client';
+
 import { useState, useEffect } from 'react';
 import * as financeService from '../../services/financeService';
 import * as investmentsService from '../../services/investmentsService';
@@ -49,9 +51,10 @@ export default function Inversiones() {
         init();
     }, []);
 
-    const formatCurrency = (value) => new Intl.NumberFormat('en-US', {
+    const formatCurrency = (value) => new Intl.NumberFormat('es-CL', {
         style: 'currency',
-        currency: 'USD'
+        currency: 'CLP',
+        maximumFractionDigits: 0
     }).format(Number(value || 0));
 
     const handleSubmit = async (e) => {
@@ -165,7 +168,7 @@ export default function Inversiones() {
                                 label="Monto"
                                 type="number"
                                 min="0"
-                                step="0.01"
+                                step="1"
                                 value={form.amount}
                                 onChange={(e) => setForm({ ...form, amount: e.target.value })}
                                 required

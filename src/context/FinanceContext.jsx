@@ -1,3 +1,4 @@
+'use client';
 /* eslint-disable react-refresh/only-export-components */
 /**
  * FinanceContext.jsx
@@ -85,7 +86,7 @@ export const FinanceProvider = ({ children }) => {
      * Intenta cargar datos de localStorage; si no existen, usa valores por defecto.
      */
     const [data, setData] = useState(() => {
-        const savedData = localStorage.getItem('financeData');
+        const savedData = typeof window !== 'undefined' ? localStorage.getItem('financeData') : null;
         
         /**
          * ESTRUCTURA DE DATOS POR DEFECTO

@@ -181,8 +181,25 @@ export const addVariableCost = async (cost) => {
 };
 
 /**
+ * updateVariableCost - Actualizar costo variable
+ *
+ * @param {number|string} id - ID del costo
+ * @param {Object} updates - Campos a actualizar
+ * @returns {Promise<Object>} - Costo actualizado
+ */
+export const updateVariableCost = async (id, updates) => {
+    try {
+        const data = await apiClient.put(`/api/costos-variables/${id}`, updates);
+        return data || null;
+    } catch (error) {
+        console.error(`Error actualizando costo variable ${id}:`, error);
+        return null;
+    }
+};
+
+/**
  * deleteVariableCost - Eliminar costo variable
- * 
+ *
  * @param {number|string} id - ID del costo
  * @returns {Promise<boolean>} - true si se eliminó
  */

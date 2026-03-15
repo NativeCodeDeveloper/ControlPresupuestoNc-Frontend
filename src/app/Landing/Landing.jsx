@@ -1,5 +1,5 @@
 import { ArrowRight } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
 
 export default function Landing() {
     return (
@@ -45,7 +45,7 @@ export default function Landing() {
 
                     <div className="mt-11">
                         <Link
-                            to="/dashboard"
+                            href="/dashboard"
                             className="inline-flex items-center gap-2 rounded-full border border-blue-200/35 bg-gradient-to-r from-blue-500/80 via-blue-600/80 to-indigo-600/80 px-8 py-3 text-sm font-semibold tracking-wide text-white shadow-[0_14px_34px_rgba(37,99,235,0.38)] transition-all duration-300 hover:scale-[1.015] hover:from-blue-400 hover:to-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300/80"
                         >
                             Entrar al Dashboard

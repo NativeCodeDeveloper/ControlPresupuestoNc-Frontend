@@ -1,5 +1,8 @@
+'use client';
+
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import {
     House,
     LayoutDashboard,
@@ -9,29 +12,30 @@ import {
     Settings,
     Menu,
     Users,
-    PiggyBank
+    PiggyBank,
+    Waves,
+    BookOpen
 } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
 import { cn } from '../lib/utils';
 
 export default function MainLayout({ children }) {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-    const location = useLocation();
-
-    if (location.pathname === '/') {
-        return children;
-    }
+    const pathname = usePathname();
 
     const menuItems = [
-        { icon: House, label: 'Inicio', path: '/', tone: 'text-[hsl(var(--corporate-blue))]', activeBg: 'bg-[hsl(var(--corporate-blue))]/12' },
-        { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard', tone: 'text-[hsl(var(--turquoise-premium))]', activeBg: 'bg-[hsl(var(--turquoise-premium))]/14' },
+        { icon: LayoutDashboard, label: 'Panel Financiero', path: '/dashboard', tone: 'text-[hsl(var(--turquoise-premium))]', activeBg: 'bg-[hsl(var(--turquoise-premium))]/14' },
         { icon: TrendingUp, label: 'Proyectos / Ingresos', path: '/ingresos', tone: 'text-[hsl(var(--emerald-premium))]', activeBg: 'bg-[hsl(var(--emerald-premium))]/14' },
         { icon: TrendingDown, label: 'Gastos / Pagos', path: '/gastos', tone: 'text-[hsl(var(--copper))]', activeBg: 'bg-[hsl(var(--copper))]/14' },
         { icon: Users, label: 'Socios', path: '/socios', tone: 'text-[hsl(var(--gold))]', activeBg: 'bg-[hsl(var(--gold))]/16' },
         { icon: PiggyBank, label: 'Inversiones', path: '/inversiones', tone: 'text-[hsl(var(--purple-premium))]', activeBg: 'bg-[hsl(var(--purple-premium))]/14' },
+        { icon: Waves, label: 'Flujo de Caja', path: '/flujo-caja', tone: 'text-[hsl(var(--turquoise-premium))]', activeBg: 'bg-[hsl(var(--turquoise-premium))]/14' },
+        { icon: BookOpen, label: 'Contabilidad', path: '/contabilidad', tone: 'text-[hsl(var(--corporate-blue))]', activeBg: 'bg-[hsl(var(--corporate-blue))]/12' },
         { icon: PieChart, label: 'Reportes', path: '/reportes', tone: 'text-[hsl(var(--corporate-blue))]', activeBg: 'bg-[hsl(var(--corporate-blue))]/12' },
         { icon: Settings, label: 'Configuración', path: '/config', tone: 'text-muted-foreground', activeBg: 'bg-foreground/8' },
     ];
+
+    const homeItem = { icon: House, label: 'Inicio', path: '/', tone: 'text-[hsl(var(--corporate-blue))]', activeBg: 'bg-[hsl(var(--corporate-blue))]/12' };
 
     return (
         <div className="flex min-h-screen bg-background text-foreground">
@@ -49,7 +53,7 @@ export default function MainLayout({ children }) {
             <aside
                 className={cn(
                     "fixed lg:static inset-y-0 left-0 z-50 bg-background border-r border-border/50 transition-transform duration-300 ease-in-out lg:translate-x-0 hidden lg:flex flex-col",
-                    isSidebarOpen ? "translate-x-0 !flex" : "-translate-x-full"
+                    isSidebarOpen ? "translate-x-0 flex!" : "-translate-x-full"
                 )}
                 style={{ width: '256px' }}
             >
@@ -72,11 +76,11 @@ export default function MainLayout({ children }) {
                     {/* Navigation */}
                     <nav className="flex-1 space-y-0.5">
                         {menuItems.map((item) => {
-                            const isActive = location.pathname === item.path;
+                            const isActive = pathname === item.path;
                             return (
                                 <Link
                                     key={item.path}
-                                    to={item.path}
+                                    href={item.path}
                                     onClick={() => setIsSidebarOpen(false)}
                                     className={cn(
                                         "flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-150 text-[13px]",
@@ -99,6 +103,32 @@ export default function MainLayout({ children }) {
                                 </Link>
                             );
                         })}
+
+                        {/* Inicio — separado al final del nav */}
+                        <div className="pt-6">
+                            <Link
+                                href={homeItem.path}
+                                onClick={() => setIsSidebarOpen(false)}
+                                className={cn(
+                                    "flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-150 text-[13px]",
+                                    pathname === homeItem.path
+                                        ? `${homeItem.activeBg} text-foreground font-medium`
+                                        : "text-muted-foreground hover:text-foreground hover:bg-foreground/5"
+                                )}
+                            >
+                                <span className={cn(
+                                    "h-6 w-6 rounded-md flex items-center justify-center transition-colors",
+                                    pathname === homeItem.path ? "bg-white/70 dark:bg-black/10" : "bg-foreground/5"
+                                )}>
+                                    <homeItem.icon
+                                        size={16}
+                                        strokeWidth={pathname === homeItem.path ? 2 : 1.7}
+                                        className={pathname === homeItem.path ? homeItem.tone : `${homeItem.tone} opacity-85`}
+                                    />
+                                </span>
+                                <span>{homeItem.label}</span>
+                            </Link>
+                        </div>
                     </nav>
 
                     {/* Footer */}

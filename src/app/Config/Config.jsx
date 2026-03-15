@@ -1,3 +1,5 @@
+'use client';
+
 import { createElement, useState, useEffect } from 'react';
 import * as configService from '../../services/configService';
 import * as partnersService from '../../services/partnersService';

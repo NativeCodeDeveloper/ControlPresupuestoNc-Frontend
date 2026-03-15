@@ -1,3 +1,5 @@
+'use client';
+
 import { createElement, useState, useEffect } from 'react';
 import * as financeService from '../../services/financeService';
 import {
@@ -175,14 +177,14 @@ export default function Dashboard() {
     const yearOptions = [currentYear - 2, currentYear - 1, currentYear, currentYear + 1];
 
     const formatCurrency = (val) => {
-        return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val || 0);
+        return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(val || 0);
     };
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-border/50 pb-6">
                 <div>
-                    <h2 className="text-2xl font-semibold tracking-tight text-foreground">Dashboard</h2>
+                    <h2 className="text-2xl font-semibold tracking-tight text-foreground">Panel Financiero</h2>
                     <p className="text-sm text-muted-foreground mt-1">Resumen financiero general</p>
                 </div>
                 <div className="flex gap-4">

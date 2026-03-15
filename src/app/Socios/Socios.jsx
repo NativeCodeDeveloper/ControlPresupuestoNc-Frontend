@@ -1,3 +1,5 @@
+'use client';
+
 import { createElement, useState, useEffect } from 'react';
 import * as partnersService from '../../services/partnersService';
 import * as financeService from '../../services/financeService';
@@ -81,27 +83,22 @@ export default function Socios() {
         );
 
         if (partners && Array.isArray(partners)) {
-            const shouldFetchPerPartnerAvailability = summaryAvailabilityMap.size === 0;
-
+            // Siempre traer disponibilidad individual (incluye acumulado histórico + límite mensual)
             const enrichedPartners = await Promise.all(
                 partners.map(async (p) => {
                     const partnerId = Number(p.id);
                     const porcentaje = Number(p.porcentaje_participacion || p.percentage || 0);
-                    const fallbackAsignado = Math.max(0, (financialStats.netProfit * porcentaje) / 100);
-                    const summaryData = summaryAvailabilityMap.get(partnerId);
-
-                    let availabilityData = null;
-                    if (!summaryData && shouldFetchPerPartnerAvailability) {
-                        availabilityData = await partnersService.getAvailableAmount(partnerId, month, year);
-                    }
+                    const availabilityData = await partnersService.getAvailableAmount(partnerId, month, year);
 
                     return {
                         ...p,
                         name: p.nombre || p.name || 'Sin Nombre',
                         percentage: porcentaje,
-                        assigned: Number(summaryData?.assigned ?? availabilityData?.asignado ?? fallbackAsignado),
-                        withdrawnPeriod: Number(summaryData?.withdrawn ?? availabilityData?.retirado ?? 0),
-                        available: Number(summaryData?.available ?? availabilityData?.disponible ?? Math.max(0, fallbackAsignado))
+                        acumulado: Number(availabilityData?.acumulado ?? 0),
+                        retiradoMes: Number(availabilityData?.retiradoMes ?? 0),
+                        limiteMensual: Number(availabilityData?.limiteMensual ?? 3_000_000),
+                        margenMensual: Number(availabilityData?.margenMensual ?? 3_000_000),
+                        available: Number(availabilityData?.disponible ?? 0)
                     };
                 })
             );
@@ -133,7 +130,7 @@ export default function Socios() {
     const yearOptions = [currentYear - 2, currentYear - 1, currentYear, currentYear + 1];
 
     const formatCurrency = (val) => {
-        return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val || 0);
+        return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(val || 0);
     };
 
     const handlePercentageInput = (id, val) => {
@@ -181,10 +178,14 @@ export default function Socios() {
                 });
             } else {
                 const msg = result?.message || 'Error al registrar retiro';
-                const disponible = result?.error?.disponible;
-                alert(disponible !== undefined
-                    ? `${msg}. Disponible actual: ${formatCurrency(disponible)}`
-                    : msg);
+                const errData = result?.error || result;
+                let detail = '';
+                if (errData?.limiteMensual && errData?.margenMensual !== undefined) {
+                    detail = `\nLímite mensual: ${formatCurrency(errData.limiteMensual)}\nMargen restante este mes: ${formatCurrency(errData.margenMensual)}\nAcumulado total: ${formatCurrency(errData.acumulado)}`;
+                } else if (errData?.disponible !== undefined) {
+                    detail = `\nDisponible: ${formatCurrency(errData.disponible)}`;
+                }
+                alert(msg + detail);
             }
         } catch (error) {
             console.error('Error registrando retiro:', error);
@@ -271,9 +272,12 @@ export default function Socios() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div className="space-y-6">
                     {(partnersData || []).map((partner) => {
-                        const shareAmount = Number(partner.assigned || 0);
-                        const totalWithdrawn = Number(partner.withdrawnPeriod || 0);
+                        const acumulado = Number(partner.acumulado || 0);
+                        const retiradoMes = Number(partner.retiradoMes || 0);
+                        const limiteMensual = Number(partner.limiteMensual || 3_000_000);
+                        const margenMensual = Number(partner.margenMensual || 0);
                         const available = Number(partner.available || 0);
+                        const pctUsadoMes = limiteMensual > 0 ? Math.min(100, (retiradoMes / limiteMensual) * 100) : 0;
 
                         return (
                             <div key={partner.id} className="bg-card glass-card border border-border/50 rounded-2xl p-6 shadow-sm hover:shadow-lg transition-all duration-300 group">
@@ -302,8 +306,23 @@ export default function Socios() {
                                         </div>
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-1">Asignado Mes</p>
-                                        <p className="text-2xl font-bold text-foreground tracking-tight">{formatCurrency(shareAmount)}</p>
+                                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-1">Acumulado Total</p>
+                                        <p className="text-2xl font-bold text-foreground tracking-tight">{formatCurrency(acumulado)}</p>
+                                        <p className="text-[10px] text-muted-foreground mt-0.5">histórico acumulado</p>
+                                    </div>
+                                </div>
+
+                                {/* Barra de uso del límite mensual */}
+                                <div className="mb-4">
+                                    <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
+                                        <span>Uso límite mensual ({formatCurrency(retiradoMes)} / {formatCurrency(limiteMensual)})</span>
+                                        <span className={pctUsadoMes >= 90 ? 'text-rose-500 font-semibold' : ''}>{Math.round(pctUsadoMes)}%</span>
+                                    </div>
+                                    <div className="h-1.5 bg-foreground/10 rounded-full overflow-hidden">
+                                        <div
+                                            className={`h-full rounded-full transition-all ${pctUsadoMes >= 90 ? 'bg-rose-500' : pctUsadoMes >= 60 ? 'bg-[hsl(var(--gold))]' : 'bg-[hsl(var(--emerald-premium))]'}`}
+                                            style={{ width: `${pctUsadoMes}%` }}
+                                        />
                                     </div>
                                 </div>
 
@@ -311,16 +330,18 @@ export default function Socios() {
                                     <div className="bg-foreground/5 rounded-xl p-4 border border-foreground/10 backdrop-blur-sm">
                                         <div className="flex items-center gap-2 mb-2">
                                             <div className="h-2 w-2 rounded-full bg-foreground/40"></div>
-                                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Retirado Mes</p>
+                                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Retirado este Mes</p>
                                         </div>
-                                        <p className="text-lg font-bold text-foreground/70">{formatCurrency(totalWithdrawn)}</p>
+                                        <p className="text-lg font-bold text-foreground/70">{formatCurrency(retiradoMes)}</p>
+                                        <p className="text-[10px] text-muted-foreground mt-1">Margen: {formatCurrency(margenMensual)}</p>
                                     </div>
                                     <div className="bg-[hsl(var(--emerald-premium))]/10 rounded-xl p-4 border border-[hsl(var(--emerald-premium))]/20 backdrop-blur-sm">
                                         <div className="flex items-center gap-2 mb-2">
                                             <div className="h-2 w-2 rounded-full bg-[hsl(var(--emerald-premium))]"></div>
-                                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Disponible</p>
+                                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Disponible Ahora</p>
                                         </div>
                                         <p className="text-lg font-bold text-[hsl(var(--emerald-premium))]">{formatCurrency(available)}</p>
+                                        <p className="text-[10px] text-muted-foreground mt-1">Límite: {formatCurrency(limiteMensual)}/mes</p>
                                     </div>
                                 </div>
 
@@ -361,7 +382,7 @@ export default function Socios() {
                             type="number"
                             placeholder="0.00"
                             min="0"
-                            step="0.01"
+                            step="1"
                             onKeyDown={(e) => ['e', 'E', '+', '-'].includes(e.key) && e.preventDefault()}
                             value={withdrawalForm.amount}
                             onChange={(e) => setWithdrawalForm({ ...withdrawalForm, amount: e.target.value })}

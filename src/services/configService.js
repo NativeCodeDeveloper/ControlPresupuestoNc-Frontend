@@ -30,7 +30,7 @@
 import apiClient from './apiClient';
 
 const isNotFoundDelete = (error) => Number(error?.status) === 404;
-const EXTERNAL_API_URL = import.meta.env.VITE_API_URL || '';
+const EXTERNAL_API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 // ========================================
 // CONFIGURACIÓN FINANCIERA

@@ -16,7 +16,7 @@
  */
 
 import apiClient from './apiClient';
-const EXTERNAL_API_URL = import.meta.env.VITE_API_URL || '';
+const EXTERNAL_API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 // ========================================
 // ESTADÍSTICAS FINANCIERAS GENERALES
