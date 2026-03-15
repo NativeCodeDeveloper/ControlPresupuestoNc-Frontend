@@ -11,6 +11,10 @@ node_modules
 dist
 dist-ssr
 *.local
+
+# Next.js
+.next/
+out/
 .env
 .env.*
 !.env.example
