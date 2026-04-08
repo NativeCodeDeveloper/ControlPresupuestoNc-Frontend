@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
   --color-border: hsl(var(--border));
@@ -34,7 +35,54 @@
 }
 
 :root {
-  /* x.ai Dark Theme — Pure black, monochromatic */
+  /* Light Theme */
+  --background: 0 0% 100%;
+  --foreground: 0 0% 10%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 10%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 10%;
+
+  --primary: 0 0% 10%;
+  --primary-foreground: 0 0% 98%;
+
+  --secondary: 0 0% 96%;
+  --secondary-foreground: 0 0% 14%;
+
+  --muted: 0 0% 95%;
+  --muted-foreground: 0 0% 40%;
+
+  --accent: 0 0% 95%;
+  --accent-foreground: 0 0% 14%;
+
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 98%;
+
+  --border: 0 0% 86%;
+  --input: 0 0% 86%;
+  --ring: 0 0% 45%;
+
+  --radius: 0.625rem;
+
+  /* Brand Colors */
+  --corporate-blue: 221 83% 53%;
+  --corporate-blue-light: 221 83% 61%;
+  --gold: 42 100% 50%;
+  --gold-dark: 42 100% 42%;
+  --emerald-premium: 145 50% 45%;
+  --emerald-light: 145 50% 55%;
+  --purple-premium: 268 65% 50%;
+  --purple-dark: 268 65% 42%;
+  --copper: 18 48% 50%;
+  --copper-light: 18 48% 58%;
+  --turquoise-premium: 174 100% 40%;
+  --turquoise-light: 174 100% 48%;
+}
+
+.dark {
+  /* Dark Theme */
   --background: 0 0% 4%;
   --foreground: 0 0% 98%;
 
@@ -62,30 +110,6 @@
   --border: 0 0% 15%;
   --input: 0 0% 15%;
   --ring: 0 0% 35%;
-
-  --radius: 0.625rem;
-
-  /* High-End Corporate Luxury Colors */
-  --gold: 42 100% 50%;
-  /* Premium gold accent */
-  --gold-dark: 42 100% 42%;
-  /* Gold for hover/dark */
-  --emerald-premium: 145 50% 45%;
-  /* Luxury emerald green */
-  --emerald-light: 145 50% 55%;
-  /* Emerald light for hover */
-  --purple-premium: 268 65% 50%;
-  /* Premium tech purple */
-  --purple-dark: 268 65% 42%;
-  /* Purple dark for hover */
-  --copper: 18 48% 50%;
-  /* Sophisticated terracotta - less saturated */
-  --copper-light: 18 48% 58%;
-  /* Terracotta light for hover */
-  --turquoise-premium: 174 100% 40%;
-  /* Premium turquoise */
-  --turquoise-light: 174 100% 48%;
-  /* Turquoise light for hover */
 }
 
 @layer base {

@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
 import { cn } from '../lib/utils';
+import { ThemeTogglerButton } from '../components/animate-ui/components/buttons/theme-toggler';
 
 export default function MainLayout({ children }) {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -42,8 +43,10 @@ export default function MainLayout({ children }) {
             {/* Mobile Overlay */}
             <AnimatePresence>
                 {isSidebarOpen && (
-                    <div
+                    <button
+                        type="button"
                         onClick={() => setIsSidebarOpen(false)}
+                        aria-label="Cerrar menú lateral"
                         className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
                     />
                 )}
@@ -71,6 +74,13 @@ export default function MainLayout({ children }) {
                             </h1>
                             <p className="text-[10px] text-center text-muted-foreground tracking-widest uppercase">Finance</p>
                         </div>
+                        <ThemeTogglerButton
+                            variant="ghost"
+                            size="icon"
+                            direction="horizontal"
+                            modes={['light', 'dark']}
+                            className="ml-auto"
+                        />
                     </div>
 
                     {/* Navigation */}
@@ -160,7 +170,12 @@ export default function MainLayout({ children }) {
                         <Menu size={18} />
                     </button>
                     <span className="text-xs font-semibold tracking-wider">NATIVECODE</span>
-                    <div className="w-7" />
+                    <ThemeTogglerButton
+                        variant="ghost"
+                        size="icon"
+                        direction="horizontal"
+                        modes={['light', 'dark']}
+                    />
                 </header>
 
                 <div className="flex-1 p-4 lg:p-8 overflow-y-auto">
