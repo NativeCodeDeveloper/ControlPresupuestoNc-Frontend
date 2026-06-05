@@ -17,6 +17,20 @@ import {
     Activity
 } from 'lucide-react';
 
+const Section = ({ title, icon, children }) => (
+    <div className="bg-card glass-card border border-border/50 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300">
+        <div className="px-6 py-5 border-b border-border/50 bg-secondary/20 flex items-center gap-3 backdrop-blur-sm">
+            <div className="p-2 bg-foreground/10 rounded-lg text-foreground">
+                {icon ? createElement(icon, { size: 18 }) : null}
+            </div>
+            <h3 className="font-semibold text-foreground tracking-tight">{title}</h3>
+        </div>
+        <div className="p-6">
+            {children}
+        </div>
+    </div>
+);
+
 export default function Config() {
     // Estados para datos del backend
     const [isLoading, setIsLoading] = useState(false);
@@ -293,20 +307,6 @@ export default function Config() {
             setIsLoading(false);
         }
     };
-
-    const Section = ({ title, icon, children }) => (
-        <div className="bg-card glass-card border border-border/50 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300">
-            <div className="px-6 py-5 border-b border-border/50 bg-secondary/20 flex items-center gap-3 backdrop-blur-sm">
-                <div className="p-2 bg-foreground/10 rounded-lg text-foreground">
-                    {icon ? createElement(icon, { size: 18 }) : null}
-                </div>
-                <h3 className="font-semibold text-foreground tracking-tight">{title}</h3>
-            </div>
-            <div className="p-6">
-                {children}
-            </div>
-        </div>
-    );
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500 max-w-4xl mx-auto pb-10">
