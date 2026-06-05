@@ -17,7 +17,8 @@ import {
     ChevronUp,
     Receipt,
     Pencil,
-    X
+    X,
+    Repeat
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Input, Select } from '../../components/ui/FormElements';
@@ -27,6 +28,7 @@ export default function Ingresos() {
     const [searchTerm, setSearchTerm] = useState('');
     const [filterType, setFilterType] = useState('Todos');
     const [filterStatus, setFilterStatus] = useState('Todos');
+    const [filterMonth, setFilterMonth] = useState('Todos');
     const [expandedProject, setExpandedProject] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     const [projects, setProjects] = useState([]);
@@ -43,7 +45,10 @@ export default function Ingresos() {
         clientEmail: '',
         clientProfession: '',
         deliveryDate: '',
-        observations: ''
+        observations: '',
+        ciclo: 'Unico',
+        fechaInicioServicio: '',
+        fechaProximoPago: ''
     });
 
     const [incomeForm, setIncomeForm] = useState({
@@ -142,7 +147,10 @@ export default function Ingresos() {
                 monto_acordado: Math.round(parseFloat(projectForm.agreedAmount || 0)),
                 fecha_creacion: new Date().toISOString().split('T')[0],
                 fecha_entrega: projectForm.deliveryDate || null,
-                observaciones: projectForm.observations || null
+                observaciones: projectForm.observations || null,
+                ciclo_facturacion: projectForm.ciclo || 'Unico',
+                fecha_inicio_servicio: projectForm.fechaInicioServicio || null,
+                fecha_proximo_pago: projectForm.fechaProximoPago || null
             });
 
             if (newProject && newProject.ok) {
@@ -163,7 +171,10 @@ export default function Ingresos() {
                 clientEmail: '',
                 clientProfession: '',
                 deliveryDate: '',
-                observations: ''
+                observations: '',
+                ciclo: 'Unico',
+                fechaInicioServicio: '',
+                fechaProximoPago: ''
             });
             setActiveTab('projects');
         } catch (error) {
@@ -247,7 +258,10 @@ export default function Ingresos() {
             clientEmail: project.email_cliente || '',
             clientProfession: project.profesion_cliente || '',
             deliveryDate: project.fecha_entrega ? project.fecha_entrega.split('T')[0] : '',
-            observations: project.observaciones || ''
+            observations: project.observaciones || '',
+            ciclo: project.ciclo_facturacion || 'Unico',
+            fechaInicioServicio: project.fecha_inicio_servicio ? project.fecha_inicio_servicio.split('T')[0] : '',
+            fechaProximoPago: project.fecha_proximo_pago ? project.fecha_proximo_pago.split('T')[0] : ''
         });
     };
 
@@ -275,7 +289,10 @@ export default function Ingresos() {
                 profesion_cliente: editForm.clientProfession || null,
                 monto_acordado: Math.round(parseFloat(editForm.agreedAmount || 0)),
                 fecha_entrega: editForm.deliveryDate || null,
-                observaciones: editForm.observations || null
+                observaciones: editForm.observations || null,
+                ciclo_facturacion: editForm.ciclo || 'Unico',
+                fecha_inicio_servicio: editForm.fechaInicioServicio || null,
+                fecha_proximo_pago: editForm.fechaProximoPago || null
             };
             if (tipo_proyecto_id) updates.tipo_proyecto_id = tipo_proyecto_id;
             if (estado_proyecto_id) updates.estado_proyecto_id = estado_proyecto_id;
@@ -305,6 +322,29 @@ export default function Ingresos() {
         }
     };
 
+    const MONTHS_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+    // Contadores de proyectos
+    const allProjects = projects || [];
+    const activeStatuses = ['En desarrollo', 'Aceptado', 'Cotizado', 'Lead'];
+    const countActivos = allProjects.filter(p => activeStatuses.includes(p.estado_nombre)).length;
+    const countInactivos = allProjects.filter(p => ['Cancelado', 'Entregado'].includes(p.estado_nombre)).length;
+    const countPorVencer = allProjects.filter(p => p.estado_alerta_pago === 'naranja' || p.estado_alerta_pago === 'rojo').length;
+    const countByType = allProjects.reduce((acc, p) => {
+        const tipo = p.tipo_nombre || 'Sin tipo';
+        acc[tipo] = (acc[tipo] || 0) + 1;
+        return acc;
+    }, {});
+
+    const getPaymentAlertBadge = (alerta) => {
+        switch (alerta) {
+            case 'verde':   return { label: 'Al día', cls: 'bg-[hsl(var(--emerald-premium))]/15 text-[hsl(var(--emerald-premium))] border-[hsl(var(--emerald-premium))]/30' };
+            case 'naranja': return { label: 'Por vencer', cls: 'bg-[hsl(var(--gold))]/15 text-[hsl(var(--gold))] border-[hsl(var(--gold))]/30' };
+            case 'rojo':    return { label: 'Vencido', cls: 'bg-destructive/15 text-destructive border-destructive/30' };
+            default:        return null;
+        }
+    };
+
     const filteredProjects = (projects || []).filter(p => {
         const nombre = p.nombre || '';
         const codigo = p.codigo_interno || '';
@@ -314,7 +354,20 @@ export default function Ingresos() {
             codigo.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesType = filterType === 'Todos' || tipo === filterType;
         const matchesStatus = filterStatus === 'Todos' || estado === filterStatus;
-        return matchesSearch && matchesType && matchesStatus;
+
+        let matchesMonth = true;
+        if (filterMonth !== 'Todos') {
+            const targetMonth = Number(filterMonth);
+            // Para proyectos recurrentes: filtrar por mes de fecha_proximo_pago
+            // Para otros: filtrar por mes de fecha_creacion
+            const dateRef = p.fecha_proximo_pago || p.fecha_creacion;
+            if (dateRef) {
+                const d = new Date(dateRef);
+                matchesMonth = d.getMonth() === targetMonth;
+            }
+        }
+
+        return matchesSearch && matchesType && matchesStatus && matchesMonth;
     });
 
     return (
@@ -361,7 +414,11 @@ export default function Ingresos() {
                                     value={projectForm.name} onChange={(e) => setProjectForm({ ...projectForm, name: e.target.value })} required />
                                 <div className="grid grid-cols-2 gap-4">
                                     <Select label="Tipo" value={projectForm.type}
-                                        onChange={(e) => setProjectForm({ ...projectForm, type: e.target.value })} required>
+                                        onChange={(e) => {
+                                            const selected = projectTypesData.find(t => t.nombre === e.target.value);
+                                            const precio = selected?.precio_base ? String(Math.round(selected.precio_base)) : projectForm.agreedAmount;
+                                            setProjectForm({ ...projectForm, type: e.target.value, agreedAmount: precio });
+                                        }} required>
                                         {projectTypes.map(t => <option key={t} value={t}>{t}</option>)}
                                     </Select>
                                     <Select label="Estado" value={projectForm.status}
@@ -403,6 +460,29 @@ export default function Ingresos() {
                                     </div>
                                 </div>
 
+                                <div className="pt-4 border-t border-border">
+                                    <h4 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
+                                        <Repeat size={14} /> Ciclo de Facturación
+                                    </h4>
+                                    <div className="space-y-3">
+                                        <Select label="Tipo de Ciclo" value={projectForm.ciclo}
+                                            onChange={(e) => setProjectForm({ ...projectForm, ciclo: e.target.value })}>
+                                            <option value="Unico">Pago Único</option>
+                                            <option value="Mensual">Mensual</option>
+                                            <option value="Trimestral">Trimestral</option>
+                                            <option value="Anual">Anual</option>
+                                        </Select>
+                                        {projectForm.ciclo !== 'Unico' && (<>
+                                            <Input label="Inicio del Servicio" type="date"
+                                                value={projectForm.fechaInicioServicio}
+                                                onChange={(e) => setProjectForm({ ...projectForm, fechaInicioServicio: e.target.value })} />
+                                            <Input label="Próximo Pago" type="date"
+                                                value={projectForm.fechaProximoPago}
+                                                onChange={(e) => setProjectForm({ ...projectForm, fechaProximoPago: e.target.value })} />
+                                        </>)}
+                                    </div>
+                                </div>
+
                                 <button type="submit" disabled={isLoading}
                                     className="w-full bg-[hsl(var(--emerald-premium))] text-white font-medium py-2.5 rounded-lg hover:bg-[hsl(var(--emerald-light))] transition-colors mt-4 disabled:opacity-50 disabled:cursor-not-allowed">
                                     {isLoading ? 'Creando...' : 'Crear Proyecto'}
@@ -440,6 +520,34 @@ export default function Ingresos() {
 
                 {/* List Section */}
                 <div className="lg:col-span-2 space-y-4">
+
+                    {/* Contadores resumen */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div className="bg-card border border-[hsl(var(--emerald-premium))]/30 rounded-xl p-3 text-center">
+                            <p className="text-2xl font-bold text-[hsl(var(--emerald-premium))]">{countActivos}</p>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">Activos</p>
+                        </div>
+                        <div className="bg-card border border-border rounded-xl p-3 text-center">
+                            <p className="text-2xl font-bold text-muted-foreground">{countInactivos}</p>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">Cerrados</p>
+                        </div>
+                        <div className="bg-card border border-[hsl(var(--gold))]/30 rounded-xl p-3 text-center">
+                            <p className="text-2xl font-bold text-[hsl(var(--gold))]">{countPorVencer}</p>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">Por vencer / Vencidos</p>
+                        </div>
+                        <div className="bg-card border border-border rounded-xl p-3">
+                            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Por categoría</p>
+                            <div className="space-y-0.5">
+                                {Object.entries(countByType).slice(0, 4).map(([tipo, count]) => (
+                                    <div key={tipo} className="flex justify-between text-[11px]">
+                                        <span className="text-muted-foreground truncate">{tipo}</span>
+                                        <span className="font-semibold text-foreground ml-2">{count}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
                     <div className="flex flex-col md:flex-row gap-3 mb-2">
                         <div className="relative flex-1">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
@@ -447,7 +555,7 @@ export default function Ingresos() {
                                 className="w-full pl-10 pr-4 py-2 bg-card border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                                 value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 flex-wrap">
                             <select className="bg-card border border-border rounded-lg px-3 py-2 text-sm focus:outline-none"
                                 value={filterType} onChange={(e) => setFilterType(e.target.value)}>
                                 <option value="Todos">Todos los Tipos</option>
@@ -457,6 +565,11 @@ export default function Ingresos() {
                                 value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
                                 <option value="Todos">Todos los Estados</option>
                                 {projectStatuses.map(s => <option key={s} value={s}>{s}</option>)}
+                            </select>
+                            <select className="bg-card border border-border rounded-lg px-3 py-2 text-sm focus:outline-none"
+                                value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)}>
+                                <option value="Todos">Todos los Meses</option>
+                                {MONTHS_ES.map((m, i) => <option key={i} value={i}>{m}</option>)}
                             </select>
                         </div>
                     </div>
@@ -479,10 +592,24 @@ export default function Ingresos() {
                                     <div key={project.id} className="bg-card border border-border rounded-xl p-5 hover:shadow-md transition-shadow group relative overflow-hidden">
                                         <div className="flex justify-between items-start mb-4">
                                             <div>
-                                                <div className="flex items-center gap-2 mb-1">
+                                                <div className="flex items-center gap-2 mb-1 flex-wrap">
                                                     <span className="text-[10px] bg-secondary text-muted-foreground px-1.5 py-0.5 rounded border border-border font-mono">
                                                         {project.codigo_interno || 'N/A'}
                                                     </span>
+                                                    {project.ciclo_facturacion && project.ciclo_facturacion !== 'Unico' && (
+                                                        <span className="text-[10px] flex items-center gap-1 px-1.5 py-0.5 rounded border bg-[hsl(var(--purple-premium))]/10 text-[hsl(var(--purple-premium))] border-[hsl(var(--purple-premium))]/30">
+                                                            <Repeat size={9} /> {project.ciclo_facturacion}
+                                                        </span>
+                                                    )}
+                                                    {(() => {
+                                                        const badge = getPaymentAlertBadge(project.estado_alerta_pago);
+                                                        if (!badge) return null;
+                                                        return (
+                                                            <span className={`text-[10px] px-1.5 py-0.5 rounded border font-semibold ${badge.cls}`}>
+                                                                {badge.label}
+                                                            </span>
+                                                        );
+                                                    })()}
                                                 </div>
                                                 <h4 className="font-semibold text-foreground text-base tracking-tight">{project.nombre}</h4>
                                                 <div className="flex flex-col">
@@ -500,6 +627,19 @@ export default function Ingresos() {
                                                         <span className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
                                                             <Calendar size={10} />
                                                             Entrega: {new Date(project.fecha_entrega).toLocaleDateString('es-CL')}
+                                                        </span>
+                                                    )}
+                                                    {project.fecha_proximo_pago && project.ciclo_facturacion !== 'Unico' && (
+                                                        <span className={`text-xs flex items-center gap-1 mt-0.5 font-medium ${
+                                                            project.estado_alerta_pago === 'rojo' ? 'text-destructive' :
+                                                            project.estado_alerta_pago === 'naranja' ? 'text-[hsl(var(--gold))]' :
+                                                            'text-[hsl(var(--emerald-premium))]'
+                                                        }`}>
+                                                            <Calendar size={10} />
+                                                            Próximo pago: {new Date(project.fecha_proximo_pago).toLocaleDateString('es-CL')}
+                                                            {project.dias_para_vencer !== null && project.dias_para_vencer !== undefined && (
+                                                                <span> · {project.dias_para_vencer >= 0 ? `${project.dias_para_vencer}d` : `${Math.abs(project.dias_para_vencer)}d vencido`}</span>
+                                                            )}
                                                         </span>
                                                     )}
                                                     {project.observaciones && (
@@ -648,6 +788,29 @@ export default function Ingresos() {
                                     value={editForm.deliveryDate} onChange={(e) => setEditForm({ ...editForm, deliveryDate: e.target.value })} />
                                 <Input label="Observaciones (Opcional)" placeholder="Notas del proyecto/cliente"
                                     value={editForm.observations} onChange={(e) => setEditForm({ ...editForm, observations: e.target.value })} />
+                            </div>
+                        </div>
+
+                        <div className="pt-3 border-t border-border">
+                            <h4 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
+                                <Repeat size={14} /> Ciclo de Facturación
+                            </h4>
+                            <div className="space-y-3">
+                                <Select label="Tipo de Ciclo" value={editForm.ciclo || 'Unico'}
+                                    onChange={(e) => setEditForm({ ...editForm, ciclo: e.target.value })}>
+                                    <option value="Unico">Pago Único</option>
+                                    <option value="Mensual">Mensual</option>
+                                    <option value="Trimestral">Trimestral</option>
+                                    <option value="Anual">Anual</option>
+                                </Select>
+                                {(editForm.ciclo && editForm.ciclo !== 'Unico') && (<>
+                                    <Input label="Inicio del Servicio" type="date"
+                                        value={editForm.fechaInicioServicio || ''}
+                                        onChange={(e) => setEditForm({ ...editForm, fechaInicioServicio: e.target.value })} />
+                                    <Input label="Próximo Pago" type="date"
+                                        value={editForm.fechaProximoPago || ''}
+                                        onChange={(e) => setEditForm({ ...editForm, fechaProximoPago: e.target.value })} />
+                                </>)}
                             </div>
                         </div>
 

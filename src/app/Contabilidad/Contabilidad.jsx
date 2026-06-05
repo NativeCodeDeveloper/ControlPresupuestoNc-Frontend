@@ -57,22 +57,18 @@ const MetricCard = ({ label, value, sub, colorClass, icon: Icon }) => (
     </div>
 );
 
-const CompareRow = ({ label, cashValue, accrualValue }) => {
+const CompareRow = ({ label, cashValue, accrualValue, isTotal }) => {
     const diff = (accrualValue || 0) - (cashValue || 0);
     return (
-        <div className="flex flex-col sm:flex-row sm:items-center gap-1 py-2.5 border-b border-border/30 last:border-0">
-            <span className="flex-1 text-[13px] text-muted-foreground">{label}</span>
-            <div className="flex items-center gap-3 text-[13px]">
-                <span className="w-32 text-right font-medium text-foreground">{fmt(cashValue)}</span>
-                <ArrowRight size={12} className="text-muted-foreground shrink-0" />
-                <span className="w-32 text-right font-medium text-foreground">{fmt(accrualValue)}</span>
-                {diff !== 0 && (
-                    <span className={`w-24 text-right text-[11px] ${diff > 0 ? 'text-[hsl(var(--gold))]' : 'text-rose-500'}`}>
-                        {diff > 0 ? '+' : ''}{fmt(diff)}
-                    </span>
-                )}
-            </div>
-        </div>
+        <tr className={`border-b border-border/30 last:border-0 ${isTotal ? 'font-semibold bg-secondary/20' : ''}`}>
+            <td className="py-2.5 pr-4 text-[13px] text-muted-foreground whitespace-nowrap">{label}</td>
+            <td className="py-2.5 px-3 text-[13px] text-right font-medium text-foreground tabular-nums">{fmt(cashValue)}</td>
+            <td className="py-2.5 px-2 text-center"><ArrowRight size={11} className="text-muted-foreground mx-auto" /></td>
+            <td className="py-2.5 px-3 text-[13px] text-right font-medium text-foreground tabular-nums">{fmt(accrualValue)}</td>
+            <td className={`py-2.5 pl-3 text-[12px] text-right tabular-nums ${diff > 0 ? 'text-[hsl(var(--gold))]' : diff < 0 ? 'text-rose-500' : 'text-muted-foreground'}`}>
+                {diff !== 0 ? `${diff > 0 ? '+' : ''}${fmt(diff)}` : '—'}
+            </td>
+        </tr>
     );
 };
 
@@ -255,23 +251,27 @@ export default function Contabilidad() {
                             {MESES_FULL[month]} {year} — Flujo de Caja (efectivo) → Contabilidad (devengado)
                         </p>
 
-                        {/* Headers */}
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-1 py-1.5 mb-1">
-                            <span className="flex-1 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Concepto</span>
-                            <div className="flex items-center gap-3 text-[11px] font-medium text-muted-foreground">
-                                <span className="w-32 text-right">Flujo Caja</span>
-                                <span className="w-4" />
-                                <span className="w-32 text-right">Contable</span>
-                                <span className="w-24 text-right">Diferencia</span>
-                            </div>
+                        <div className="overflow-x-auto">
+                        <table className="w-full min-w-[480px]">
+                            <thead>
+                                <tr className="border-b border-border/50">
+                                    <th className="py-2 pr-4 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Concepto</th>
+                                    <th className="py-2 px-3 text-right text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Flujo Caja</th>
+                                    <th className="py-2 px-2 w-6" />
+                                    <th className="py-2 px-3 text-right text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Contable</th>
+                                    <th className="py-2 pl-3 text-right text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Diferencia</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <CompareRow label="Ingresos" cashValue={ingresos} accrualValue={ingresos} />
+                                <CompareRow label="Costos Fijos" cashValue={costosFijosEfectivos} accrualValue={costosFijosDevengados} />
+                                <CompareRow label="Costos Variables" cashValue={costosVariables} accrualValue={costosVariables} />
+                                <CompareRow label="Resultado Operativo" cashValue={resultadoCash} accrualValue={resultadoContable} />
+                                <CompareRow label="Fondo Emergencia (15%)" cashValue={fondoEmergenciaCash} accrualValue={fondoEmergenciaContable} />
+                                <CompareRow label="Utilidad Neta / Contable" cashValue={utilidadCash} accrualValue={utilidadContable} isTotal />
+                            </tbody>
+                        </table>
                         </div>
-
-                        <CompareRow label="Ingresos" cashValue={ingresos} accrualValue={ingresos} />
-                        <CompareRow label="Costos Fijos" cashValue={costosFijosEfectivos} accrualValue={costosFijosDevengados} />
-                        <CompareRow label="Costos Variables" cashValue={costosVariables} accrualValue={costosVariables} />
-                        <CompareRow label="Resultado Operativo" cashValue={resultadoCash} accrualValue={resultadoContable} />
-                        <CompareRow label="Fondo Emergencia (15%)" cashValue={fondoEmergenciaCash} accrualValue={fondoEmergenciaContable} />
-                        <CompareRow label="Utilidad Neta / Contable" cashValue={utilidadCash} accrualValue={utilidadContable} />
                     </div>
 
                     {/* Gráfico anual: resultado cash vs contable */}

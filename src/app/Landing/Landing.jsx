@@ -17,11 +17,11 @@ export default function Landing() {
                 </header>
 
                 <section className="my-auto w-full text-center">
-                    <div className="mx-auto mb-10 flex h-20 w-20 items-center justify-center rounded-2xl border border-white/18 bg-black/50 shadow-[0_0_70px_rgba(37,99,235,0.35)] backdrop-blur-md sm:h-24 sm:w-24">
+                    <div className="mx-auto mb-10 flex h-20 w-20 items-center justify-center rounded-2xl border border-white/18 bg-transparent-100 backdrop-blur-md sm:h-24 sm:w-24">
                         <img
-                            src="/ico2.png"
+                            src="/logosoloncf.png"
                             alt="NativeCode"
-                            className="h-14 w-14 object-contain drop-shadow-[0_0_14px_rgba(255,255,255,0.2)] sm:h-16 sm:w-16"
+                            className="h-16 w-16 object-contain drop-shadow-[0_0_14px_rgba(255,255,255,0.2)] sm:h-26 sm:w-26"
                         />
                     </div>
 
@@ -48,7 +48,7 @@ export default function Landing() {
                             href="/dashboard"
                             className="inline-flex items-center gap-2 rounded-full border border-blue-200/35 bg-gradient-to-r from-blue-500/80 via-blue-600/80 to-indigo-600/80 px-8 py-3 text-sm font-semibold tracking-wide text-white shadow-[0_14px_34px_rgba(37,99,235,0.38)] transition-all duration-300 hover:scale-[1.015] hover:from-blue-400 hover:to-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300/80"
                         >
-                            Entrar al Dashboard
+                            Entrar a NC Finance
                             <ArrowRight size={16} />
                         </Link>
                     </div>

@@ -106,19 +106,41 @@ export default function Config() {
     };
 
     // === TIPOS DE PROYECTO ===
-    const handleAddProjectType = async (name) => {
-        if (!name.trim()) return;
+    const [newTypeForm, setNewTypeForm] = useState({ nombre: '', precio: '' });
+
+    const handleAddProjectType = async () => {
+        if (!newTypeForm.nombre.trim()) return;
         setIsLoading(true);
         try {
-            const result = await configService.addProjectType({ nombre: name });
+            const result = await configService.addProjectType({
+                nombre: newTypeForm.nombre,
+                precio_base: newTypeForm.precio ? Number(newTypeForm.precio) : null
+            });
             if (result && result.ok) {
                 const fresh = await configService.getProjectTypes();
                 if (fresh && Array.isArray(fresh)) setProjectTypesData(fresh);
+                setNewTypeForm({ nombre: '', precio: '' });
             }
         } catch (error) {
             console.error('Error agregando tipo proyecto:', error);
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const handleUpdateProjectTypePrice = async (type, newPrice) => {
+        const id = typeof type === 'string' ? null : type.id;
+        if (!id) return;
+        try {
+            await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/catalogos/tipos-proyecto/${id}/precio`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ precio_base: newPrice ? Number(newPrice) : null })
+            });
+            const fresh = await configService.getProjectTypes();
+            if (fresh && Array.isArray(fresh)) setProjectTypesData(fresh);
+        } catch (error) {
+            console.error('Error actualizando precio:', error);
         }
     };
 
@@ -471,43 +493,56 @@ export default function Config() {
 
                 {/* Project Categories */}
                 <Section title="Categorías de Proyectos" icon={Bell}>
+                    <p className="text-sm text-muted-foreground mb-4">
+                        El precio base se auto-completa al seleccionar la categoría al crear un proyecto.
+                    </p>
                     <div className="space-y-4">
                         <div className="flex gap-2">
                             <input
                                 type="text"
                                 placeholder="Nueva categoría..."
+                                value={newTypeForm.nombre}
                                 className="flex-1 bg-secondary/50 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                        handleAddProjectType(e.currentTarget.value);
-                                        e.currentTarget.value = '';
-                                    }
-                                }}
+                                onChange={(e) => setNewTypeForm(f => ({ ...f, nombre: e.target.value }))}
+                                onKeyDown={(e) => { if (e.key === 'Enter') handleAddProjectType(); }}
+                            />
+                            <input
+                                type="number"
+                                placeholder="Precio base"
+                                value={newTypeForm.precio}
+                                min="0"
+                                className="w-32 bg-secondary/50 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                onChange={(e) => setNewTypeForm(f => ({ ...f, precio: e.target.value }))}
+                                onKeyDown={(e) => { if (e.key === 'Enter') handleAddProjectType(); }}
                             />
                             <button
                                 disabled={isLoading}
                                 className="bg-[hsl(var(--turquoise-premium))] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[hsl(var(--turquoise-light))] transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                                onClick={(e) => {
-                                    const input = e.currentTarget.previousSibling;
-                                    if (input.value) {
-                                        handleAddProjectType(input.value);
-                                        input.value = '';
-                                    }
-                                }}
+                                onClick={handleAddProjectType}
                             >
                                 Agregar
                             </button>
                         </div>
-                        <div className="flex flex-wrap gap-2">
+                        <div className="space-y-2">
                             {(projectTypesData || []).map(type => {
                                 const name = typeof type === 'string' ? type : type.nombre;
                                 const key = typeof type === 'string' ? type : type.id;
+                                const precio = typeof type === 'object' ? type.precio_base : null;
                                 return (
-                                <div key={key} className="flex items-center gap-2 bg-secondary/50 border border-border px-3 py-1.5 rounded-full text-sm">
-                                    <span>{name}</span>
+                                <div key={key} className="flex items-center gap-2 bg-secondary/50 border border-border px-3 py-2 rounded-xl text-sm">
+                                    <span className="flex-1 font-medium">{name}</span>
+                                    <input
+                                        type="number"
+                                        defaultValue={precio || ''}
+                                        placeholder="Sin precio"
+                                        min="0"
+                                        className="w-28 text-right bg-transparent border border-border/50 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary/20"
+                                        onBlur={(e) => handleUpdateProjectTypePrice(type, e.target.value)}
+                                    />
+                                    <span className="text-[10px] text-muted-foreground">CLP</span>
                                     <button
                                         onClick={() => handleRemoveProjectType(type)}
-                                        className="text-muted-foreground hover:text-destructive transition-colors"
+                                        className="text-muted-foreground hover:text-destructive transition-colors ml-1"
                                     >
                                         &times;
                                     </button>

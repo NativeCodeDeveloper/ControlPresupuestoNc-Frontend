@@ -15,7 +15,8 @@ import {
     AlertTriangle,
     BellRing,
     Pencil,
-    X
+    X,
+    CheckCircle2
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Input, Select } from '../../components/ui/FormElements';
@@ -307,26 +308,66 @@ export default function Gastos() {
         const ref = new Date(today.getFullYear(), today.getMonth(), today.getDate());
         const start = cost.fecha_inicio ? new Date(cost.fecha_inicio) : ref;
         const step = getFrequencyStep(cost.frecuencia);
+        const payDay = cost.fecha_pago || start.getDate();
         let due;
 
-        const payDay = cost.fecha_pago || start.getDate();
-        const firstDue = buildDateInMonth(start.getFullYear(), start.getMonth(), payDay);
-        if (firstDue >= start) {
-            due = firstDue;
+        // Si existe fecha_ultimo_pago, el próximo vencimiento es un ciclo después de ese pago
+        if (cost.fecha_ultimo_pago) {
+            const base = new Date(cost.fecha_ultimo_pago);
+            due = buildDateInMonth(base.getFullYear(), base.getMonth() + step, payDay);
         } else {
-            due = buildDateInMonth(start.getFullYear(), start.getMonth() + step, payDay);
-        }
-
-        while (due < ref) {
-            due = buildDateInMonth(due.getFullYear(), due.getMonth() + step, cost.fecha_pago || start.getDate());
+            const firstDue = buildDateInMonth(start.getFullYear(), start.getMonth(), payDay);
+            if (firstDue >= start) {
+                due = firstDue;
+            } else {
+                due = buildDateInMonth(start.getFullYear(), start.getMonth() + step, payDay);
+            }
+            while (due < ref) {
+                due = buildDateInMonth(due.getFullYear(), due.getMonth() + step, payDay);
+            }
         }
 
         if (cost.fecha_fin) {
             const end = new Date(cost.fecha_fin);
             if (due > end) return null;
         }
-
         return due;
+    };
+
+    const handleRegistrarPagoFijo = async (cost) => {
+        const today = new Date().toISOString().split('T')[0];
+        const nextDue = getNextFixedDueDate(cost);
+        const nextDueStr = nextDue ? nextDue.toLocaleDateString('es-CL') : 'Sin próximo vencimiento';
+        if (!window.confirm(`¿Registrar pago de "${cost.servicio_nombre || cost.proveedor || 'Costo Fijo'}"?\n\nFecha de pago: ${today}\nPróximo recordatorio quedará en: ${nextDueStr}`)) return;
+
+        setIsLoading(true);
+        try {
+            const resp = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/costos-fijos/${cost.id}/pagar`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fecha_pago: today })
+            });
+            if (!resp.ok) throw new Error(await resp.text());
+            const [freshData, dueData] = await Promise.all([
+                costsService.getFixedCosts(),
+                financeService.getDueAlerts(10)
+            ]);
+            if (freshData) setFixedCostsData(freshData);
+            if (dueData?.items) setDueAlerts(dueData.items);
+        } catch (err) {
+            console.error('Error registrando pago:', err);
+            alert('Error al registrar el pago');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const getMonthlyProvision = (cost) => {
+        const freq = String(cost?.frecuencia || 'Mensual').toLowerCase();
+        const monto = Number(cost?.monto || 0);
+        if (freq.includes('anual')) return monto / 12;
+        if (freq.includes('trimes')) return monto / 3;
+        return null; // Mensual: no need to show provision
     };
 
     const getDueStatus = (dueDate) => {
@@ -338,7 +379,7 @@ export default function Gastos() {
         const days = Math.floor((target - today) / (1000 * 60 * 60 * 24));
 
         if (days < 0) return { label: `Vencido (${Math.abs(days)}d)`, className: 'text-red-600' };
-        if (days <= 3) return { label: `Vence en ${days}d`, className: 'text-amber-600' };
+        if (days <= 7) return { label: `Vence en ${days}d`, className: 'text-amber-600' };
         return { label: `Vence en ${days}d`, className: 'text-[hsl(var(--emerald-premium))]' };
     };
 
@@ -455,7 +496,8 @@ export default function Gastos() {
                 monto: Math.round(parseFloat(editVariableForm.amount || 0)),
                 fecha: editVariableForm.date,
                 fecha_vencimiento: editVariableForm.dueDate || null,
-                observaciones: editVariableForm.observations || null
+                observaciones: editVariableForm.observations || null,
+                concepto: editVariableForm.observations || null  // backend requiere concepto
             };
             if (typeFound && typeFound.id) updates.tipo_costo_id = typeFound.id;
 
@@ -682,56 +724,70 @@ export default function Gastos() {
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {fixedCosts.slice().reverse().map((cost) => (
-                                    <div key={cost.id} className="bg-card glass-card border border-border/50 p-5 rounded-2xl flex justify-between items-start group hover:shadow-lg transition-all duration-300">
-                                        <div>
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <span className="text-[10px] font-bold text-white bg-[hsl(var(--copper))] px-2 py-0.5 rounded-lg border border-[hsl(var(--copper))] uppercase tracking-wider">
-                                                    {cost.servicio_nombre || 'Varios'}
-                                                </span>
-                                                {(() => {
-                                                    const tone = getFrequencyTone(cost.frecuencia || 'Mensual');
-                                                    return (
-                                                        <span className={`text-[10px] flex items-center gap-1 px-2 py-0.5 rounded-lg border ${tone.badgeClass}`}>
-                                                            <Repeat size={10} /> {cost.frecuencia || 'Mensual'}
-                                                        </span>
-                                                    );
-                                                })()}
-                                            </div>
-                                            <h4 className="font-semibold text-foreground text-lg tracking-tight">{cost.servicio_nombre || cost.proveedor || 'Costo Fijo'}</h4>
-                                            {cost.proveedor && <p className="text-sm text-muted-foreground mb-1">{cost.proveedor}</p>}
-                                            {(() => {
-                                                const nextDue = getNextFixedDueDate(cost);
-                                                const status = getDueStatus(nextDue);
-                                                return (
-                                                    <p className={`text-xs mt-2 font-medium ${status.className}`}>
-                                                        {nextDue ? `Próximo vencimiento: ${nextDue.toLocaleDateString('es-CL')} · ${status.label}` : status.label}
+                                {fixedCosts.slice().reverse().map((cost) => {
+                                    const nextDue = getNextFixedDueDate(cost);
+                                    const status = getDueStatus(nextDue);
+                                    const provision = getMonthlyProvision(cost);
+                                    const tone = getFrequencyTone(cost.frecuencia || 'Mensual');
+                                    return (
+                                    <div key={cost.id} className="bg-card glass-card border border-border/50 p-5 rounded-2xl flex flex-col group hover:shadow-lg transition-all duration-300">
+                                        <div className="flex justify-between items-start">
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <span className="text-[10px] font-bold text-white bg-[hsl(var(--copper))] px-2 py-0.5 rounded-lg border border-[hsl(var(--copper))] uppercase tracking-wider">
+                                                        {cost.servicio_nombre || 'Varios'}
+                                                    </span>
+                                                    <span className={`text-[10px] flex items-center gap-1 px-2 py-0.5 rounded-lg border ${tone.badgeClass}`}>
+                                                        <Repeat size={10} /> {cost.frecuencia || 'Mensual'}
+                                                    </span>
+                                                </div>
+                                                <h4 className="font-semibold text-foreground text-lg tracking-tight">{cost.servicio_nombre || cost.proveedor || 'Costo Fijo'}</h4>
+                                                {cost.proveedor && <p className="text-sm text-muted-foreground mb-1">{cost.proveedor}</p>}
+                                                <p className={`text-xs mt-2 font-medium ${status.className}`}>
+                                                    {nextDue ? `Próximo: ${nextDue.toLocaleDateString('es-CL')} · ${status.label}` : status.label}
+                                                </p>
+                                                {provision !== null && (
+                                                    <p className="text-[11px] text-muted-foreground mt-1">
+                                                        Provisión mensual: <span className="font-semibold text-[hsl(var(--gold))]">${Math.round(provision).toLocaleString('es-CL')}</span>
                                                     </p>
-                                                );
-                                            })()}
-                                            <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1 font-medium bg-secondary/30 w-fit px-2 py-1 rounded">
-                                                <Calendar size={12} /> {cost.fecha_inicio ? new Date(cost.fecha_inicio).toLocaleDateString('es-CL') : `Día ${cost.fecha_pago}`}
-                                            </p>
-                                        </div>
-                                        <div className="flex flex-col items-end gap-2">
-                                            <span className="font-bold text-[hsl(var(--copper))] text-lg">
-                                                -{Math.round(parseFloat(cost.monto || 0)).toLocaleString('es-CL')}
-                                            </span>
-                                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                                                <button onClick={() => handleEditFixedOpen(cost)}
-                                                    className="text-muted-foreground hover:text-primary p-2 bg-secondary/50 rounded-lg hover:bg-primary/10"
-                                                    title="Editar Gasto">
-                                                    <Pencil size={14} />
-                                                </button>
-                                                <button onClick={() => handleDeleteFixed(cost.id)}
-                                                    className="text-muted-foreground hover:text-destructive p-2 bg-secondary/50 rounded-lg hover:bg-destructive/10"
-                                                    title="Eliminar Gasto">
-                                                    <Trash2 size={16} />
-                                                </button>
+                                                )}
+                                                {cost.fecha_ultimo_pago && (
+                                                    <p className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1">
+                                                        <CheckCircle2 size={11} className="text-[hsl(var(--emerald-premium))]" />
+                                                        Último pago: {new Date(cost.fecha_ultimo_pago).toLocaleDateString('es-CL')}
+                                                    </p>
+                                                )}
+                                                <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1 font-medium bg-secondary/30 w-fit px-2 py-1 rounded">
+                                                    <Calendar size={12} /> {cost.fecha_inicio ? new Date(cost.fecha_inicio).toLocaleDateString('es-CL') : `Día ${cost.fecha_pago}`}
+                                                </p>
+                                            </div>
+                                            <div className="flex flex-col items-end gap-2 ml-3">
+                                                <span className="font-bold text-[hsl(var(--copper))] text-lg">
+                                                    -{Math.round(parseFloat(cost.monto || 0)).toLocaleString('es-CL')}
+                                                </span>
+                                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                                    <button onClick={() => handleEditFixedOpen(cost)}
+                                                        className="text-muted-foreground hover:text-primary p-2 bg-secondary/50 rounded-lg hover:bg-primary/10"
+                                                        title="Editar Gasto">
+                                                        <Pencil size={14} />
+                                                    </button>
+                                                    <button onClick={() => handleDeleteFixed(cost.id)}
+                                                        className="text-muted-foreground hover:text-destructive p-2 bg-secondary/50 rounded-lg hover:bg-destructive/10"
+                                                        title="Eliminar Gasto">
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
+                                        <button
+                                            onClick={() => handleRegistrarPagoFijo(cost)}
+                                            disabled={isLoading}
+                                            className="mt-3 w-full flex items-center justify-center gap-2 text-xs font-medium py-2 rounded-lg border border-[hsl(var(--emerald-premium))]/40 text-[hsl(var(--emerald-premium))] bg-[hsl(var(--emerald-premium))]/5 hover:bg-[hsl(var(--emerald-premium))]/15 transition-colors disabled:opacity-40">
+                                            <CheckCircle2 size={13} /> Registrar Pago
+                                        </button>
                                     </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         )
                     ) : (

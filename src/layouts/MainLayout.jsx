@@ -62,18 +62,17 @@ export default function MainLayout({ children }) {
             >
                 <div className="flex flex-col h-full px-4 py-6">
                     {/* Logo */}
-                    <div className="flex items-center gap-3 px-3 mb-10">
+                    <div className="flex items-center justify-center px-3 mb-10">
                         <img
-                            src="/ico2.png"
+                            src="/ncflogo.png"
                             alt="NativeCode"
-                            className="h-9 w-9 rounded-lg object-contain"
+                            className="h-40 w-40 rounded-lg object-contain hidden dark:block"
                         />
-                        <div>
-                            <h1 className="font-bold text-sm tracking-tight text-foreground">
-                                NATIVECODE
-                            </h1>
-                            <p className="text-[10px] text-center text-muted-foreground tracking-widest uppercase">Finance</p>
-                        </div>
+                        <img
+                            src="/ncfnegro.png"
+                            alt="NativeCode"
+                            className="h-40 w-40 rounded-lg object-contain block dark:hidden"
+                        />
                         <ThemeTogglerButton
                             variant="ghost"
                             size="icon"
@@ -144,9 +143,7 @@ export default function MainLayout({ children }) {
                     {/* Footer */}
                     <div className="pt-4 border-t border-border/30">
                         <div className="flex items-center gap-3 px-3 py-2">
-                            <div className="h-7 w-7 rounded-full bg-foreground/10 flex items-center justify-center text-[11px] font-semibold text-foreground shrink-0">
-                                NC
-                            </div>
+                            <img src="/logosoloncf.png" alt="NativeCode" className="h-10 w-10 object-contain shrink-0" />
                             <div className="flex-1 min-w-0">
                                 <p className="text-[10px] leading-tight font-medium text-foreground">
                                     © 2026 NativeCode.<br />
