@@ -312,23 +312,44 @@ export default function Ingresos() {
         }
     };
 
-    const getStatusColor = (status) => {
-        switch (status) {
-            case 'Entregado': return 'bg-[hsl(var(--emerald-premium))]/10 text-[hsl(var(--emerald-premium))] border-[hsl(var(--emerald-premium))]/20';
-            case 'En desarrollo': return 'bg-[hsl(var(--turquoise-premium))]/10 text-[hsl(var(--turquoise-premium))] border-[hsl(var(--turquoise-premium))]/20';
-            case 'Aceptado': return 'bg-[hsl(var(--purple-premium))]/10 text-[hsl(var(--purple-premium))] border-[hsl(var(--purple-premium))]/20';
-            case 'Cancelado': return 'bg-[hsl(var(--copper))]/10 text-[hsl(var(--copper))] border-[hsl(var(--copper))]/20';
-            default: return 'bg-secondary text-muted-foreground border-border';
+    const getStatusBadgeProps = (status, colorHex) => {
+        const base = "text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border cursor-pointer whitespace-nowrap";
+        if (colorHex) {
+            return {
+                className: base,
+                style: { backgroundColor: colorHex + '1A', color: colorHex, borderColor: colorHex + '33' }
+            };
         }
+        const colorCls = (() => {
+            switch (status) {
+                case 'Entregado':     return 'bg-[hsl(var(--emerald-premium))]/10 text-[hsl(var(--emerald-premium))] border-[hsl(var(--emerald-premium))]/20';
+                case 'En desarrollo': return 'bg-[hsl(var(--turquoise-premium))]/10 text-[hsl(var(--turquoise-premium))] border-[hsl(var(--turquoise-premium))]/20';
+                case 'Aceptado':      return 'bg-[hsl(var(--purple-premium))]/10 text-[hsl(var(--purple-premium))] border-[hsl(var(--purple-premium))]/20';
+                case 'Cancelado':     return 'bg-[hsl(var(--copper))]/10 text-[hsl(var(--copper))] border-[hsl(var(--copper))]/20';
+                default:              return 'bg-secondary text-muted-foreground border-border';
+            }
+        })();
+        return { className: cn(base, colorCls), style: {} };
     };
 
     const MONTHS_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
+    // Evita el desfase de timezone al mostrar fechas almacenadas como DATE (sin hora).
+    // new Date("2025-06-20") es medianoche UTC; en Chile (UTC-4) toLocaleDateString
+    // lo convertiría al 19 de junio. Parsear los componentes directamente evita eso.
+    const fmtDate = (dateStr) => {
+        if (!dateStr) return '';
+        const s = typeof dateStr === 'string' ? dateStr : dateStr.toISOString();
+        const [y, m, d] = s.slice(0, 10).split('-');
+        return `${d}/${m}/${y}`;
+    };
+
     // Contadores de proyectos
     const allProjects = projects || [];
-    const activeStatuses = ['En desarrollo', 'Aceptado', 'Cotizado', 'Lead'];
+    const activeStatuses = ['En desarrollo', 'Aceptado', 'Cotizado', 'Lead', 'Activo'];
+    const closedStatuses = ['Cancelado', 'Entregado', 'Desactivado por no pago'];
     const countActivos = allProjects.filter(p => activeStatuses.includes(p.estado_nombre)).length;
-    const countInactivos = allProjects.filter(p => ['Cancelado', 'Entregado'].includes(p.estado_nombre)).length;
+    const countInactivos = allProjects.filter(p => closedStatuses.includes(p.estado_nombre)).length;
     const countPorVencer = allProjects.filter(p => p.estado_alerta_pago === 'naranja' || p.estado_alerta_pago === 'rojo').length;
     const countByType = allProjects.reduce((acc, p) => {
         const tipo = p.tipo_nombre || 'Sin tipo';
@@ -358,12 +379,10 @@ export default function Ingresos() {
         let matchesMonth = true;
         if (filterMonth !== 'Todos') {
             const targetMonth = Number(filterMonth);
-            // Para proyectos recurrentes: filtrar por mes de fecha_proximo_pago
-            // Para otros: filtrar por mes de fecha_creacion
-            const dateRef = p.fecha_proximo_pago || p.fecha_creacion;
+            const dateRef = p.fecha_creacion;
             if (dateRef) {
                 const d = new Date(dateRef);
-                matchesMonth = d.getMonth() === targetMonth;
+                matchesMonth = d.getUTCMonth() === targetMonth;
             }
         }
 
@@ -626,7 +645,7 @@ export default function Ingresos() {
                                                     {project.fecha_entrega && (
                                                         <span className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
                                                             <Calendar size={10} />
-                                                            Entrega: {new Date(project.fecha_entrega).toLocaleDateString('es-CL')}
+                                                            Entrega: {fmtDate(project.fecha_entrega)}
                                                         </span>
                                                     )}
                                                     {project.fecha_proximo_pago && project.ciclo_facturacion !== 'Unico' && (
@@ -636,7 +655,7 @@ export default function Ingresos() {
                                                             'text-[hsl(var(--emerald-premium))]'
                                                         }`}>
                                                             <Calendar size={10} />
-                                                            Próximo pago: {new Date(project.fecha_proximo_pago).toLocaleDateString('es-CL')}
+                                                            Próximo pago: {fmtDate(project.fecha_proximo_pago)}
                                                             {project.dias_para_vencer !== null && project.dias_para_vencer !== undefined && (
                                                                 <span> · {project.dias_para_vencer >= 0 ? `${project.dias_para_vencer}d` : `${Math.abs(project.dias_para_vencer)}d vencido`}</span>
                                                             )}
@@ -651,9 +670,10 @@ export default function Ingresos() {
                                             </div>
                                             <div className="flex flex-col items-end gap-2">
                                                 <div className="relative group/status">
-                                                    <span className={cn("text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border cursor-pointer whitespace-nowrap", getStatusColor(project.estado_nombre))}>
-                                                        {project.estado_nombre}
-                                                    </span>
+                                                    {(() => {
+                                                        const bp = getStatusBadgeProps(project.estado_nombre, project.estado_color);
+                                                        return <span className={bp.className} style={bp.style}>{project.estado_nombre || '—'}</span>;
+                                                    })()}
                                                     <select className="absolute inset-0 opacity-0 cursor-pointer"
                                                         value={project.estado_nombre}
                                                         onChange={(e) => handleStatusChange(project.id, e.target.value)}>
@@ -707,7 +727,7 @@ export default function Ingresos() {
                                                                 <div className="flex-1 min-w-0">
                                                                     <p className="text-xs font-medium text-foreground truncate">{payment.concepto || 'Pago'}</p>
                                                                     <p className="text-[10px] text-muted-foreground mt-0.5">
-                                                                        {payment.fecha_pago ? new Date(payment.fecha_pago).toLocaleDateString('es-CL') : 'Sin fecha'}
+                                                                        {payment.fecha_pago ? fmtDate(payment.fecha_pago) : 'Sin fecha'}
                                                                     </p>
                                                                 </div>
                                                                 <span className="text-sm font-bold text-[hsl(var(--emerald-premium))] ml-2">

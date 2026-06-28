@@ -129,9 +129,12 @@ export default function Contabilidad() {
     const utilidadCash = Number(summary?.netProfit || 0);
 
     // Base accrual (devengado)
+    const emergencyPct = Number(summary?.config?.porcentaje_fondo_emergencia || 0);
+    const reinvestPct = Number(summary?.config?.porcentaje_reinversion || 0);
+    const totalDeduccionPct = emergencyPct + reinvestPct;
     const resultadoContable = Number(summary?.resultadoContable ?? (ingresos - costosFijosDevengados - costosVariables));
-    const fondoEmergenciaContable = resultadoContable > 0 ? Math.round(resultadoContable * 0.15) : 0;
-    const utilidadContable = Number(summary?.utilidadContable ?? Math.max(0, resultadoContable - fondoEmergenciaContable));
+    const utilidadContable = Number(summary?.utilidadContable ?? resultadoContable);
+    const fondoEmergenciaContable = resultadoContable - utilidadContable;
 
     // Gráfico anual: resultado cash vs resultado contable por mes
     const chartData = (flujoCaja?.meses || []).map((m) => {
@@ -236,7 +239,7 @@ export default function Contabilidad() {
                                 label="Utilidad Contable"
                                 value={utilidadContable}
                                 colorClass={utilidadContable >= 0 ? 'bg-[hsl(var(--corporate-blue))]/15 text-[hsl(var(--corporate-blue))]' : 'bg-rose-500/15 text-rose-500'}
-                                sub={`Fondo emerg. devengado: ${fmt(fondoEmergenciaContable)}`}
+                                sub={totalDeduccionPct > 0 ? `Fondos devengados: ${fmt(fondoEmergenciaContable)}` : 'Sin deducciones configuradas'}
                             />
                         </div>
                     </div>
@@ -267,7 +270,7 @@ export default function Contabilidad() {
                                 <CompareRow label="Costos Fijos" cashValue={costosFijosEfectivos} accrualValue={costosFijosDevengados} />
                                 <CompareRow label="Costos Variables" cashValue={costosVariables} accrualValue={costosVariables} />
                                 <CompareRow label="Resultado Operativo" cashValue={resultadoCash} accrualValue={resultadoContable} />
-                                <CompareRow label="Fondo Emergencia (15%)" cashValue={fondoEmergenciaCash} accrualValue={fondoEmergenciaContable} />
+                                <CompareRow label={`Fondos (${totalDeduccionPct}%)`} cashValue={fondoEmergenciaCash} accrualValue={fondoEmergenciaContable} />
                                 <CompareRow label="Utilidad Neta / Contable" cashValue={utilidadCash} accrualValue={utilidadContable} isTotal />
                             </tbody>
                         </table>
