@@ -194,12 +194,6 @@ export const updateProjectStatus = async (id, newStatus) => {
  */
 export const deleteProject = async (id) => {
     try {
-        const confirmDelete = window.confirm(
-            '¿Estás seguro? El proyecto se desactivará y no aparecerá en listados.'
-        );
-        
-        if (!confirmDelete) return false;
-        
         const result = await apiClient.delete(`/api/proyectos/${id}`);
         return result?.ok || result?.success || false;
     } catch (error) {

@@ -15,7 +15,7 @@
  * GET    /api/reportes/socios                  - Distribución de socios
  */
 
-import apiClient from './apiClient';
+import apiClient, { fetchWithAuth } from './apiClient';
 const EXTERNAL_API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 // ========================================
@@ -150,9 +150,8 @@ export const getReportStats = async () => {
  */
 export const getMonthlyStats = async (month, year) => {
     try {
-        const data = await apiClient.get(
-            `/api/reportes/mensual?mes=${month}&año=${year}`
-        );
+        const params = new URLSearchParams({ mes: month, anio: year });
+        const data = await apiClient.get(`/api/reportes/mensual?${params}`);
         return data || null;
     } catch (error) {
         console.error(`Error obteniendo reporte mensual ${month}/${year}:`, error);
@@ -191,7 +190,8 @@ export const getMonthlyStats = async (month, year) => {
  */
 export const getYearlyStats = async (year) => {
     try {
-        const data = await apiClient.get(`/api/reportes/anual?año=${year}`);
+        const params = new URLSearchParams({ anio: year });
+        const data = await apiClient.get(`/api/reportes/anual?${params}`);
         return data || null;
     } catch (error) {
         console.error(`Error obteniendo reporte anual ${year}:`, error);
@@ -321,22 +321,18 @@ export const getCostsReport = async () => {
 export const exportReportToPDF = async (reportType, params) => {
     try {
         const queryParams = new URLSearchParams({ tipo: reportType, ...params });
-        const response = await fetch(
-            `${EXTERNAL_API_URL}/api/reportes/export/pdf?${queryParams}`,
-            { method: 'GET' }
-        );
-        
+        const response = await fetchWithAuth(`/api/reportes/export/pdf?${queryParams}`, { method: 'GET' });
         if (!response.ok) throw new Error('Error exportando PDF');
         return await response.blob();
     } catch (error) {
-        console.error('Error exportando reportes:', error);
+        console.error('Error exportando reportes PDF:', error);
         return null;
     }
 };
 
 /**
  * exportReportToCSV - Exportar reporte a CSV
- * 
+ *
  * @param {string} reportType - Tipo: 'mensual' | 'anual' | 'socios' | 'proyectos'
  * @param {Object} params - Parámetros
  * @returns {Promise<Blob>} - Archivo CSV
@@ -344,15 +340,11 @@ export const exportReportToPDF = async (reportType, params) => {
 export const exportReportToCSV = async (reportType, params) => {
     try {
         const queryParams = new URLSearchParams({ tipo: reportType, ...params });
-        const response = await fetch(
-            `${EXTERNAL_API_URL}/api/reportes/export/csv?${queryParams}`,
-            { method: 'GET' }
-        );
-        
+        const response = await fetchWithAuth(`/api/reportes/export/csv?${queryParams}`, { method: 'GET' });
         if (!response.ok) throw new Error('Error exportando CSV');
         return await response.blob();
     } catch (error) {
-        console.error('Error exportando reportes:', error);
+        console.error('Error exportando reportes CSV:', error);
         return null;
     }
 };

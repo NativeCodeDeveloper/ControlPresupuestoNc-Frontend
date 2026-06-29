@@ -41,14 +41,21 @@
  */
 
 // ========================================
-// CONFIGURACIÓN (cambiar para backend)
+// CONFIGURACIÓN
 // ========================================
 
-// Conectar a backend local (lee de .env o usa default)
-const API_URL = '';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
-// Token de autenticación (FUTURO: obtener del login)
-let authToken = null;
+// Función inyectada por el provider de Clerk para obtener el token fresco
+let tokenGetter = null;
+
+/** Registrar la función que retorna el JWT de Clerk (llamar desde el provider) */
+export const setTokenGetter = (fn) => { tokenGetter = fn; };
+
+const getToken = async () => {
+    if (tokenGetter) return await tokenGetter();
+    return null;
+};
 
 const buildApiError = async (response) => {
     let data = null;
@@ -70,30 +77,6 @@ const buildApiError = async (response) => {
     return error;
 };
 
-/**
- * setAuthToken - Guardar token de autenticación
- * 
- * FUTURO: Cuando tengas login, guarda el token aquí
- * 
- * @param {string} token - JWT o token de sesión
- */
-export const setAuthToken = (token) => {
-    authToken = token;
-    if (token) {
-        localStorage.setItem('authToken', token);
-    } else {
-        localStorage.removeItem('authToken');
-    }
-};
-
-/**
- * getAuthToken - Obtener token guardado
- * 
- * @returns {string|null} - Token si existe
- */
-export const getAuthToken = () => {
-    return authToken || localStorage.getItem('authToken');
-};
 
 // ========================================
 // CLIENTE HTTP (CONECTADO A BACKEND REAL)
@@ -111,129 +94,102 @@ export const getAuthToken = () => {
  * 
  * AHORA: Llamadas reales a backend
  */
+const buildHeaders = async () => {
+    const token = await getToken();
+    return {
+        'Content-Type': 'application/json',
+        ...(token && { 'Authorization': `Bearer ${token}` }),
+    };
+};
+
+/**
+ * fetchWithAuth - Fetch con Authorization adjunto, devuelve Response cruda.
+ * Usar para endpoints que retornan Blob (PDF, CSV, JSON descargable) o FormData.
+ * @param {string} endpoint
+ * @param {RequestInit} options
+ */
+export const fetchWithAuth = async (endpoint, options = {}) => {
+    const token = await getToken();
+    const authHeader = token ? { 'Authorization': `Bearer ${token}` } : {};
+    return fetch(`${API_URL}${endpoint}`, {
+        ...options,
+        headers: { ...authHeader, ...(options.headers || {}) },
+    });
+};
+
 const apiClient = {
-    /**
-     * GET - Obtener datos
-     */
     get: async (endpoint) => {
         try {
-            console.log(`[API] GET ${API_URL}${endpoint}`);
             const response = await fetch(`${API_URL}${endpoint}`, {
                 method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(authToken && { 'Authorization': `Bearer ${authToken}` })
-                }
+                headers: await buildHeaders(),
             });
-
             if (!response.ok) throw await buildApiError(response);
-
-            const data = await response.json();
-            return data;
+            return await response.json();
         } catch (error) {
-            console.error(`[API ERROR] GET ${endpoint}:`, error);
+            console.error(`[API ERROR] GET ${endpoint}:`, error.message);
             throw error;
         }
     },
 
-    /**
-     * POST - Crear nuevo recurso
-     */
     post: async (endpoint, data) => {
         try {
-            console.log(`[API] POST ${API_URL}${endpoint}`, data);
             const response = await fetch(`${API_URL}${endpoint}`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(authToken && { 'Authorization': `Bearer ${authToken}` })
-                },
-                body: JSON.stringify(data)
+                headers: await buildHeaders(),
+                body: JSON.stringify(data),
             });
-
             if (!response.ok) throw await buildApiError(response);
-
-            const result = await response.json();
-            return result;
+            return await response.json();
         } catch (error) {
-            console.error(`[API ERROR] POST ${endpoint}:`, error);
+            console.error(`[API ERROR] POST ${endpoint}:`, error.message);
             throw error;
         }
     },
 
-    /**
-     * PUT - Actualizar recurso
-     */
     put: async (endpoint, data) => {
         try {
-            console.log(`[API] PUT ${API_URL}${endpoint}`, data);
             const response = await fetch(`${API_URL}${endpoint}`, {
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(authToken && { 'Authorization': `Bearer ${authToken}` })
-                },
-                body: JSON.stringify(data)
+                headers: await buildHeaders(),
+                body: JSON.stringify(data),
             });
-
             if (!response.ok) throw await buildApiError(response);
-
-            const result = await response.json();
-            return result;
+            return await response.json();
         } catch (error) {
-            console.error(`[API ERROR] PUT ${endpoint}:`, error);
+            console.error(`[API ERROR] PUT ${endpoint}:`, error.message);
             throw error;
         }
     },
 
-    /**
-     * PATCH - Actualización parcial
-     */
     patch: async (endpoint, data) => {
         try {
-            console.log(`[API] PATCH ${API_URL}${endpoint}`, data);
             const response = await fetch(`${API_URL}${endpoint}`, {
                 method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(authToken && { 'Authorization': `Bearer ${authToken}` })
-                },
-                body: JSON.stringify(data)
+                headers: await buildHeaders(),
+                body: JSON.stringify(data),
             });
-
             if (!response.ok) throw await buildApiError(response);
-
-            const result = await response.json();
-            return result;
+            return await response.json();
         } catch (error) {
-            console.error(`[API ERROR] PATCH ${endpoint}:`, error);
+            console.error(`[API ERROR] PATCH ${endpoint}:`, error.message);
             throw error;
         }
     },
 
-    /**
-     * DELETE - Eliminar recurso
-     */
     delete: async (endpoint) => {
         try {
-            console.log(`[API] DELETE ${API_URL}${endpoint}`);
             const response = await fetch(`${API_URL}${endpoint}`, {
                 method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(authToken && { 'Authorization': `Bearer ${authToken}` })
-                }
+                headers: await buildHeaders(),
             });
-
             if (!response.ok) throw await buildApiError(response);
-
-            const result = await response.json();
-            return result;
+            return await response.json();
         } catch (error) {
-            console.error(`[API ERROR] DELETE ${endpoint}:`, error);
+            console.error(`[API ERROR] DELETE ${endpoint}:`, error.message);
             throw error;
         }
-    }
+    },
 };
 
 export default apiClient;
@@ -248,16 +204,12 @@ export default apiClient;
  * FUTURO: Cuando tengas errores del backend, úsalo aquí
  */
 export const handleApiError = (error) => {
-    if (error.response) {
-        // Error del servidor (4xx, 5xx)
-        console.error('Error del servidor:', error.response.status, error.response.data);
-        throw new Error(error.response.data.message || 'Error del servidor');
-    } else if (error.request) {
-        // Error sin respuesta (red desconectada)
-        console.error('Error de conexión:', error.request);
+    if (error.status) {
+        console.error('Error del servidor:', error.status, error.message);
+        throw new Error(error.data?.message || error.message || 'Error del servidor');
+    } else if (error instanceof TypeError && error.message === 'Failed to fetch') {
         throw new Error('Error de conexión. Verifica tu internet.');
     } else {
-        // Error desconocido
         console.error('Error desconocido:', error.message);
         throw error;
     }

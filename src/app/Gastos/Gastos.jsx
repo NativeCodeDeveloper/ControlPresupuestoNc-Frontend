@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import * as costsService from '../../services/costsService';
 import * as projectsService from '../../services/projectsService';
 import * as financeService from '../../services/financeService';
+import apiClient from '../../services/apiClient';
 import {
     Server,
     Users,
@@ -342,12 +343,7 @@ export default function Gastos() {
 
         setIsLoading(true);
         try {
-            const resp = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/costos-fijos/${cost.id}/pagar`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ fecha_pago: today })
-            });
-            if (!resp.ok) throw new Error(await resp.text());
+            await apiClient.patch(`/api/costos-fijos/${cost.id}/pagar`, { fecha_pago: today });
             const [freshData, dueData] = await Promise.all([
                 costsService.getFixedCosts(),
                 financeService.getDueAlerts(10)

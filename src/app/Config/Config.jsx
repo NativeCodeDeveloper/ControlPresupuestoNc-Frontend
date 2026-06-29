@@ -4,6 +4,7 @@ import { createElement, useState, useEffect } from 'react';
 import * as configService from '../../services/configService';
 import * as partnersService from '../../services/partnersService';
 import * as costsService from '../../services/costsService';
+import apiClient from '../../services/apiClient';
 import {
     Settings,
     Shield,
@@ -35,6 +36,7 @@ export default function Config() {
     // Estados para datos del backend
     const [isLoading, setIsLoading] = useState(false);
     const [isSavingFinancialConfig, setIsSavingFinancialConfig] = useState(false);
+    const [financialConfigError, setFinancialConfigError] = useState(null);
     const [projectTypesData, setProjectTypesData] = useState([]);
     const [projectStatusesData, setProjectStatusesData] = useState([]);
     const [servicesData, setServicesData] = useState([]);
@@ -90,11 +92,20 @@ export default function Config() {
 
     const handleFinancialConfigSave = async () => {
         if (isSavingFinancialConfig) return;
+        setFinancialConfigError(null);
+
+        const emergency = parseFloat(financialConfig.emergencyFundPercentage || 0);
+        const reinversion = parseFloat(financialConfig.reinvestmentPercentage || 0);
+        if (emergency + reinversion > 100) {
+            setFinancialConfigError('La suma de ambos fondos no puede superar el 100%');
+            return;
+        }
+
         setIsSavingFinancialConfig(true);
         try {
             const result = await configService.updateFinancialConfig({
-                porcentaje_fondo_emergencia: parseFloat(financialConfig.emergencyFundPercentage || 0),
-                porcentaje_reinversion: parseFloat(financialConfig.reinvestmentPercentage || 0)
+                porcentaje_fondo_emergencia: emergency,
+                porcentaje_reinversion: reinversion
             });
 
             if (result?.ok && result?.data) {
@@ -114,6 +125,7 @@ export default function Config() {
             }
         } catch (error) {
             console.error('Error guardando config financiera:', error);
+            setFinancialConfigError('Error al guardar la configuración. Intenta nuevamente.');
         } finally {
             setIsSavingFinancialConfig(false);
         }
@@ -146,10 +158,8 @@ export default function Config() {
         const id = typeof type === 'string' ? null : type.id;
         if (!id) return;
         try {
-            await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/catalogos/tipos-proyecto/${id}/precio`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ precio_base: newPrice ? Number(newPrice) : null })
+            await apiClient.patch(`/api/catalogos/tipos-proyecto/${id}/precio`, {
+                precio_base: newPrice ? Number(newPrice) : null
             });
             const fresh = await configService.getProjectTypes();
             if (fresh && Array.isArray(fresh)) setProjectTypesData(fresh);
@@ -295,10 +305,10 @@ export default function Config() {
     };
 
     const handleRemovePartner = async (partner) => {
-        const deleted = await partnersService.deletePartner(partner.id);
-        if (!deleted) return;
         setIsLoading(true);
         try {
+            const deleted = await partnersService.deletePartner(partner.id);
+            if (!deleted) return;
             const fresh = await partnersService.getPartners();
             if (fresh && Array.isArray(fresh)) setPartnersData(fresh.map(normalizePartner));
         } catch (error) {
@@ -374,6 +384,9 @@ export default function Config() {
                             <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium">Crecimiento / Marketing</p>
                         </div>
                     </div>
+                    {financialConfigError && (
+                        <p className="mt-3 text-sm text-rose-500">{financialConfigError}</p>
+                    )}
                     <div className="mt-5 flex justify-end">
                         <button
                             type="button"

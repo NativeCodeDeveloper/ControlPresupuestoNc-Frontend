@@ -33,16 +33,7 @@
 // API CLIENT - HTTP ABSTRACTION LAYER
 // ============================================
 
-export {
-    get,
-    post,
-    put,
-    patch,
-    delete as deleteRequest,
-    setAuthToken,
-    getAuthToken,
-    handleApiError
-} from './apiClient';
+export { default as apiClient, setTokenGetter, handleApiError } from './apiClient';
 
 // ============================================
 // PROJECTS SERVICE

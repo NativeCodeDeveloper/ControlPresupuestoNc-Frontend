@@ -27,7 +27,7 @@
  * POST   /api/admin/reset-data        - Limpiar todo (¡CUIDADO!)
  */
 
-import apiClient from './apiClient';
+import apiClient, { fetchWithAuth } from './apiClient';
 
 const isNotFoundDelete = (error) => Number(error?.status) === 404;
 const EXTERNAL_API_URL = process.env.NEXT_PUBLIC_API_URL || '';
@@ -422,11 +422,7 @@ export const resetAllData = async () => {
  */
 export const exportAllData = async () => {
     try {
-        const response = await fetch(
-            `${EXTERNAL_API_URL}/api/admin/export`,
-            { method: 'GET' }
-        );
-        
+        const response = await fetchWithAuth('/api/admin/export', { method: 'GET' });
         if (!response.ok) throw new Error('Error exportando datos');
         return await response.blob();
     } catch (error) {
@@ -437,7 +433,7 @@ export const exportAllData = async () => {
 
 /**
  * importData - Importar datos desde JSON
- * 
+ *
  * @param {File} jsonFile - Archivo JSON generado por exportAllData()
  * @returns {Promise<boolean>} - true si se importó correctamente
  */
@@ -445,15 +441,8 @@ export const importData = async (jsonFile) => {
     try {
         const formData = new FormData();
         formData.append('file', jsonFile);
-        
-        const response = await fetch(
-            `${EXTERNAL_API_URL}/api/admin/import`,
-            {
-                method: 'POST',
-                body: formData
-            }
-        );
-        
+        // No incluir Content-Type: el browser lo setea con el boundary correcto para FormData
+        const response = await fetchWithAuth('/api/admin/import', { method: 'POST', body: formData });
         if (!response.ok) throw new Error('Error importando datos');
         return true;
     } catch (error) {

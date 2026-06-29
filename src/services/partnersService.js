@@ -156,12 +156,6 @@ export const updatePartnerPercentage = async (id, newPercentage) => {
  */
 export const deletePartner = async (id) => {
     try {
-        const confirmDelete = window.confirm(
-            '¿Estás seguro? El socio se desactivará y dejará de verse en el sistema.'
-        );
-        
-        if (!confirmDelete) return false;
-        
         const result = await apiClient.delete(`/api/socios/${id}`);
         return result?.ok || result?.success || false;
     } catch (error) {

@@ -37,11 +37,12 @@ export default function Socios() {
         date: new Date().toISOString().split('T')[0]
     });
 
-    const loadAllData = async (month, year) => {
+    const loadAllData = async (month, year, cancelled = false) => {
         const [partners, summary] = await Promise.all([
             partnersService.getPartners({ all: true }),
             financeService.getFinancialSummary(month, year)
         ]);
+        if (cancelled) return;
 
         const summaryAvailability = Array.isArray(summary?.partnersAvailability)
             ? summary.partnersAvailability.map((item) => ({
@@ -112,14 +113,16 @@ export default function Socios() {
     };
 
     useEffect(() => {
+        let cancelled = false;
         const loadData = async () => {
             try {
-                await loadAllData(parseInt(selectedMonth, 10), parseInt(selectedYear, 10));
+                await loadAllData(parseInt(selectedMonth, 10), parseInt(selectedYear, 10), cancelled);
             } catch (error) {
-                console.error('Error cargando datos de socios:', error);
+                if (!cancelled) console.error('Error cargando datos de socios:', error);
             }
         };
         loadData();
+        return () => { cancelled = true; };
     }, [selectedMonth, selectedYear]);
 
     const months = [
