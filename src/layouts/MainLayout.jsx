@@ -58,12 +58,12 @@ export default function MainLayout({ children }) {
             {/* Sidebar */}
             <aside
                 className={cn(
-                    "fixed lg:static inset-y-0 left-0 z-50 bg-background border-r border-border/50 transition-transform duration-300 ease-in-out lg:translate-x-0 hidden lg:flex flex-col",
+                    "fixed inset-y-0 left-0 z-50 bg-background border-r border-border/50 transition-transform duration-300 ease-in-out lg:translate-x-0 hidden lg:flex flex-col",
                     isSidebarOpen ? "translate-x-0 flex!" : "-translate-x-full"
                 )}
                 style={{ width: '256px' }}
             >
-                <div className="flex flex-col h-full px-4 py-6">
+                <div className="flex flex-col h-screen px-4 py-6 overflow-hidden">
                     {/* Logo */}
                     <div className="flex items-center justify-center px-3 mb-10">
                         <img
@@ -86,7 +86,7 @@ export default function MainLayout({ children }) {
                     </div>
 
                     {/* Navigation */}
-                    <nav className="flex-1 space-y-0.5">
+                    <nav className="flex-1 min-h-0 space-y-0.5 overflow-y-auto">
                         {menuItems.map((item) => {
                             const isActive = pathname === item.path;
                             return (
@@ -169,7 +169,7 @@ export default function MainLayout({ children }) {
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 flex flex-col min-w-0">
+            <main className="flex-1 flex flex-col min-w-0 lg:ml-[256px]">
                 {/* Mobile Header */}
                 <header className="h-12 flex items-center justify-between px-4 border-b border-border/50 bg-background sticky top-0 z-30 lg:hidden">
                     <button
