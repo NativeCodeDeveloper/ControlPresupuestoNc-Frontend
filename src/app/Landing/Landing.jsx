@@ -1,5 +1,6 @@
 import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
+import { SignInButton, SignedIn, SignedOut, UserButton } from '@clerk/nextjs';
 
 export default function Landing() {
     return (
@@ -13,7 +14,19 @@ export default function Landing() {
                         <img src="/ico2.png" alt="NativeCode" className="h-8 w-8 object-contain" />
                         <p className="text-xs font-medium uppercase tracking-[0.24em] text-white/75">NATIVECODE</p>
                     </div>
-                    <p className="text-[11px] uppercase tracking-[0.2em] text-blue-100/65">Finance Platform</p>
+                    <div className="flex items-center gap-4">
+                        <p className="text-[11px] uppercase tracking-[0.2em] text-blue-100/65">Finance Platform</p>
+                        <SignedOut>
+                            <SignInButton mode="modal">
+                                <button className="rounded-full border border-white/20 bg-white/5 px-4 py-1.5 text-[11px] font-medium uppercase tracking-[0.15em] text-white/80 backdrop-blur-sm transition hover:bg-white/10">
+                                    Iniciar Sesión
+                                </button>
+                            </SignInButton>
+                        </SignedOut>
+                        <SignedIn>
+                            <UserButton afterSignOutUrl="/" />
+                        </SignedIn>
+                    </div>
                 </header>
 
                 <section className="my-auto w-full text-center">
@@ -44,13 +57,23 @@ export default function Landing() {
                     </p>
 
                     <div className="mt-11">
-                        <Link
-                            href="/dashboard"
-                            className="inline-flex items-center gap-2 rounded-full border border-blue-200/35 bg-gradient-to-r from-blue-500/80 via-blue-600/80 to-indigo-600/80 px-8 py-3 text-sm font-semibold tracking-wide text-white shadow-[0_14px_34px_rgba(37,99,235,0.38)] transition-all duration-300 hover:scale-[1.015] hover:from-blue-400 hover:to-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300/80"
-                        >
-                            Entrar a NC Finance
-                            <ArrowRight size={16} />
-                        </Link>
+                        <SignedOut>
+                            <SignInButton mode="modal">
+                                <button className="inline-flex items-center gap-2 rounded-full border border-blue-200/35 bg-gradient-to-r from-blue-500/80 via-blue-600/80 to-indigo-600/80 px-8 py-3 text-sm font-semibold tracking-wide text-white shadow-[0_14px_34px_rgba(37,99,235,0.38)] transition-all duration-300 hover:scale-[1.015] hover:from-blue-400 hover:to-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300/80">
+                                    Entrar a NC Finance
+                                    <ArrowRight size={16} />
+                                </button>
+                            </SignInButton>
+                        </SignedOut>
+                        <SignedIn>
+                            <Link
+                                href="/dashboard"
+                                className="inline-flex items-center gap-2 rounded-full border border-blue-200/35 bg-gradient-to-r from-blue-500/80 via-blue-600/80 to-indigo-600/80 px-8 py-3 text-sm font-semibold tracking-wide text-white shadow-[0_14px_34px_rgba(37,99,235,0.38)] transition-all duration-300 hover:scale-[1.015] hover:from-blue-400 hover:to-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300/80"
+                            >
+                                Ir al Dashboard
+                                <ArrowRight size={16} />
+                            </Link>
+                        </SignedIn>
                     </div>
                 </section>
 

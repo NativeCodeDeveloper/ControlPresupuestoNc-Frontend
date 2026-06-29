@@ -1,5 +1,6 @@
 import '../index.css';
 import Script from 'next/script';
+import { ClerkProvider } from '@clerk/nextjs';
 import FinanceProviderWrapper from '../components/providers/FinanceProviderWrapper';
 
 export const metadata = {
@@ -26,17 +27,19 @@ export default function RootLayout({ children }) {
     `;
 
     return (
-        <html lang="es" suppressHydrationWarning>
-            <head>
-                <Script id="theme-init" strategy="beforeInteractive">
-                    {noFlashThemeScript}
-                </Script>
-            </head>
-            <body>
-                <FinanceProviderWrapper>
-                    {children}
-                </FinanceProviderWrapper>
-            </body>
-        </html>
+        <ClerkProvider>
+            <html lang="es" suppressHydrationWarning>
+                <head>
+                    <Script id="theme-init" strategy="beforeInteractive">
+                        {noFlashThemeScript}
+                    </Script>
+                </head>
+                <body>
+                    <FinanceProviderWrapper>
+                        {children}
+                    </FinanceProviderWrapper>
+                </body>
+            </html>
+        </ClerkProvider>
     );
 }
