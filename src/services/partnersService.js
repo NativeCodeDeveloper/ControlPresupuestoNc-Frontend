@@ -288,7 +288,7 @@ export const deleteWithdrawal = async (partnerId, withdrawalId) => {
 export const getAvailableAmount = async (partnerId, month = null, year = null) => {
     try {
         const params = new URLSearchParams();
-        if (month !== null) params.append('mes', month);
+        if (month !== null) params.append('mes', Number(month) + 1);
         if (year !== null) params.append('year', year);
         
         const query = params.toString();

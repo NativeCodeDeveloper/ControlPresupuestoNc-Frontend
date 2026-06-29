@@ -3,7 +3,7 @@ import apiClient from './apiClient';
 export const getFinancialSummary = async (month = null, year = null) => {
     try {
         const params = new URLSearchParams();
-        if (month !== null && month !== undefined) params.append('mes', month);
+        if (month !== null && month !== undefined) params.append('mes', Number(month) + 1);
         if (year !== null && year !== undefined) params.append('year', year);
 
         const query = params.toString();
