@@ -1,8 +1,11 @@
+'use client';
 import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
-import { SignInButton, SignedIn, SignedOut, UserButton } from '@clerk/nextjs';
+import { useUser, SignInButton, UserButton } from '@clerk/nextjs';
 
 export default function Landing() {
+    const { isSignedIn } = useUser();
+
     return (
         <div className="relative min-h-screen overflow-hidden bg-[#010207] text-white">
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_22%,rgba(59,130,246,0.26),transparent_42%),radial-gradient(circle_at_78%_16%,rgba(79,70,229,0.18),transparent_36%),radial-gradient(circle_at_50%_86%,rgba(14,165,233,0.13),transparent_43%)]" />
@@ -16,16 +19,15 @@ export default function Landing() {
                     </div>
                     <div className="flex items-center gap-4">
                         <p className="text-[11px] uppercase tracking-[0.2em] text-blue-100/65">Finance Platform</p>
-                        <SignedOut>
+                        {isSignedIn ? (
+                            <UserButton afterSignOutUrl="/" />
+                        ) : (
                             <SignInButton mode="modal">
                                 <button className="rounded-full border border-white/20 bg-white/5 px-4 py-1.5 text-[11px] font-medium uppercase tracking-[0.15em] text-white/80 backdrop-blur-sm transition hover:bg-white/10">
                                     Iniciar Sesión
                                 </button>
                             </SignInButton>
-                        </SignedOut>
-                        <SignedIn>
-                            <UserButton afterSignOutUrl="/" />
-                        </SignedIn>
+                        )}
                     </div>
                 </header>
 
@@ -57,15 +59,7 @@ export default function Landing() {
                     </p>
 
                     <div className="mt-11">
-                        <SignedOut>
-                            <SignInButton mode="modal">
-                                <button className="inline-flex items-center gap-2 rounded-full border border-blue-200/35 bg-gradient-to-r from-blue-500/80 via-blue-600/80 to-indigo-600/80 px-8 py-3 text-sm font-semibold tracking-wide text-white shadow-[0_14px_34px_rgba(37,99,235,0.38)] transition-all duration-300 hover:scale-[1.015] hover:from-blue-400 hover:to-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300/80">
-                                    Entrar a NC Finance
-                                    <ArrowRight size={16} />
-                                </button>
-                            </SignInButton>
-                        </SignedOut>
-                        <SignedIn>
+                        {isSignedIn ? (
                             <Link
                                 href="/dashboard"
                                 className="inline-flex items-center gap-2 rounded-full border border-blue-200/35 bg-gradient-to-r from-blue-500/80 via-blue-600/80 to-indigo-600/80 px-8 py-3 text-sm font-semibold tracking-wide text-white shadow-[0_14px_34px_rgba(37,99,235,0.38)] transition-all duration-300 hover:scale-[1.015] hover:from-blue-400 hover:to-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300/80"
@@ -73,7 +67,14 @@ export default function Landing() {
                                 Ir al Dashboard
                                 <ArrowRight size={16} />
                             </Link>
-                        </SignedIn>
+                        ) : (
+                            <SignInButton mode="modal">
+                                <button className="inline-flex items-center gap-2 rounded-full border border-blue-200/35 bg-gradient-to-r from-blue-500/80 via-blue-600/80 to-indigo-600/80 px-8 py-3 text-sm font-semibold tracking-wide text-white shadow-[0_14px_34px_rgba(37,99,235,0.38)] transition-all duration-300 hover:scale-[1.015] hover:from-blue-400 hover:to-indigo-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300/80">
+                                    Entrar a NC Finance
+                                    <ArrowRight size={16} />
+                                </button>
+                            </SignInButton>
+                        )}
                     </div>
                 </section>
 
