@@ -17,13 +17,13 @@ export default function Landing() {
                         <img src="/ico2.png" alt="NativeCode" className="h-8 w-8 object-contain" />
                         <p className="text-xs font-medium uppercase tracking-[0.24em] text-white/75">NATIVECODE</p>
                     </div>
-                    <div className="flex items-center gap-4">
-                        <p className="text-[11px] uppercase tracking-[0.2em] text-blue-100/65">Finance Platform</p>
+                    <div className="flex items-center gap-3">
+                        <p className="hidden sm:block text-[11px] uppercase tracking-[0.2em] text-blue-100/65">Finance Platform</p>
                         {isSignedIn ? (
                             <UserButton afterSignOutUrl="/" />
                         ) : (
                             <SignInButton mode="modal">
-                                <button className="rounded-full border border-white/20 bg-white/5 px-4 py-1.5 text-[11px] font-medium uppercase tracking-[0.15em] text-white/80 backdrop-blur-sm transition hover:bg-white/10">
+                                <button className="rounded-full border border-white/20 bg-white/5 px-4 py-2 text-[11px] font-medium uppercase tracking-[0.15em] text-white/80 backdrop-blur-sm transition hover:bg-white/10 touch-manipulation">
                                     Iniciar Sesión
                                 </button>
                             </SignInButton>

@@ -14,15 +14,18 @@ import {
     Users,
     PiggyBank,
     Waves,
-    BookOpen
+    BookOpen,
+    LogOut
 } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
 import { cn } from '../lib/utils';
 import { ThemeTogglerButton } from '../components/animate-ui/components/buttons/theme-toggler';
+import { useClerk } from '@clerk/nextjs';
 
 export default function MainLayout({ children }) {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const pathname = usePathname();
+    const { signOut } = useClerk();
 
     const menuItems = [
         { icon: LayoutDashboard, label: 'Panel Financiero', path: '/dashboard', tone: 'text-[hsl(var(--turquoise-premium))]', activeBg: 'bg-[hsl(var(--turquoise-premium))]/14' },
@@ -141,7 +144,16 @@ export default function MainLayout({ children }) {
                     </nav>
 
                     {/* Footer */}
-                    <div className="pt-4 border-t border-border/30">
+                    <div className="pt-4 border-t border-border/30 space-y-1">
+                        <button
+                            onClick={() => signOut({ redirectUrl: '/' })}
+                            className="flex items-center gap-3 px-3 py-2 w-full rounded-lg text-[13px] text-muted-foreground hover:text-red-400 hover:bg-red-500/8 transition-all duration-150"
+                        >
+                            <span className="h-6 w-6 rounded-md flex items-center justify-center bg-foreground/5">
+                                <LogOut size={14} className="opacity-85" />
+                            </span>
+                            <span>Cerrar Sesión</span>
+                        </button>
                         <div className="flex items-center gap-3 px-3 py-2">
                             <img src="/logosoloncf.png" alt="NativeCode" className="h-10 w-10 object-contain shrink-0" />
                             <div className="flex-1 min-w-0">
