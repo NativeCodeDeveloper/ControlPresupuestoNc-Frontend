@@ -6,9 +6,10 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
     House, LayoutDashboard, TrendingUp, TrendingDown, PieChart,
     Settings, Menu, Users, PiggyBank, Waves, BookOpen, LogOut,
-    Brain, ChevronLeft, DollarSign
+    Brain, ChevronLeft, DollarSign, LayoutGrid
 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { getTeams } from '../services/synapseService';
 import { ThemeTogglerButton } from '../components/animate-ui/components/buttons/theme-toggler';
 import { useClerk } from '@clerk/nextjs';
 
@@ -39,7 +40,7 @@ const MODULES = [
         accent: 'text-violet-400',
         accentBg: 'bg-violet-500/12',
         items: [
-            { icon: Brain, label: 'Tablero Kanban', path: '/synapse', tone: 'text-violet-400', activeBg: 'bg-violet-500/14' },
+            { icon: LayoutGrid, label: 'Vista General', path: '/synapse', tone: 'text-violet-400', activeBg: 'bg-violet-500/14' },
         ],
     },
 ];
@@ -71,11 +72,15 @@ function NavItem({ item, isActive, onClick }) {
                 "h-6 w-6 rounded-md flex items-center justify-center shrink-0 transition-colors",
                 isActive ? "bg-white/70 dark:bg-black/10" : "bg-foreground/5"
             )}>
-                <item.icon
-                    size={14}
-                    strokeWidth={isActive ? 2 : 1.7}
-                    className={isActive ? item.tone : `${item.tone} opacity-80`}
-                />
+                {item.emoji ? (
+                    <span className="text-[13px] leading-none">{item.emoji}</span>
+                ) : (
+                    <item.icon
+                        size={14}
+                        strokeWidth={isActive ? 2 : 1.7}
+                        className={isActive ? item.tone : `${item.tone} opacity-80`}
+                    />
+                )}
             </span>
             <span className="truncate leading-none">{item.label}</span>
         </Link>
@@ -87,6 +92,11 @@ function NavItem({ item, isActive, onClick }) {
 export default function MainLayout({ children }) {
     const [isMobileOpen, setIsMobileOpen] = useState(false);
     const [isPanelOpen, setIsPanelOpen]   = useState(true);
+    const [teams, setTeams]               = useState([]);
+
+    useEffect(() => {
+        getTeams().then(data => setTeams(Array.isArray(data) ? data : [])).catch(() => {});
+    }, []);
     const pathname = usePathname();
     const router   = useRouter();
     const { signOut } = useClerk();
@@ -185,26 +195,20 @@ export default function MainLayout({ children }) {
                 <div className="flex flex-col h-full" style={{ width: `${PANEL_W}px` }}>
 
                     {/* Cabecera del módulo */}
-                    <div className="flex items-center gap-2.5 px-3 pt-5 pb-4 shrink-0">
+                    <div className="flex items-center justify-between px-3 pt-4 pb-3 shrink-0">
                         <img
                             src="/ncflogo.png"
                             alt="NativeCode"
-                            className="h-9 w-9 object-contain hidden dark:block shrink-0"
+                            className="h-8 object-contain hidden dark:block"
                         />
                         <img
                             src="/ncfnegro.png"
                             alt="NativeCode"
-                            className="h-9 w-9 object-contain block dark:hidden shrink-0"
+                            className="h-8 object-contain block dark:hidden"
                         />
-                        <div className="min-w-0 flex-1">
-                            <p className="text-[10px] font-bold text-foreground tracking-tight leading-tight">NativeCode</p>
-                            <p className={cn("text-[11px] font-semibold leading-tight", activeModule.accent)}>
-                                {activeModule.label}
-                            </p>
-                        </div>
                         <button
                             onClick={() => setIsPanelOpen(false)}
-                            className="shrink-0 p-1.5 text-muted-foreground hover:text-foreground hover:bg-foreground/6 rounded-lg transition-colors"
+                            className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-foreground/6 rounded-lg transition-colors"
                             title="Colapsar panel"
                         >
                             <ChevronLeft size={13} />
@@ -221,6 +225,29 @@ export default function MainLayout({ children }) {
                                 onClick={() => setIsMobileOpen(false)}
                             />
                         ))}
+
+                        {/* Teams — solo en módulo Synapse */}
+                        {activeModuleId === 'synapse' && teams.length > 0 && (
+                            <div className="pt-3">
+                                <p className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider px-3 py-1.5">
+                                    Equipos
+                                </p>
+                                {teams.map(team => (
+                                    <NavItem
+                                        key={team.id_team}
+                                        item={{
+                                            emoji: team.emoji,
+                                            label: team.nombre,
+                                            path: `/synapse/team/${team.id_team}`,
+                                            tone: 'text-violet-400',
+                                            activeBg: 'bg-violet-500/14',
+                                        }}
+                                        isActive={pathname === `/synapse/team/${team.id_team}`}
+                                        onClick={() => setIsMobileOpen(false)}
+                                    />
+                                ))}
+                            </div>
+                        )}
 
                         {/* Inicio — al fondo del nav */}
                         <div className="pt-5">

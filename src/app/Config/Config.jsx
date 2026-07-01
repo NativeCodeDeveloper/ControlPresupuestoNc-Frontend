@@ -56,8 +56,10 @@ export default function Config() {
     // Synapse
     const [synapseEstados, setSynapseEstados] = useState([]);
     const [synapseEtiquetas, setSynapseEtiquetas] = useState([]);
+    const [synapseTeams, setSynapseTeams] = useState([]);
     const [newEstadoForm, setNewEstadoForm] = useState({ nombre: '', color_hex: '#3B82F6', es_final: false });
     const [newEtiquetaForm, setNewEtiquetaForm] = useState({ nombre: '', color_hex: '#8B5CF6' });
+    const [newTeamForm, setNewTeamForm] = useState({ nombre: '', emoji: '👥', color_hex: '#8B5CF6' });
 
     // Normalizar socio del backend
     const normalizePartner = (p) => ({
@@ -70,7 +72,7 @@ export default function Config() {
     useEffect(() => {
         const loadData = async () => {
             try {
-                const [types, statuses, services, costTypes, config, partners, synEstados, synEtiquetas] = await Promise.all([
+                const [types, statuses, services, costTypes, config, partners, synEstados, synEtiquetas, synTeams] = await Promise.all([
                     configService.getProjectTypes(),
                     configService.getProjectStatuses(),
                     costsService.getServices(),
@@ -79,9 +81,11 @@ export default function Config() {
                     partnersService.getPartners(),
                     synapseService.getEstados(),
                     synapseService.getEtiquetas(),
+                    synapseService.getTeams(),
                 ]);
                 if (synEstados && Array.isArray(synEstados)) setSynapseEstados(synEstados);
                 if (synEtiquetas && Array.isArray(synEtiquetas)) setSynapseEtiquetas(synEtiquetas);
+                if (synTeams && Array.isArray(synTeams)) setSynapseTeams(synTeams);
 
                 if (types && Array.isArray(types)) setProjectTypesData(types);
                 if (statuses && Array.isArray(statuses)) setProjectStatusesData(statuses);
@@ -329,6 +333,35 @@ export default function Config() {
             if (fresh && Array.isArray(fresh)) setPartnersData(fresh.map(normalizePartner));
         } catch (error) {
             console.error('Error eliminando socio:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // === SYNAPSE: TEAMS ===
+    const handleAddSynapseTeam = async () => {
+        if (!newTeamForm.nombre.trim()) return;
+        setIsLoading(true);
+        try {
+            await synapseService.createTeam(newTeamForm);
+            const fresh = await synapseService.getTeams();
+            if (Array.isArray(fresh)) setSynapseTeams(fresh);
+            setNewTeamForm({ nombre: '', emoji: '👥', color_hex: '#8B5CF6' });
+        } catch (e) {
+            console.error('Error creando team Synapse:', e);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleDeleteSynapseTeam = async (id) => {
+        setIsLoading(true);
+        try {
+            await synapseService.deleteTeam(id);
+            const fresh = await synapseService.getTeams();
+            if (Array.isArray(fresh)) setSynapseTeams(fresh);
+        } catch (e) {
+            console.error('Error eliminando team Synapse:', e);
         } finally {
             setIsLoading(false);
         }
@@ -746,7 +779,68 @@ export default function Config() {
                     </div>
                 </Section>
 
-                {/* ── Synapse ── */}
+                {/* ── Synapse: Teams ── */}
+                <Section title="Synapse — Equipos de Trabajo" icon={Brain}>
+                    <p className="text-sm text-muted-foreground mb-5">
+                        Define los equipos o grupos de trabajo. Las tareas del tablero pueden asignarse a un equipo para filtrarlas y verlas por separado.
+                    </p>
+
+                    <div className="space-y-2 mb-5">
+                        {synapseTeams.map(team => (
+                            <div key={team.id_team} className="flex items-center gap-3 bg-secondary/40 border border-border/40 rounded-xl px-4 py-3">
+                                <span className="text-lg">{team.emoji}</span>
+                                <span className="text-sm font-medium text-foreground flex-1">{team.nombre}</span>
+                                <span className="w-3 h-3 rounded-full shrink-0" style={{ background: team.color_hex }} />
+                                <button
+                                    onClick={() => handleDeleteSynapseTeam(team.id_team)}
+                                    disabled={isLoading}
+                                    className="text-muted-foreground hover:text-red-400 transition-colors p-1.5 rounded-lg hover:bg-red-500/8 disabled:opacity-40"
+                                >
+                                    <Trash2 size={14} />
+                                </button>
+                            </div>
+                        ))}
+                        {!synapseTeams.length && (
+                            <p className="text-sm text-muted-foreground text-center py-4">No hay equipos configurados aún.</p>
+                        )}
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 items-end">
+                        <input
+                            type="text"
+                            placeholder="Nombre del equipo..."
+                            value={newTeamForm.nombre}
+                            onChange={(e) => setNewTeamForm(f => ({ ...f, nombre: e.target.value }))}
+                            onKeyDown={(e) => { if (e.key === 'Enter') handleAddSynapseTeam(); }}
+                            className="flex-1 min-w-36 bg-secondary/50 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/30 transition-all"
+                        />
+                        <input
+                            type="text"
+                            placeholder="Emoji"
+                            value={newTeamForm.emoji}
+                            onChange={(e) => setNewTeamForm(f => ({ ...f, emoji: e.target.value }))}
+                            className="w-16 bg-secondary/50 border border-border rounded-lg px-3 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-violet-500/30 transition-all"
+                        />
+                        <div className="flex items-center gap-2">
+                            <label className="text-xs text-muted-foreground">Color</label>
+                            <input
+                                type="color"
+                                value={newTeamForm.color_hex}
+                                onChange={(e) => setNewTeamForm(f => ({ ...f, color_hex: e.target.value }))}
+                                className="w-8 h-8 rounded-lg border border-border cursor-pointer"
+                            />
+                        </div>
+                        <button
+                            onClick={handleAddSynapseTeam}
+                            disabled={isLoading || !newTeamForm.nombre.trim()}
+                            className="flex items-center gap-1.5 bg-violet-500 hover:bg-violet-600 disabled:opacity-40 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                        >
+                            <Plus size={14} /> Agregar
+                        </button>
+                    </div>
+                </Section>
+
+                {/* ── Synapse: Estados ── */}
                 <Section title="Synapse — Estados del Kanban" icon={Brain}>
                     <p className="text-sm text-muted-foreground mb-5">
                         Define las columnas del tablero Kanban. Los estados marcados como <strong>Final</strong> registran la fecha de completado al mover una tarea.

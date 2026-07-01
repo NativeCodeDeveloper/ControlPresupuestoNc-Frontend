@@ -50,7 +50,7 @@ function SelectField({ label, value, onChange, options, placeholder, icon: Icon 
     );
 }
 
-export default function SynapseTaskModal({ tarea, estados, initialEstadoId, onClose, onSaved, onDeleted }) {
+export default function SynapseTaskModal({ tarea, estados, initialEstadoId, initialTeamId = null, onClose, onSaved, onDeleted }) {
     const isNew = !tarea?.id_tarea;
 
     const [form, setForm] = useState({
@@ -59,6 +59,7 @@ export default function SynapseTaskModal({ tarea, estados, initialEstadoId, onCl
         id_estado: tarea?.id_estado || initialEstadoId || estados[0]?.id_estado || '',
         id_proyecto: tarea?.id_proyecto || '',
         id_asignado: tarea?.id_asignado || '',
+        id_team: tarea?.id_team || initialTeamId || '',
         prioridad: tarea?.prioridad || 'media',
         tipo: tarea?.tipo || 'tarea',
         fecha_ingreso: tarea?.fecha_ingreso?.split('T')[0] || TODAY,
@@ -69,6 +70,7 @@ export default function SynapseTaskModal({ tarea, estados, initialEstadoId, onCl
     const [proyectos, setProyectos] = useState([]);
     const [socios, setSocios] = useState([]);
     const [etiquetas, setEtiquetas] = useState([]);
+    const [teams, setTeams] = useState([]);
     const [comentarios, setComentarios] = useState([]);
     const [nuevoComentario, setNuevoComentario] = useState('');
     const [saving, setSaving] = useState(false);
@@ -82,10 +84,12 @@ export default function SynapseTaskModal({ tarea, estados, initialEstadoId, onCl
             synapseService.getMetaProyectos(),
             synapseService.getMetaSocios(),
             synapseService.getEtiquetas(),
-        ]).then(([p, s, e]) => {
+            synapseService.getTeams(),
+        ]).then(([p, s, e, tms]) => {
             setProyectos(Array.isArray(p) ? p : []);
             setSocios(Array.isArray(s) ? s : []);
             setEtiquetas(Array.isArray(e) ? e : []);
+            setTeams(Array.isArray(tms) ? tms : []);
         }).catch(() => {});
 
         if (!isNew) {
@@ -345,6 +349,17 @@ export default function SynapseTaskModal({ tarea, estados, initialEstadoId, onCl
                             icon={User}
                             options={socios.map(s => ({ value: String(s.id_socio), label: s.nombre }))}
                         />
+
+                        {/* Equipo */}
+                        {teams.length > 0 && (
+                            <SelectField
+                                label="Equipo"
+                                value={String(form.id_team || '')}
+                                onChange={(v) => set('id_team', v ? parseInt(v) : '')}
+                                placeholder="Sin equipo"
+                                options={teams.map(tm => ({ value: String(tm.id_team), label: `${tm.emoji} ${tm.nombre}` }))}
+                            />
+                        )}
 
                         {/* Fechas */}
                         <div className="space-y-3">

@@ -36,3 +36,9 @@ export const deleteComentario = (id_tarea, id_comentario) => apiClient.delete(`$
 // ── Meta ──────────────────────────────────────────────────────────────────────
 export const getMetaProyectos = () => apiClient.get(`${BASE}/meta/proyectos`);
 export const getMetaSocios = () => apiClient.get(`${BASE}/meta/socios`);
+
+// ── Teams ─────────────────────────────────────────────────────────────────────
+export const getTeams = () => apiClient.get(`${BASE}/teams`);
+export const createTeam = (data) => apiClient.post(`${BASE}/teams`, data);
+export const updateTeam = (id, data) => apiClient.put(`${BASE}/teams/${id}`, data);
+export const deleteTeam = (id) => apiClient.delete(`${BASE}/teams/${id}`);

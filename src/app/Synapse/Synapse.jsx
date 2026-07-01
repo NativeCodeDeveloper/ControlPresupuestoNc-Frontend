@@ -233,9 +233,12 @@ function ListView({ tareas, estados, onCardClick }) {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
-export default function Synapse() {
+export default function Synapse({ teamId = null }) {
+    const numTeamId = teamId ? parseInt(teamId) : null;
+
     const [estados, setEstados] = useState([]);
     const [tareas, setTareas] = useState([]);
+    const [teams, setTeams] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [view, setView] = useState('kanban'); // 'kanban' | 'list'
@@ -245,35 +248,42 @@ export default function Synapse() {
     const [filterPrioridad, setFilterPrioridad] = useState('');
     const [filterTipo, setFilterTipo] = useState('');
     const [filterProyecto, setFilterProyecto] = useState('');
+    const [filterTeam, setFilterTeam] = useState('');
 
     // Modal
     const [modalOpen, setModalOpen] = useState(false);
     const [modalTarea, setModalTarea] = useState(null);
     const [modalEstadoId, setModalEstadoId] = useState(null);
+    const [modalTeamId, setModalTeamId] = useState(null);
 
     // DnD
     const [draggingId, setDraggingId] = useState(null);
 
     const [proyectosRef, setProyectosRef] = useState([]);
 
+    const teamInfo = numTeamId ? teams.find(t => t.id_team === numTeamId) : null;
+
     const loadAll = useCallback(async () => {
         setLoading(true);
         setError('');
         try {
-            const [est, tar, proys] = await Promise.all([
+            const params = numTeamId ? { id_team: numTeamId } : {};
+            const [est, tar, proys, tms] = await Promise.all([
                 synapseService.getEstados(),
-                synapseService.getTareas(),
+                synapseService.getTareas(params),
                 synapseService.getMetaProyectos(),
+                synapseService.getTeams(),
             ]);
             setEstados(Array.isArray(est) ? est : []);
             setTareas(Array.isArray(tar) ? tar : []);
             setProyectosRef(Array.isArray(proys) ? proys : []);
+            setTeams(Array.isArray(tms) ? tms : []);
         } catch (e) {
             setError('No se pudo cargar Synapse. Verifica la conexión.');
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [numTeamId]);
 
     useEffect(() => { loadAll(); }, [loadAll]);
 
@@ -284,6 +294,7 @@ export default function Synapse() {
         if (filterPrioridad && t.prioridad !== filterPrioridad) return false;
         if (filterTipo && t.tipo !== filterTipo) return false;
         if (filterProyecto && String(t.id_proyecto) !== filterProyecto) return false;
+        if (filterTeam && String(t.id_team) !== filterTeam) return false;
         return true;
     });
 
@@ -292,14 +303,15 @@ export default function Synapse() {
         return acc;
     }, {});
 
-    const hasFilters = searchQ || filterPrioridad || filterTipo || filterProyecto;
-    const clearFilters = () => { setSearchQ(''); setFilterPrioridad(''); setFilterTipo(''); setFilterProyecto(''); };
+    const hasFilters = searchQ || filterPrioridad || filterTipo || filterProyecto || filterTeam;
+    const clearFilters = () => { setSearchQ(''); setFilterPrioridad(''); setFilterTipo(''); setFilterProyecto(''); setFilterTeam(''); };
 
     // ── Modal handlers ─────────────────────────────────────────────────────────
 
     const openCreate = (estadoId = null) => {
         setModalTarea(null);
         setModalEstadoId(estadoId || estados[0]?.id_estado || null);
+        setModalTeamId(numTeamId);
         setModalOpen(true);
     };
 
@@ -380,14 +392,20 @@ export default function Synapse() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div className="flex items-center gap-3">
-                    <div className="p-2 bg-violet-500/15 rounded-xl">
-                        <Brain size={20} className="text-violet-400" />
+                    <div className="p-2 bg-violet-500/15 rounded-xl flex items-center justify-center">
+                        {teamInfo
+                            ? <span className="text-xl leading-none">{teamInfo.emoji || '👥'}</span>
+                            : <Brain size={20} className="text-violet-400" />
+                        }
                     </div>
                     <div>
-                        <h1 className="text-xl font-bold text-foreground tracking-tight">Synapse</h1>
+                        <h1 className="text-xl font-bold text-foreground tracking-tight">
+                            {teamInfo ? teamInfo.nombre : 'Synapse'}
+                        </h1>
                         <p className="text-xs text-muted-foreground">
                             {filteredTareas.length} {filteredTareas.length === 1 ? 'tarea' : 'tareas'}
                             {hasFilters ? ' (filtrado)' : ''} · {estados.length} columnas
+                            {!teamInfo && teams.length > 0 ? ` · ${teams.length} equipos` : ''}
                         </p>
                     </div>
                 </div>
@@ -481,6 +499,19 @@ export default function Synapse() {
                     </select>
                 )}
 
+                {!numTeamId && teams.length > 0 && (
+                    <select
+                        value={filterTeam}
+                        onChange={(e) => setFilterTeam(e.target.value)}
+                        className="text-sm bg-background border border-border/50 rounded-xl px-3 py-2 text-muted-foreground focus:outline-none focus:ring-2 focus:ring-violet-500/30 appearance-none cursor-pointer"
+                    >
+                        <option value="">Equipo</option>
+                        {teams.map(tm => (
+                            <option key={tm.id_team} value={String(tm.id_team)}>{tm.emoji} {tm.nombre}</option>
+                        ))}
+                    </select>
+                )}
+
                 {hasFilters && (
                     <button
                         onClick={clearFilters}
@@ -529,6 +560,7 @@ export default function Synapse() {
                     tarea={modalTarea}
                     estados={estados}
                     initialEstadoId={modalEstadoId}
+                    initialTeamId={modalTeamId}
                     onClose={() => setModalOpen(false)}
                     onSaved={handleSaved}
                     onDeleted={handleDeleted}
