@@ -4,6 +4,7 @@ import { createElement, useState, useEffect } from 'react';
 import * as configService from '../../services/configService';
 import * as partnersService from '../../services/partnersService';
 import * as costsService from '../../services/costsService';
+import * as synapseService from '../../services/synapseService';
 import apiClient from '../../services/apiClient';
 import {
     Settings,
@@ -15,7 +16,12 @@ import {
     Trash2,
     Bell,
     Tag,
-    Activity
+    Activity,
+    Brain,
+    Plus,
+    GripVertical,
+    CheckCircle2,
+    Circle
 } from 'lucide-react';
 
 const Section = ({ title, icon, children }) => (
@@ -47,6 +53,12 @@ export default function Config() {
         reinvestmentPercentage: 0
     });
 
+    // Synapse
+    const [synapseEstados, setSynapseEstados] = useState([]);
+    const [synapseEtiquetas, setSynapseEtiquetas] = useState([]);
+    const [newEstadoForm, setNewEstadoForm] = useState({ nombre: '', color_hex: '#3B82F6', es_final: false });
+    const [newEtiquetaForm, setNewEtiquetaForm] = useState({ nombre: '', color_hex: '#8B5CF6' });
+
     // Normalizar socio del backend
     const normalizePartner = (p) => ({
         ...p,
@@ -58,14 +70,18 @@ export default function Config() {
     useEffect(() => {
         const loadData = async () => {
             try {
-                const [types, statuses, services, costTypes, config, partners] = await Promise.all([
+                const [types, statuses, services, costTypes, config, partners, synEstados, synEtiquetas] = await Promise.all([
                     configService.getProjectTypes(),
                     configService.getProjectStatuses(),
                     costsService.getServices(),
                     configService.getVariableCostTypes(),
                     configService.getFinancialConfig(),
-                    partnersService.getPartners()
+                    partnersService.getPartners(),
+                    synapseService.getEstados(),
+                    synapseService.getEtiquetas(),
                 ]);
+                if (synEstados && Array.isArray(synEstados)) setSynapseEstados(synEstados);
+                if (synEtiquetas && Array.isArray(synEtiquetas)) setSynapseEtiquetas(synEtiquetas);
 
                 if (types && Array.isArray(types)) setProjectTypesData(types);
                 if (statuses && Array.isArray(statuses)) setProjectStatusesData(statuses);
@@ -313,6 +329,64 @@ export default function Config() {
             if (fresh && Array.isArray(fresh)) setPartnersData(fresh.map(normalizePartner));
         } catch (error) {
             console.error('Error eliminando socio:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // === SYNAPSE: ESTADOS ===
+    const handleAddSynapseEstado = async () => {
+        if (!newEstadoForm.nombre.trim()) return;
+        setIsLoading(true);
+        try {
+            await synapseService.createEstado(newEstadoForm);
+            const fresh = await synapseService.getEstados();
+            if (Array.isArray(fresh)) setSynapseEstados(fresh);
+            setNewEstadoForm({ nombre: '', color_hex: '#3B82F6', es_final: false });
+        } catch (e) {
+            console.error('Error creando estado Synapse:', e);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleDeleteSynapseEstado = async (id) => {
+        setIsLoading(true);
+        try {
+            await synapseService.deleteEstado(id);
+            const fresh = await synapseService.getEstados();
+            if (Array.isArray(fresh)) setSynapseEstados(fresh);
+        } catch (e) {
+            alert(e.message || 'No se pudo eliminar el estado.');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // === SYNAPSE: ETIQUETAS ===
+    const handleAddSynapseEtiqueta = async () => {
+        if (!newEtiquetaForm.nombre.trim()) return;
+        setIsLoading(true);
+        try {
+            await synapseService.createEtiqueta(newEtiquetaForm);
+            const fresh = await synapseService.getEtiquetas();
+            if (Array.isArray(fresh)) setSynapseEtiquetas(fresh);
+            setNewEtiquetaForm({ nombre: '', color_hex: '#8B5CF6' });
+        } catch (e) {
+            console.error('Error creando etiqueta Synapse:', e);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleDeleteSynapseEtiqueta = async (id) => {
+        setIsLoading(true);
+        try {
+            await synapseService.deleteEtiqueta(id);
+            const fresh = await synapseService.getEtiquetas();
+            if (Array.isArray(fresh)) setSynapseEtiquetas(fresh);
+        } catch (e) {
+            console.error('Error eliminando etiqueta Synapse:', e);
         } finally {
             setIsLoading(false);
         }
@@ -669,6 +743,132 @@ export default function Config() {
                                 </div>
                             ))}
                         </div>
+                    </div>
+                </Section>
+
+                {/* ── Synapse ── */}
+                <Section title="Synapse — Estados del Kanban" icon={Brain}>
+                    <p className="text-sm text-muted-foreground mb-5">
+                        Define las columnas del tablero Kanban. Los estados marcados como <strong>Final</strong> registran la fecha de completado al mover una tarea.
+                    </p>
+
+                    {/* Listado */}
+                    <div className="space-y-2 mb-5">
+                        {synapseEstados.map(est => (
+                            <div key={est.id_estado} className="flex items-center gap-3 bg-secondary/40 border border-border/40 rounded-xl px-4 py-3">
+                                <span className="w-3 h-3 rounded-full shrink-0" style={{ background: est.color_hex }} />
+                                <span className="text-sm font-medium text-foreground flex-1">{est.nombre}</span>
+                                {est.es_final ? (
+                                    <span className="flex items-center gap-1 text-[11px] text-emerald-500 font-medium">
+                                        <CheckCircle2 size={11} /> Final
+                                    </span>
+                                ) : (
+                                    <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                                        <Circle size={11} /> En progreso
+                                    </span>
+                                )}
+                                <button
+                                    onClick={() => handleDeleteSynapseEstado(est.id_estado)}
+                                    disabled={isLoading}
+                                    className="text-muted-foreground hover:text-red-400 transition-colors p-1.5 rounded-lg hover:bg-red-500/8 disabled:opacity-40"
+                                >
+                                    <Trash2 size={14} />
+                                </button>
+                            </div>
+                        ))}
+                        {!synapseEstados.length && (
+                            <p className="text-sm text-muted-foreground text-center py-4">No hay estados configurados aún.</p>
+                        )}
+                    </div>
+
+                    {/* Formulario nuevo estado */}
+                    <div className="flex flex-wrap gap-2 items-end">
+                        <input
+                            type="text"
+                            placeholder="Nombre del estado..."
+                            value={newEstadoForm.nombre}
+                            onChange={(e) => setNewEstadoForm(f => ({ ...f, nombre: e.target.value }))}
+                            onKeyDown={(e) => { if (e.key === 'Enter') handleAddSynapseEstado(); }}
+                            className="flex-1 min-w-36 bg-secondary/50 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/30 transition-all"
+                        />
+                        <div className="flex items-center gap-2">
+                            <label className="text-xs text-muted-foreground">Color</label>
+                            <input
+                                type="color"
+                                value={newEstadoForm.color_hex}
+                                onChange={(e) => setNewEstadoForm(f => ({ ...f, color_hex: e.target.value }))}
+                                className="w-8 h-8 rounded-lg border border-border cursor-pointer"
+                            />
+                        </div>
+                        <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
+                            <input
+                                type="checkbox"
+                                checked={newEstadoForm.es_final}
+                                onChange={(e) => setNewEstadoForm(f => ({ ...f, es_final: e.target.checked }))}
+                                className="rounded"
+                            />
+                            Es final
+                        </label>
+                        <button
+                            onClick={handleAddSynapseEstado}
+                            disabled={isLoading || !newEstadoForm.nombre.trim()}
+                            className="flex items-center gap-1.5 bg-violet-500 hover:bg-violet-600 disabled:opacity-40 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                        >
+                            <Plus size={14} /> Agregar
+                        </button>
+                    </div>
+                </Section>
+
+                <Section title="Synapse — Etiquetas" icon={Tag}>
+                    <p className="text-sm text-muted-foreground mb-5">
+                        Las etiquetas permiten categorizar tareas para filtrarlas rápidamente en el tablero.
+                    </p>
+
+                    {/* Listado */}
+                    <div className="flex flex-wrap gap-2 mb-5">
+                        {synapseEtiquetas.map(et => (
+                            <div key={et.id_etiqueta} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border/50" style={{ background: et.color_hex + '22' }}>
+                                <span className="text-xs font-medium" style={{ color: et.color_hex }}>{et.nombre}</span>
+                                <button
+                                    onClick={() => handleDeleteSynapseEtiqueta(et.id_etiqueta)}
+                                    disabled={isLoading}
+                                    className="ml-1 text-muted-foreground hover:text-red-400 transition-colors disabled:opacity-40"
+                                >
+                                    <Trash2 size={10} />
+                                </button>
+                            </div>
+                        ))}
+                        {!synapseEtiquetas.length && (
+                            <p className="text-sm text-muted-foreground">No hay etiquetas aún.</p>
+                        )}
+                    </div>
+
+                    {/* Formulario nueva etiqueta */}
+                    <div className="flex gap-2 items-center flex-wrap">
+                        <input
+                            type="text"
+                            placeholder="Nombre de la etiqueta..."
+                            value={newEtiquetaForm.nombre}
+                            onChange={(e) => setNewEtiquetaForm(f => ({ ...f, nombre: e.target.value }))}
+                            onKeyDown={(e) => { if (e.key === 'Enter') handleAddSynapseEtiqueta(); }}
+                            className="flex-1 min-w-36 bg-secondary/50 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/30 transition-all"
+                        />
+                        <div className="flex items-center gap-2">
+                            <label className="text-xs text-muted-foreground">Color</label>
+                            <input
+                                type="color"
+                                value={newEtiquetaForm.color_hex}
+                                onChange={(e) => setNewEtiquetaForm(f => ({ ...f, color_hex: e.target.value }))}
+                                className="w-8 h-8 rounded-lg border border-border cursor-pointer"
+                            />
+                        </div>
+                        <button
+                            onClick={handleAddSynapseEtiqueta}
+                            disabled={isLoading || !newEtiquetaForm.nombre.trim()}
+                            className="flex items-center gap-1.5 bg-violet-500 hover:bg-violet-600 disabled:opacity-40 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                        >
+                            <Plus size={14} /> Agregar
+                        </button>
                     </div>
                 </Section>
             </div>
