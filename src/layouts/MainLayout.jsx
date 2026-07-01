@@ -40,7 +40,7 @@ const MODULES = [
         accent: 'text-violet-400',
         accentBg: 'bg-violet-500/12',
         items: [
-            { icon: LayoutGrid, label: 'Vista General', path: '/synapse', tone: 'text-violet-400', activeBg: 'bg-violet-500/14' },
+            { icon: LayoutGrid, label: 'Synapse System', path: '/synapse', tone: 'text-violet-400', activeBg: 'bg-violet-500/14' },
         ],
     },
 ];
@@ -177,6 +177,19 @@ export default function MainLayout({ children }) {
                         <Settings size={15} strokeWidth={1.7} />
                     </Link>
 
+                    <Link
+                        href="/"
+                        title="Inicio"
+                        className={cn(
+                            "flex items-center justify-center w-full h-10 rounded-xl transition-all duration-150",
+                            pathname === '/'
+                                ? "bg-foreground/10 text-foreground"
+                                : "text-muted-foreground hover:text-foreground hover:bg-foreground/6"
+                        )}
+                    >
+                        <House size={15} strokeWidth={1.7} />
+                    </Link>
+
                     <button
                         onClick={() => signOut({ redirectUrl: '/' })}
                         title="Cerrar sesión"
@@ -249,27 +262,6 @@ export default function MainLayout({ children }) {
                             </div>
                         )}
 
-                        {/* Inicio — al fondo del nav */}
-                        <div className="pt-5">
-                            <Link
-                                href="/"
-                                onClick={() => setIsMobileOpen(false)}
-                                className={cn(
-                                    "flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all duration-150 text-[13px]",
-                                    pathname === '/'
-                                        ? "bg-[hsl(var(--corporate-blue))]/12 text-foreground font-medium"
-                                        : "text-muted-foreground hover:text-foreground hover:bg-foreground/5"
-                                )}
-                            >
-                                <span className={cn(
-                                    "h-6 w-6 rounded-md flex items-center justify-center shrink-0",
-                                    pathname === '/' ? "bg-white/70 dark:bg-black/10" : "bg-foreground/5"
-                                )}>
-                                    <House size={14} strokeWidth={pathname === '/' ? 2 : 1.7} className="text-[hsl(var(--corporate-blue))]" />
-                                </span>
-                                <span>Inicio</span>
-                            </Link>
-                        </div>
                     </nav>
 
                     {/* Footer */}
