@@ -18,7 +18,10 @@ import {
     Receipt,
     Pencil,
     X,
-    Repeat
+    Repeat,
+    Mail,
+    ExternalLink,
+    CheckCircle2
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Input, Select } from '../../components/ui/FormElements';
@@ -29,6 +32,7 @@ export default function Ingresos() {
     const [filterType, setFilterType] = useState('Todos');
     const [filterStatus, setFilterStatus] = useState('Todos');
     const [filterMonth, setFilterMonth] = useState('Todos');
+    const [filterPago, setFilterPago] = useState('Todos');
     const [expandedProject, setExpandedProject] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     const [projects, setProjects] = useState([]);
@@ -48,8 +52,11 @@ export default function Ingresos() {
         observations: '',
         ciclo: 'Unico',
         fechaInicioServicio: '',
-        fechaProximoPago: ''
+        fechaProximoPago: '',
+        urlCobroMp: ''
     });
+
+    const [quickPayLoadingId, setQuickPayLoadingId] = useState(null);
 
     const [incomeForm, setIncomeForm] = useState({
         projectId: '',
@@ -151,7 +158,8 @@ export default function Ingresos() {
                 observaciones: projectForm.observations || null,
                 ciclo_facturacion: projectForm.ciclo || 'Unico',
                 fecha_inicio_servicio: projectForm.fechaInicioServicio || null,
-                fecha_proximo_pago: projectForm.fechaProximoPago || null
+                fecha_proximo_pago: projectForm.fechaProximoPago || null,
+                url_cobro_mercadopago: projectForm.urlCobroMp || null
             });
 
             if (newProject && newProject.ok) {
@@ -175,7 +183,8 @@ export default function Ingresos() {
                 observations: '',
                 ciclo: 'Unico',
                 fechaInicioServicio: '',
-                fechaProximoPago: ''
+                fechaProximoPago: '',
+                urlCobroMp: ''
             });
             setActiveTab('projects');
         } catch (error) {
@@ -262,7 +271,8 @@ export default function Ingresos() {
             observations: project.observaciones || '',
             ciclo: project.ciclo_facturacion || 'Unico',
             fechaInicioServicio: project.fecha_inicio_servicio ? project.fecha_inicio_servicio.split('T')[0] : '',
-            fechaProximoPago: project.fecha_proximo_pago ? project.fecha_proximo_pago.split('T')[0] : ''
+            fechaProximoPago: project.fecha_proximo_pago ? project.fecha_proximo_pago.split('T')[0] : '',
+            urlCobroMp: project.url_cobro_mercadopago || ''
         });
     };
 
@@ -293,7 +303,8 @@ export default function Ingresos() {
                 observaciones: editForm.observations || null,
                 ciclo_facturacion: editForm.ciclo || 'Unico',
                 fecha_inicio_servicio: editForm.fechaInicioServicio || null,
-                fecha_proximo_pago: editForm.fechaProximoPago || null
+                fecha_proximo_pago: editForm.fechaProximoPago || null,
+                url_cobro_mercadopago: editForm.urlCobroMp || null
             };
             if (tipo_proyecto_id) updates.tipo_proyecto_id = tipo_proyecto_id;
             if (estado_proyecto_id) updates.estado_proyecto_id = estado_proyecto_id;
@@ -310,6 +321,28 @@ export default function Ingresos() {
             alert('Error al actualizar el proyecto');
         } finally {
             setIsEditLoading(false);
+        }
+    };
+
+    const handleQuickPago = async (project) => {
+        if (!window.confirm(`¿Confirmas el pago de ${new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(project.monto_acordado)} para ${project.nombre_cliente}?`)) return;
+        setQuickPayLoadingId(project.id);
+        try {
+            const result = await projectsService.addProjectPayment(project.id, {
+                concepto: `Renovación ${project.ciclo_facturacion?.toLowerCase() || 'suscripción'}`,
+                monto: Math.round(parseFloat(project.monto_acordado || 0)),
+                fecha_pago: new Date().toISOString().split('T')[0]
+            });
+            if (result && result.ok) {
+                await reloadProjects();
+            } else {
+                alert('Error al registrar el pago');
+            }
+        } catch (error) {
+            console.error('Error en pago rápido:', error);
+            alert('Error al registrar el pago');
+        } finally {
+            setQuickPayLoadingId(null);
         }
     };
 
@@ -352,6 +385,9 @@ export default function Ingresos() {
     const countActivos = allProjects.filter(p => activeStatuses.includes(p.estado_nombre)).length;
     const countInactivos = allProjects.filter(p => closedStatuses.includes(p.estado_nombre)).length;
     const countPorVencer = allProjects.filter(p => p.estado_alerta_pago === 'naranja' || p.estado_alerta_pago === 'rojo').length;
+    const countAlDia    = allProjects.filter(p => p.estado_alerta_pago === 'verde').length;
+    const countNaranja  = allProjects.filter(p => p.estado_alerta_pago === 'naranja').length;
+    const countRojo     = allProjects.filter(p => p.estado_alerta_pago === 'rojo').length;
     const countByType = allProjects.reduce((acc, p) => {
         const tipo = p.tipo_nombre || 'Sin tipo';
         acc[tipo] = (acc[tipo] || 0) + 1;
@@ -387,7 +423,9 @@ export default function Ingresos() {
             }
         }
 
-        return matchesSearch && matchesType && matchesStatus && matchesMonth;
+        const matchesPago = filterPago === 'Todos' || p.estado_alerta_pago === filterPago;
+
+        return matchesSearch && matchesType && matchesStatus && matchesMonth && matchesPago;
     });
 
     return (
@@ -477,6 +515,8 @@ export default function Ingresos() {
                                             onChange={(e) => setProjectForm({ ...projectForm, deliveryDate: e.target.value })} />
                                         <Input label="Observaciones (Opcional)" placeholder="Notas del proyecto/cliente"
                                             value={projectForm.observations} onChange={(e) => setProjectForm({ ...projectForm, observations: e.target.value })} />
+                                        <Input label="Link de cobro Mercado Pago (Opcional)" type="url" placeholder="https://mpago.la/..."
+                                            value={projectForm.urlCobroMp} onChange={(e) => setProjectForm({ ...projectForm, urlCobroMp: e.target.value })} />
                                     </div>
                                 </div>
 
@@ -594,6 +634,23 @@ export default function Ingresos() {
                         </div>
                     </div>
 
+                    {(countAlDia > 0 || countNaranja > 0 || countRojo > 0) && (
+                        <div className="flex items-center gap-2 flex-wrap mb-4">
+                            {[
+                                { value: 'Todos',   label: 'Todos',      count: allProjects.length, cls: filterPago === 'Todos'   ? 'bg-primary text-primary-foreground border-primary'                                                                                             : 'bg-card text-muted-foreground border-border hover:border-primary/40' },
+                                { value: 'verde',   label: 'Al día',     count: countAlDia,   cls: filterPago === 'verde'   ? 'bg-[hsl(var(--emerald-premium))]/20 text-[hsl(var(--emerald-premium))] border-[hsl(var(--emerald-premium))]'  : 'bg-card text-muted-foreground border-border hover:border-[hsl(var(--emerald-premium))]/50' },
+                                { value: 'naranja', label: 'Por vencer', count: countNaranja, cls: filterPago === 'naranja' ? 'bg-[hsl(var(--gold))]/20 text-[hsl(var(--gold))] border-[hsl(var(--gold))]'                                  : 'bg-card text-muted-foreground border-border hover:border-[hsl(var(--gold))]/50' },
+                                { value: 'rojo',    label: 'Vencidos',   count: countRojo,    cls: filterPago === 'rojo'    ? 'bg-destructive/20 text-destructive border-destructive'                                                         : 'bg-card text-muted-foreground border-border hover:border-destructive/50' },
+                            ].map(({ value, label, count, cls }) => (
+                                <button key={value} onClick={() => setFilterPago(value)}
+                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-colors ${cls}`}>
+                                    {label}
+                                    <span className="text-[10px] opacity-70">({count})</span>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
                     {filteredProjects.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-64 text-muted-foreground text-center border border-border border-dashed rounded-xl bg-muted/20">
                             <Briefcase size={32} className="mb-4 opacity-50" />
@@ -640,8 +697,32 @@ export default function Ingresos() {
                                                         </span>
                                                     )}
                                                     {project.rut_cliente && <span className="text-xs text-muted-foreground">RUT: {project.rut_cliente}</span>}
-                                                    {project.email_cliente && <span className="text-xs text-muted-foreground">Email: {project.email_cliente}</span>}
+                                                    {project.email_cliente && (
+                                                        <span className="text-xs text-muted-foreground flex items-center gap-1 flex-wrap">
+                                                            <Mail size={10} className="shrink-0" />
+                                                            {project.email_cliente}
+                                                            {project.ciclo_facturacion && project.ciclo_facturacion !== 'Unico' && (
+                                                                <span
+                                                                    title="Recordatorios automáticos activados para este cliente"
+                                                                    className="text-[9px] px-1 py-0.5 rounded border bg-[hsl(var(--emerald-premium))]/10 text-[hsl(var(--emerald-premium))] border-[hsl(var(--emerald-premium))]/30 font-medium shrink-0"
+                                                                >
+                                                                    recordatorios activos
+                                                                </span>
+                                                            )}
+                                                        </span>
+                                                    )}
                                                     {project.telefono_cliente && <span className="text-xs text-muted-foreground">Tel: {project.telefono_cliente}</span>}
+                                                    {project.url_cobro_mercadopago && (
+                                                        <a
+                                                            href={project.url_cobro_mercadopago}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="text-xs text-[hsl(var(--emerald-premium))] flex items-center gap-1 hover:underline"
+                                                            title="Link de cobro Mercado Pago"
+                                                        >
+                                                            <ExternalLink size={10} className="shrink-0" /> Link MP
+                                                        </a>
+                                                    )}
                                                     {project.profesion_cliente && <span className="text-xs text-muted-foreground">Giro: {project.profesion_cliente}</span>}
                                                     {project.fecha_entrega && (
                                                         <span className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
@@ -709,6 +790,17 @@ export default function Ingresos() {
                                             <div className="h-full bg-[hsl(var(--emerald-premium))] transition-all duration-500"
                                                 style={{ width: `${Math.min(progress, 100)}%` }} />
                                         </div>
+
+                                        {project.ciclo_facturacion && project.ciclo_facturacion !== 'Unico' && (project.estado_alerta_pago === 'naranja' || project.estado_alerta_pago === 'rojo') && (
+                                            <button
+                                                onClick={() => handleQuickPago(project)}
+                                                disabled={quickPayLoadingId === project.id}
+                                                className="w-full mb-3 flex items-center justify-center gap-1.5 py-2 rounded-lg border border-[hsl(var(--emerald-premium))]/40 bg-[hsl(var(--emerald-premium))]/10 text-[hsl(var(--emerald-premium))] text-xs font-medium hover:bg-[hsl(var(--emerald-premium))]/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                <CheckCircle2 size={13} />
+                                                {quickPayLoadingId === project.id ? 'Registrando...' : 'Marcar suscripción pagada'}
+                                            </button>
+                                        )}
 
                                         {pagos.length > 0 && (
                                             <div className="mb-3">
@@ -809,6 +901,8 @@ export default function Ingresos() {
                                     value={editForm.deliveryDate} onChange={(e) => setEditForm({ ...editForm, deliveryDate: e.target.value })} />
                                 <Input label="Observaciones (Opcional)" placeholder="Notas del proyecto/cliente"
                                     value={editForm.observations} onChange={(e) => setEditForm({ ...editForm, observations: e.target.value })} />
+                                <Input label="Link de cobro Mercado Pago (Opcional)" type="url" placeholder="https://mpago.la/..."
+                                    value={editForm.urlCobroMp || ''} onChange={(e) => setEditForm({ ...editForm, urlCobroMp: e.target.value })} />
                             </div>
                         </div>
 
