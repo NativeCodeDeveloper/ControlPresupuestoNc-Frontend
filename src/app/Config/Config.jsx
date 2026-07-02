@@ -788,7 +788,6 @@ export default function Config() {
                     <div className="space-y-2 mb-5">
                         {synapseTeams.map(team => (
                             <div key={team.id_team} className="flex items-center gap-3 bg-secondary/40 border border-border/40 rounded-xl px-4 py-3">
-                                <span className="text-lg">{team.emoji}</span>
                                 <span className="text-sm font-medium text-foreground flex-1">{team.nombre}</span>
                                 <span className="w-3 h-3 rounded-full shrink-0" style={{ background: team.color_hex }} />
                                 <button
@@ -813,13 +812,6 @@ export default function Config() {
                             onChange={(e) => setNewTeamForm(f => ({ ...f, nombre: e.target.value }))}
                             onKeyDown={(e) => { if (e.key === 'Enter') handleAddSynapseTeam(); }}
                             className="flex-1 min-w-36 bg-secondary/50 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/30 transition-all"
-                        />
-                        <input
-                            type="text"
-                            placeholder="Emoji"
-                            value={newTeamForm.emoji}
-                            onChange={(e) => setNewTeamForm(f => ({ ...f, emoji: e.target.value }))}
-                            className="w-16 bg-secondary/50 border border-border rounded-lg px-3 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-violet-500/30 transition-all"
                         />
                         <div className="flex items-center gap-2">
                             <label className="text-xs text-muted-foreground">Color</label>

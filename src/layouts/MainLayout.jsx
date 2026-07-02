@@ -251,7 +251,7 @@ export default function MainLayout({ children }) {
                                     <NavItem
                                         key={team.id_team}
                                         item={{
-                                            emoji: team.emoji,
+                                            icon:  Users,
                                             label: team.nombre,
                                             path:  `/synapse/team/${team.id_team}`,
                                             tone:  'text-violet-400',
