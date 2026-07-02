@@ -42,3 +42,14 @@ export const getTeams = () => apiClient.get(`${BASE}/teams`);
 export const createTeam = (data) => apiClient.post(`${BASE}/teams`, data);
 export const updateTeam = (id, data) => apiClient.put(`${BASE}/teams/${id}`, data);
 export const deleteTeam = (id) => apiClient.delete(`${BASE}/teams/${id}`);
+
+// ── Production Cockpit ────────────────────────────────────────────────────────
+export const getCockpit = (params = {}) => {
+    const qs = new URLSearchParams(
+        Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== ''))
+    ).toString();
+    return apiClient.get(`${BASE}/cockpit${qs ? `?${qs}` : ''}`);
+};
+export const updateCockpit = (id, data) => apiClient.patch(`${BASE}/cockpit/${id}`, data);
+export const getCockpitConfig = () => apiClient.get(`${BASE}/cockpit/config`);
+export const updateCockpitConfig = (data) => apiClient.put(`${BASE}/cockpit/config`, data);

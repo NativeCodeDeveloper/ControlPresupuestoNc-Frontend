@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
     House, LayoutDashboard, TrendingUp, TrendingDown, PieChart,
     Settings, Menu, Users, PiggyBank, Waves, BookOpen, LogOut,
-    Brain, ChevronLeft, DollarSign, LayoutGrid
+    Brain, ChevronLeft, DollarSign, LayoutGrid, Rocket
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { getTeams } from '../services/synapseService';
@@ -40,7 +40,8 @@ const MODULES = [
         accent: 'text-violet-400',
         accentBg: 'bg-violet-500/12',
         items: [
-            { icon: LayoutGrid, label: 'Synapse System', path: '/synapse', tone: 'text-violet-400', activeBg: 'bg-violet-500/14' },
+            { icon: LayoutGrid, label: 'Synapse System',      path: '/synapse',         tone: 'text-violet-400', activeBg: 'bg-violet-500/14' },
+            { icon: Rocket,     label: 'Production Cockpit',  path: '/synapse/cockpit', tone: 'text-violet-400', activeBg: 'bg-violet-500/14' },
         ],
     },
 ];

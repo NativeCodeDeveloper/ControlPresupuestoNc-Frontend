@@ -460,7 +460,7 @@ export default function Ingresos() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Form Section */}
                 <div className="lg:col-span-1">
-                    <div className="bg-card border border-border rounded-xl p-6 shadow-sm sticky top-24">
+                    <div className="bg-card border border-border rounded-xl p-6 shadow-sm sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto">
                         <h3 className="text-lg font-semibold text-foreground mb-6 flex items-center gap-2">
                             {activeTab === 'projects' ? <Briefcase size={18} /> : <DollarSign size={18} />}
                             {activeTab === 'projects' ? 'Nuevo Proyecto' : 'Registrar Pago'}
