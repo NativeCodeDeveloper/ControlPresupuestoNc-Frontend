@@ -635,6 +635,17 @@ export default function Ingresos() {
                         </div>
                     </div>
 
+                    {(searchTerm || filterType !== 'Todos' || filterStatus !== 'Todos' || filterMonth !== 'Todos' || filterPago !== 'Todos') && (
+                        <div className="mb-2">
+                            <button
+                                onClick={() => { setSearchTerm(''); setFilterType('Todos'); setFilterStatus('Todos'); setFilterMonth('Todos'); setFilterPago('Todos'); }}
+                                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground border border-border rounded-lg px-3 py-1.5 hover:bg-foreground/5 transition-colors"
+                            >
+                                <X size={11} /> Limpiar filtros
+                            </button>
+                        </div>
+                    )}
+
                     {(countAlDia > 0 || countNaranja > 0 || countRojo > 0) && (
                         <div className="flex items-center gap-2 flex-wrap mb-4">
                             {[
