@@ -467,7 +467,7 @@ export default function ProductionCockpit() {
     const th = (label, field, extraClass = '') => (
         <th
             className={cn(
-                'px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground cursor-pointer select-none whitespace-nowrap',
+                'px-2 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground cursor-pointer select-none',
                 extraClass
             )}
             onClick={() => field && handleSort(field)}
@@ -672,7 +672,18 @@ export default function ProductionCockpit() {
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
-                        <table className="w-full text-[13px]">
+                        <table className="w-full table-fixed text-[13px]">
+                            <colgroup>
+                                <col className="w-[16%]" />
+                                <col className="w-[14%]" />
+                                {columnas.contacto.visible    && <col className="w-[10%]" />}
+                                {columnas.correo.visible      && <col className="w-[13%]" />}
+                                {columnas.servidor.visible    && <col className="w-[13%]" />}
+                                {columnas.url_front.visible   && <col className="w-[8%]" />}
+                                {columnas.estado_pago.visible && <col className="w-[16%]" />}
+                                {columnas.acciones.visible    && <col className="w-[7%]" />}
+                                {columnas.observaciones.visible && <col className="w-[13%]" />}
+                            </colgroup>
                             <thead className="border-b border-border bg-foreground/[0.02]">
                                 <tr>
                                     {th('Proyecto', 'nombre')}
@@ -682,7 +693,7 @@ export default function ProductionCockpit() {
                                     {columnas.servidor.visible    && th('Servidor', 'servidor')}
                                     {columnas.url_front.visible   && th('Link Front', 'url_front')}
                                     {columnas.estado_pago.visible && th('Estado Pago', 'estado_alerta_pago')}
-                                    {columnas.acciones.visible    && <th className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Acciones</th>}
+                                    {columnas.acciones.visible    && <th className="px-2 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Acciones</th>}
                                     {columnas.observaciones.visible && th('Observaciones', null)}
                                 </tr>
                             </thead>
@@ -696,9 +707,9 @@ export default function ProductionCockpit() {
                                         <tr key={p.id_proyecto} className={cn('transition-colors hover:bg-foreground/[0.015]', isSaving && 'opacity-60')}>
 
                                             {/* Proyecto */}
-                                            <td className="px-3 py-3 whitespace-nowrap">
+                                            <td className="px-2 py-2.5 overflow-hidden">
                                                 <div className="flex flex-col gap-0.5">
-                                                    <span className="font-medium text-[12px] text-foreground leading-none">
+                                                    <span className="font-medium text-[12px] text-foreground leading-none truncate block">
                                                         {p.nombre}
                                                     </span>
                                                     {p.codigo_interno && (
@@ -708,14 +719,14 @@ export default function ProductionCockpit() {
                                             </td>
 
                                             {/* Cliente */}
-                                            <td className="px-3 py-3 whitespace-nowrap">
-                                                <span className="text-[12px] text-foreground">{p.nombre_cliente}</span>
+                                            <td className="px-2 py-2.5 overflow-hidden">
+                                                <span className="text-[12px] text-foreground truncate block">{p.nombre_cliente}</span>
                                             </td>
 
                                             {/* Contacto */}
                                             {columnas.contacto.visible && (
-                                                <td className="px-3 py-3 whitespace-nowrap">
-                                                    <span className="text-[12px] text-muted-foreground font-mono">
+                                                <td className="px-2 py-2.5 overflow-hidden">
+                                                    <span className="text-[12px] text-muted-foreground font-mono truncate block">
                                                         {p.telefono_cliente || <span className="opacity-30">—</span>}
                                                     </span>
                                                 </td>
@@ -723,8 +734,8 @@ export default function ProductionCockpit() {
 
                                             {/* Correo */}
                                             {columnas.correo.visible && (
-                                                <td className="px-3 py-3 whitespace-nowrap">
-                                                    <span className="text-[12px] text-muted-foreground truncate max-w-[160px] block">
+                                                <td className="px-2 py-2.5 overflow-hidden">
+                                                    <span className="text-[12px] text-muted-foreground truncate block">
                                                         {p.email_cliente || <span className="opacity-30">—</span>}
                                                     </span>
                                                 </td>
@@ -732,7 +743,7 @@ export default function ProductionCockpit() {
 
                                             {/* Servidor */}
                                             {columnas.servidor.visible && (
-                                                <td className="px-3 py-3">
+                                                <td className="px-2 py-2.5 overflow-hidden">
                                                     <div className="flex items-center gap-1">
                                                         {isSaving ? <Loader2 size={10} className="animate-spin text-muted-foreground" /> : null}
                                                         <InlineEdit
@@ -746,7 +757,7 @@ export default function ProductionCockpit() {
 
                                             {/* Link Front */}
                                             {columnas.url_front.visible && (
-                                                <td className="px-3 py-3">
+                                                <td className="px-2 py-2.5 overflow-hidden">
                                                     <div className="flex items-center gap-1">
                                                         <InlineEdit
                                                             value={p.url_front}
@@ -770,7 +781,7 @@ export default function ProductionCockpit() {
 
                                             {/* Estado Pago */}
                                             {columnas.estado_pago.visible && (
-                                                <td className="px-3 py-3">
+                                                <td className="px-2 py-2.5">
                                                     <div className="flex flex-col gap-1.5">
                                                         <AlertaBadge alerta={p.estado_alerta_pago} />
                                                         {esRecurrente && p.fecha_proximo_pago && (
@@ -802,8 +813,8 @@ export default function ProductionCockpit() {
 
                                             {/* Acciones */}
                                             {columnas.acciones.visible && (
-                                                <td className="px-3 py-3">
-                                                    <div className="flex items-center gap-1.5">
+                                                <td className="px-2 py-2.5">
+                                                    <div className="flex items-center gap-1">
                                                         <button
                                                             onClick={() => setEmailModal(p)}
                                                             title="Enviar correo"
@@ -825,7 +836,7 @@ export default function ProductionCockpit() {
 
                                             {/* Observaciones */}
                                             {columnas.observaciones.visible && (
-                                                <td className="px-3 py-3 min-w-[160px] max-w-[220px]">
+                                                <td className="px-2 py-2.5 overflow-hidden">
                                                     <InlineEdit
                                                         value={p.cockpit_observaciones}
                                                         placeholder="Agregar nota…"
