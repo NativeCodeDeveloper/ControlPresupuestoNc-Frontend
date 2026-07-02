@@ -12,6 +12,7 @@ import { cn } from '../lib/utils';
 import { getTeams } from '../services/synapseService';
 import { ThemeTogglerButton } from '../components/animate-ui/components/buttons/theme-toggler';
 import { useClerk } from '@clerk/nextjs';
+import NotificationBell from '../components/NotificationBell';
 
 // ── Módulos ───────────────────────────────────────────────────────────────────
 
@@ -172,6 +173,7 @@ export default function MainLayout({ children }) {
                 <div className="flex-1" />
 
                 <div className="flex flex-col items-center gap-1 w-full px-2">
+                    <NotificationBell />
                     <ThemeTogglerButton
                         variant="ghost"
                         size="icon"
