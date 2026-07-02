@@ -288,6 +288,7 @@ export default function ProductionCockpit() {
 
     const [proyectos, setProyectos]         = useState([]);
     const [totalAcumulado, setTotalAcumul]  = useState(0);
+    const [totalGeneral, setTotalGeneral]   = useState(0);
     const [meta, setMeta]                   = useState(0);
     const [columnas, setColumnas]           = useState(DEFAULT_COLUMNAS);
     const [loading, setLoading]             = useState(true);
@@ -322,6 +323,7 @@ export default function ProductionCockpit() {
 
             setProyectos(data?.proyectos || []);
             setTotalAcumul(data?.total_acumulado_mes || 0);
+            setTotalGeneral(data?.total_general || 0);
             setMeta(cfg?.meta_mensual || 0);
 
             if (cfg?.cockpit_columnas) {
@@ -491,6 +493,20 @@ export default function ProductionCockpit() {
                         <p className="text-[12px] text-muted-foreground">
                             Vista operativa de proyectos activos — Synapse
                         </p>
+                    </div>
+
+                    {/* Total general acumulado */}
+                    <div className="flex flex-col gap-1 bg-card border border-border rounded-xl px-4 py-3 min-w-[180px]">
+                        <div className="flex items-center gap-1.5">
+                            <TrendingUp size={12} className="text-emerald-400" />
+                            <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                Total general
+                            </span>
+                        </div>
+                        <div className="text-[15px] font-semibold tabular-nums text-emerald-500">
+                            {fmt(totalGeneral)}
+                        </div>
+                        <p className="text-[9px] text-muted-foreground/50 mt-0.5">Acumulado histórico</p>
                     </div>
 
                     {/* Meta mensual chip */}
