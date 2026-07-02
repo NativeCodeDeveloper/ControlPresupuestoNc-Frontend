@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
     Brain, Plus, Search, RefreshCw, Loader2, LayoutGrid, List,
-    Flag, Folder, User, Clock, ChevronDown, Filter, X
+    Flag, Folder, User, Clock, ChevronDown, Filter, X, Check
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import * as synapseService from '../../services/synapseService';
@@ -172,8 +172,9 @@ function KanbanColumn({ estado, tareas, draggingId, onDrop, onCardClick, onCardD
 
 // ── Vista Lista ───────────────────────────────────────────────────────────────
 
-function ListView({ tareas, estados, onCardClick }) {
+function ListView({ tareas, estados, onCardClick, onChangeEstado }) {
     const estadoMap = Object.fromEntries(estados.map(e => [e.id_estado, e]));
+    const ultimoEstado = [...estados].sort((a, b) => a.orden - b.orden).at(-1);
 
     if (!tareas.length) {
         return (
@@ -183,50 +184,90 @@ function ListView({ tareas, estados, onCardClick }) {
         );
     }
 
-    return (
-        <div className="space-y-1.5">
-            {tareas.map(t => {
-                const estado = estadoMap[t.id_estado];
-                const prio = PRIORIDAD_CONFIG[t.prioridad];
-                const tipo = TIPO_CONFIG[t.tipo];
-                const isOverdue = t.fecha_vencimiento && !t.fecha_completado &&
-                    new Date(t.fecha_vencimiento) < new Date(new Date().toDateString());
+    // Agrupar por estado respetando el orden de las columnas
+    const grupos = estados
+        .map(e => ({ estado: e, items: tareas.filter(t => t.id_estado === e.id_estado) }))
+        .filter(g => g.items.length > 0);
 
-                return (
-                    <div
-                        key={t.id_tarea}
-                        onClick={() => onCardClick(t)}
-                        className="flex items-center gap-3 bg-card border border-border/40 rounded-xl px-4 py-3 hover:border-violet-500/40 hover:bg-secondary/20 cursor-pointer transition-all"
-                    >
-                        <span className="w-2 h-2 rounded-full shrink-0" style={{ background: estado?.color_hex || '#6B7280' }} />
-                        <span className="text-[11px] text-muted-foreground shrink-0 w-12 text-center">{tipo?.emoji}</span>
-                        <span className="flex-1 text-sm font-medium text-foreground truncate">{t.titulo}</span>
-                        {t.proyecto_nombre && (
-                            <span className="hidden md:flex items-center gap-1 text-[11px] text-muted-foreground shrink-0">
-                                <Folder size={10} />
-                                {t.proyecto_nombre}
-                            </span>
-                        )}
-                        {t.asignado_nombre && (
-                            <span className="hidden lg:flex items-center gap-1 text-[11px] text-muted-foreground shrink-0">
-                                <User size={10} />
-                                {t.asignado_nombre}
-                            </span>
-                        )}
-                        <span
-                            className="text-[10px] font-semibold shrink-0"
-                            style={{ color: prio?.color }}
-                        >
-                            {prio?.label}
+    return (
+        <div className="space-y-5">
+            {grupos.map(({ estado, items }) => (
+                <div key={estado.id_estado}>
+                    {/* Cabecera de grupo */}
+                    <div className="flex items-center gap-2 mb-2 px-1">
+                        <span className="w-2 h-2 rounded-full shrink-0" style={{ background: estado.color_hex }} />
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                            {estado.nombre}
                         </span>
-                        {t.fecha_vencimiento && (
-                            <span className={cn("text-[11px] shrink-0 hidden md:block", isOverdue ? "text-red-400" : "text-muted-foreground")}>
-                                {new Date(t.fecha_vencimiento).toLocaleDateString('es-CL', { day: '2-digit', month: 'short' })}
-                            </span>
-                        )}
+                        <span className="text-[10px] text-muted-foreground/50 ml-1">{items.length}</span>
                     </div>
-                );
-            })}
+
+                    <div className="space-y-1.5">
+                        {items.map(t => {
+                            const prio = PRIORIDAD_CONFIG[t.prioridad];
+                            const tipo = TIPO_CONFIG[t.tipo];
+                            const isDone = estado.es_final || t.id_estado === ultimoEstado?.id_estado;
+                            const isOverdue = t.fecha_vencimiento && !t.fecha_completado &&
+                                new Date(t.fecha_vencimiento) < new Date(new Date().toDateString());
+
+                            return (
+                                <div
+                                    key={t.id_tarea}
+                                    onClick={() => onCardClick(t)}
+                                    className={cn(
+                                        "flex items-center gap-3 border rounded-xl px-4 py-3 cursor-pointer transition-all",
+                                        isDone
+                                            ? "bg-emerald-500/5 border-emerald-500/25 hover:border-emerald-500/50"
+                                            : "bg-card border-border/40 hover:border-violet-500/40 hover:bg-secondary/20"
+                                    )}
+                                >
+                                    {/* Botón cambiar estado */}
+                                    <button
+                                        onClick={e => { e.stopPropagation(); onChangeEstado(t); }}
+                                        title="Cambiar estado"
+                                        className={cn(
+                                            "w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors",
+                                            isDone
+                                                ? "border-emerald-500 bg-emerald-500 text-white"
+                                                : "border-border hover:border-violet-400"
+                                        )}
+                                    >
+                                        {isDone && <Check size={10} strokeWidth={2.5} />}
+                                    </button>
+
+                                    <span className="text-[11px] text-muted-foreground shrink-0 w-8 text-center">{tipo?.emoji}</span>
+                                    <span className={cn(
+                                        "flex-1 text-sm font-medium truncate",
+                                        isDone ? "line-through text-muted-foreground" : "text-foreground"
+                                    )}>
+                                        {t.titulo}
+                                    </span>
+                                    {t.proyecto_nombre && (
+                                        <span className="hidden md:flex items-center gap-1 text-[11px] text-muted-foreground shrink-0">
+                                            <Folder size={10} />
+                                            {t.proyecto_nombre}
+                                        </span>
+                                    )}
+                                    {t.asignado_nombre && (
+                                        <span className="hidden lg:flex items-center gap-1 text-[11px] text-muted-foreground shrink-0">
+                                            <User size={10} />
+                                            {t.asignado_nombre}
+                                        </span>
+                                    )}
+                                    <span className="text-[10px] font-semibold shrink-0" style={{ color: prio?.color }}>
+                                        {prio?.label}
+                                    </span>
+                                    {t.fecha_vencimiento && (
+                                        <span className={cn("text-[11px] shrink-0 hidden md:block", isOverdue ? "text-red-400" : "text-muted-foreground")}>
+                                            {new Date(t.fecha_vencimiento).toLocaleDateString('es-CL', { day: '2-digit', month: 'short' })}
+                                        </span>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            ))}
         </div>
     );
 }
@@ -336,6 +377,25 @@ export default function Synapse({ teamId = null }) {
     };
 
     // ── Drag & Drop ────────────────────────────────────────────────────────────
+
+    // Avanza la tarea al siguiente estado (desde vista lista)
+    const handleListChangeEstado = async (tarea) => {
+        const ordenados = [...estados].sort((a, b) => a.orden - b.orden);
+        const idxActual = ordenados.findIndex(e => e.id_estado === tarea.id_estado);
+        const siguiente = ordenados[idxActual + 1] ?? ordenados[idxActual]; // si es el último, queda igual
+        if (siguiente.id_estado === tarea.id_estado) return;
+        const fechaCompletado = siguiente.es_final ? new Date().toISOString().split('T')[0] : null;
+        setTareas(prev => prev.map(t =>
+            t.id_tarea === tarea.id_tarea
+                ? { ...t, id_estado: siguiente.id_estado, fecha_completado: fechaCompletado }
+                : t
+        ));
+        try {
+            await synapseService.updateTareaEstado(tarea.id_tarea, siguiente.id_estado);
+        } catch {
+            await loadAll();
+        }
+    };
 
     const handleDrop = async (nuevoEstadoId) => {
         if (!draggingId) return;
@@ -551,6 +611,7 @@ export default function Synapse({ teamId = null }) {
                     tareas={filteredTareas}
                     estados={estados}
                     onCardClick={openEdit}
+                    onChangeEstado={handleListChangeEstado}
                 />
             )}
 
