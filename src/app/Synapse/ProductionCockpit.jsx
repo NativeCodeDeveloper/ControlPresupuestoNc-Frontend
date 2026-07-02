@@ -6,7 +6,7 @@ import {
     Gauge, RefreshCw, Loader2, Search, ChevronDown, ChevronUp,
     Mail, MessageSquare, Eye, EyeOff, Settings2, X, Check,
     ExternalLink, Server, Calendar, Target, TrendingUp,
-    AlertCircle, Clock, CheckCircle2, Minus, Filter
+    AlertCircle, Clock, CheckCircle2, Minus, Filter, Paperclip, Trash2
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import * as synapseService from '../../services/synapseService';
@@ -112,6 +112,15 @@ function InlineEdit({ value, onSave, placeholder = '—', multiline = false }) {
     );
 }
 
+function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload  = () => resolve(reader.result.split(',')[1]); // quita el prefijo data:...;base64,
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
 function EmailModal({ proyecto, onClose }) {
     const [to, setTo]           = useState(proyecto?.email_cliente || '');
     const [subject, setSubject] = useState(DEFAULT_EMAIL_SUBJECT(proyecto));
@@ -119,13 +128,27 @@ function EmailModal({ proyecto, onClose }) {
     const [sending, setSending] = useState(false);
     const [sent, setSent]       = useState(false);
     const [error, setError]     = useState('');
+    const [adjuntos, setAdjuntos] = useState([]); // [{ file, name }]
+    const fileInputRef = useRef(null);
+
+    const handleAddFiles = (files) => {
+        const nuevos = [...files].filter(f => f.size <= 8 * 1024 * 1024); // máx 8MB por archivo
+        if (nuevos.length < [...files].length) setError('Algunos archivos superan 8 MB y fueron omitidos.');
+        setAdjuntos(prev => [...prev, ...nuevos].slice(0, 5)); // máx 5 adjuntos
+    };
 
     const send = async () => {
         if (!to.trim()) return;
         setSending(true);
         setError('');
         try {
-            await synapseService.sendCockpitEmail({ to, subject, body });
+            const attachments = await Promise.all(
+                adjuntos.map(async (f) => ({
+                    content: await fileToBase64(f),
+                    name:    f.name,
+                }))
+            );
+            await synapseService.sendCockpitEmail({ to, subject, body, attachments });
             setSent(true);
             setTimeout(onClose, 1500);
         } catch (e) {
@@ -184,6 +207,45 @@ function EmailModal({ proyecto, onClose }) {
                                     className="w-full text-[13px] bg-input border border-border rounded-lg px-3 py-2 outline-none focus:border-violet-500 transition-colors resize-none"
                                 />
                             </div>
+
+                            {/* Adjuntos */}
+                            <div>
+                                <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1 block">
+                                    Adjuntos <span className="normal-case font-normal">(PDF, imagen, Word, Excel — máx. 8 MB c/u, hasta 5)</span>
+                                </label>
+                                <div
+                                    onClick={() => fileInputRef.current?.click()}
+                                    onDrop={e => { e.preventDefault(); handleAddFiles(e.dataTransfer.files); }}
+                                    onDragOver={e => e.preventDefault()}
+                                    className="border border-dashed border-border rounded-lg px-3 py-2.5 flex items-center gap-2 cursor-pointer hover:border-violet-500/60 hover:bg-violet-500/5 transition-colors text-[12px] text-muted-foreground"
+                                >
+                                    <Paperclip size={13} />
+                                    Arrastra archivos o haz clic para adjuntar
+                                    <input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        multiple
+                                        accept=".pdf,.doc,.docx,.xls,.xlsx,image/*,.txt"
+                                        className="hidden"
+                                        onChange={e => handleAddFiles(e.target.files)}
+                                    />
+                                </div>
+                                {adjuntos.length > 0 && (
+                                    <ul className="mt-1.5 space-y-1">
+                                        {adjuntos.map((f, i) => (
+                                            <li key={i} className="flex items-center gap-2 text-[12px] text-zinc-300">
+                                                <Paperclip size={11} className="text-zinc-500 shrink-0" />
+                                                <span className="flex-1 truncate">{f.name}</span>
+                                                <span className="text-zinc-600 shrink-0">{(f.size / 1024).toFixed(0)} KB</span>
+                                                <button onClick={() => setAdjuntos(prev => prev.filter((_, j) => j !== i))} className="text-zinc-500 hover:text-red-400 transition-colors">
+                                                    <Trash2 size={11} />
+                                                </button>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+                            </div>
+
                             {error && <p className="text-[12px] text-red-400">{error}</p>}
                         </>
                     )}
