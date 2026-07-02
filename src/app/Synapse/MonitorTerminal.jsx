@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
     RefreshCw, Loader2, Terminal, Server, Cpu, HardDrive, MemoryStick,
-    Circle, ChevronDown, Pause, Play, Plus, X, Trash2, Send, ChevronUp
+    Circle, ChevronDown, Pause, Play, Square, Plus, X, Trash2, Send, ChevronUp
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import * as adminService from '../../services/adminService';
@@ -245,22 +245,53 @@ function CommandConsole({ serverId }) {
 // ── Componente principal ──────────────────────────────────────────────────────
 
 const REFRESH_INTERVAL = 5000;
+const STORAGE_KEY = 'soma_monitor_state';
+
+function lsGet(key, fallback) {
+    if (typeof window === 'undefined') return fallback;
+    const v = localStorage.getItem(key);
+    return v !== null ? v : fallback;
+}
+function lsSet(key, val) { localStorage.setItem(key, String(val)); }
 
 export default function MonitorTerminal() {
     const [servers, setServers]         = useState([]);
     const [activeId, setActiveId]       = useState(null);
     const [stats, setStats]             = useState(null);
     const [logLines, setLogLines]       = useState([]);
-    const [logProcess, setLogProcess]   = useState('finance-back');
-    const [logType, setLogType]         = useState('out');
-    const [logCount, setLogCount]       = useState(150);
-    const [loading, setLoading]         = useState(true);
+    const [logProcess, setLogProcess]   = useState(() => lsGet('soma_log_process', 'finance-back'));
+    const [logType, setLogType]         = useState(() => lsGet('soma_log_type', 'out'));
+    const [logCount, setLogCount]       = useState(() => Number(lsGet('soma_log_count', 150)));
+    const [loading, setLoading]         = useState(false);
     const [lastUpdate, setLastUpdate]   = useState(null);
     const [error, setError]             = useState(null);
-    const [paused, setPaused]           = useState(false);
+    // Estado persistido: 'playing' | 'paused' | 'stopped'
+    const [monitorState, setMonitorState] = useState(() => {
+        if (typeof window === 'undefined') return 'stopped';
+        return localStorage.getItem(STORAGE_KEY) || 'stopped';
+    });
     const [showAddModal, setShowAddModal] = useState(false);
-    const logsRef                       = useRef(null);
-    const timerRef                      = useRef(null);
+    const logsRef  = useRef(null);
+    const timerRef = useRef(null);
+
+    const saveState = useCallback((state) => {
+        setMonitorState(state);
+        localStorage.setItem(STORAGE_KEY, state);
+    }, []);
+
+    const handlePlay  = () => saveState('playing');
+    const handlePause = () => saveState('paused');
+    const handleStop  = () => {
+        saveState('stopped');
+        setStats(null);
+        setLogLines([]);
+        setLastUpdate(null);
+        setError(null);
+    };
+
+    const isPlaying = monitorState === 'playing';
+    const isPaused  = monitorState === 'paused';
+    const isStopped = monitorState === 'stopped';
 
     useEffect(() => {
         adminService.listServers()
@@ -283,19 +314,25 @@ export default function MonitorTerminal() {
         finally { setLoading(false); }
     }, [logCount, logType, logProcess]);
 
+    // Solo hace polling cuando está en 'playing'
     useEffect(() => {
-        if (!activeId) return;
+        clearInterval(timerRef.current);
+        if (!activeId || !isPlaying) return;
         setLoading(true);
         fetchAll(activeId);
-        if (!paused) {
-            timerRef.current = setInterval(() => fetchAll(activeId), REFRESH_INTERVAL);
-        }
+        timerRef.current = setInterval(() => fetchAll(activeId), REFRESH_INTERVAL);
         return () => clearInterval(timerRef.current);
-    }, [activeId, fetchAll, paused]);
+    }, [activeId, fetchAll, isPlaying]);
 
     const pm2Options  = (stats?.pm2 || []).map(p => ({ value: p.name, label: p.name }));
     const lineOptions = [50, 100, 150, 250, 500].map(n => ({ value: n, label: `${n} líneas` }));
     const typeOptions = [{ value: 'out', label: 'stdout' }, { value: 'error', label: 'stderr' }];
+
+    const stateIndicator = isPlaying
+        ? { dot: 'bg-emerald-500 animate-pulse', label: 'live · 5s' }
+        : isPaused
+            ? { dot: 'bg-amber-500', label: 'pausado' }
+            : { dot: 'bg-zinc-600', label: 'detenido' };
 
     return (
         <div className="h-full flex flex-col bg-zinc-950 text-zinc-100 overflow-hidden">
@@ -314,22 +351,60 @@ export default function MonitorTerminal() {
                         </span>
                     )}
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
+                    {/* Play */}
                     <button
-                        onClick={() => setPaused(p => !p)}
+                        onClick={handlePlay}
+                        disabled={isPlaying}
+                        title="Iniciar monitorización"
                         className={cn(
                             'flex items-center gap-1.5 text-[12px] px-2.5 py-1 rounded-lg border transition-colors',
-                            paused
-                                ? 'bg-amber-500/15 border-amber-500/30 text-amber-400 hover:bg-amber-500/25'
-                                : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-zinc-200'
+                            isPlaying
+                                ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400 cursor-default opacity-60'
+                                : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-emerald-400 hover:border-emerald-500/40'
                         )}
                     >
-                        {paused ? <><Play size={11} /> Reanudar</> : <><Pause size={11} /> Pausar</>}
+                        <Play size={11} />
+                        <span className="hidden sm:inline">{isPaused ? 'Reanudar' : 'Iniciar'}</span>
                     </button>
+                    {/* Pause */}
+                    <button
+                        onClick={handlePause}
+                        disabled={!isPlaying}
+                        title="Pausar monitorización"
+                        className={cn(
+                            'flex items-center gap-1.5 text-[12px] px-2.5 py-1 rounded-lg border transition-colors',
+                            isPaused
+                                ? 'bg-amber-500/15 border-amber-500/30 text-amber-400 cursor-default opacity-60'
+                                : isPlaying
+                                    ? 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-amber-400 hover:border-amber-500/40'
+                                    : 'bg-zinc-800/30 border-zinc-800 text-zinc-700 cursor-not-allowed'
+                        )}
+                    >
+                        <Pause size={11} />
+                        <span className="hidden sm:inline">Pausar</span>
+                    </button>
+                    {/* Stop */}
+                    <button
+                        onClick={handleStop}
+                        disabled={isStopped}
+                        title="Detener monitorización"
+                        className={cn(
+                            'flex items-center gap-1.5 text-[12px] px-2.5 py-1 rounded-lg border transition-colors',
+                            isStopped
+                                ? 'bg-zinc-800/30 border-zinc-800 text-zinc-700 cursor-not-allowed'
+                                : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-red-400 hover:border-red-500/40'
+                        )}
+                    >
+                        <Square size={11} />
+                        <span className="hidden sm:inline">Detener</span>
+                    </button>
+                    {/* Refresh manual */}
                     <button
                         onClick={() => { setLoading(true); fetchAll(activeId); }}
-                        disabled={paused}
-                        className="flex items-center gap-1.5 text-[12px] text-zinc-400 hover:text-emerald-400 transition-colors disabled:opacity-40"
+                        disabled={!isPlaying}
+                        title="Actualizar ahora"
+                        className="ml-1 flex items-center text-[12px] text-zinc-500 hover:text-emerald-400 transition-colors disabled:opacity-30"
                     >
                         <RefreshCw size={13} />
                     </button>
@@ -368,47 +443,69 @@ export default function MonitorTerminal() {
                 </div>
             )}
 
-            {loading ? (
+            {/* ── Pantalla detenida / pausada (sin datos) ── */}
+            {!isPlaying && !stats && !loading && (
+                <div className="flex-1 flex flex-col items-center justify-center gap-4">
+                    <div className="text-center">
+                        <Terminal size={36} className="mx-auto mb-3 text-zinc-700" />
+                        <p className="text-[15px] font-semibold text-zinc-400">
+                            {isPaused ? 'Monitorización pausada' : 'Monitorización detenida'}
+                        </p>
+                        <p className="text-[12px] mt-1 text-zinc-600">
+                            Presiona Iniciar para comenzar a monitorear el servidor
+                        </p>
+                    </div>
+                    <button
+                        onClick={handlePlay}
+                        className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[13px] font-medium rounded-lg transition-colors"
+                    >
+                        <Play size={14} /> Iniciar monitorización
+                    </button>
+                </div>
+            )}
+
+            {loading && (
                 <div className="flex items-center justify-center flex-1 gap-2 text-zinc-500">
                     <Loader2 size={16} className="animate-spin" />
                     <span className="text-[13px]">Conectando…</span>
                 </div>
-            ) : (
+            )}
+
+            {/* ── Contenido (solo visible cuando hay datos) ── */}
+            {stats && !loading && (
                 <>
                     {/* ── Stats (fijo, no hace scroll) ── */}
-                    {stats && (
-                        <div className="px-5 py-4 border-b border-zinc-800 shrink-0 space-y-3">
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-3">
-                                    <div className="flex items-center gap-1.5 text-[10px] text-zinc-500 font-semibold uppercase tracking-wider mb-2.5">
-                                        <Cpu size={10} /> CPU
-                                    </div>
-                                    <UsageBar label="Uso" value={stats.cpu} color="violet" />
+                    <div className="px-5 py-4 border-b border-zinc-800 shrink-0 space-y-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-3">
+                                <div className="flex items-center gap-1.5 text-[10px] text-zinc-500 font-semibold uppercase tracking-wider mb-2.5">
+                                    <Cpu size={10} /> CPU
                                 </div>
-                                <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-3">
-                                    <div className="flex items-center gap-1.5 text-[10px] text-zinc-500 font-semibold uppercase tracking-wider mb-2.5">
-                                        <MemoryStick size={10} /> RAM
-                                    </div>
-                                    {stats.ram
-                                        ? <UsageBar label="Memoria" value={stats.ram.used} total={stats.ram.total} unit="MB" color="emerald" />
-                                        : <span className="text-zinc-600 text-[11px]">—</span>}
-                                </div>
-                                <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-3">
-                                    <div className="flex items-center gap-1.5 text-[10px] text-zinc-500 font-semibold uppercase tracking-wider mb-2.5">
-                                        <HardDrive size={10} /> Disco
-                                    </div>
-                                    {stats.disk
-                                        ? <UsageBar label="Almacenamiento" value={stats.disk.used} total={stats.disk.total} unit="MB" color="amber" />
-                                        : <span className="text-zinc-600 text-[11px]">—</span>}
-                                </div>
+                                <UsageBar label="Uso" value={stats.cpu} color="violet" />
                             </div>
-                            {stats.pm2?.length > 0 && (
-                                <div className="flex flex-wrap gap-2">
-                                    {stats.pm2.map(p => <Pm2Chip key={p.name} proc={p} />)}
+                            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-3">
+                                <div className="flex items-center gap-1.5 text-[10px] text-zinc-500 font-semibold uppercase tracking-wider mb-2.5">
+                                    <MemoryStick size={10} /> RAM
                                 </div>
-                            )}
+                                {stats.ram
+                                    ? <UsageBar label="Memoria" value={stats.ram.used} total={stats.ram.total} unit="MB" color="emerald" />
+                                    : <span className="text-zinc-600 text-[11px]">—</span>}
+                            </div>
+                            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-3">
+                                <div className="flex items-center gap-1.5 text-[10px] text-zinc-500 font-semibold uppercase tracking-wider mb-2.5">
+                                    <HardDrive size={10} /> Disco
+                                </div>
+                                {stats.disk
+                                    ? <UsageBar label="Almacenamiento" value={stats.disk.used} total={stats.disk.total} unit="MB" color="amber" />
+                                    : <span className="text-zinc-600 text-[11px]">—</span>}
+                            </div>
                         </div>
-                    )}
+                        {stats.pm2?.length > 0 && (
+                            <div className="flex flex-wrap gap-2">
+                                {stats.pm2.map(p => <Pm2Chip key={p.name} proc={p} />)}
+                            </div>
+                        )}
+                    </div>
 
                     {/* ── Log viewer (scroll propio) ── */}
                     <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
@@ -416,13 +513,13 @@ export default function MonitorTerminal() {
                         <div className="flex items-center gap-2 px-4 py-2 border-b border-zinc-800 bg-zinc-900/50 shrink-0 flex-wrap">
                             <span className="text-[10px] uppercase tracking-widest text-zinc-600 font-semibold mr-1">Logs</span>
                             {pm2Options.length > 0 && (
-                                <Select value={logProcess} onChange={setLogProcess} options={pm2Options} className="w-36" />
+                                <Select value={logProcess} onChange={v => { setLogProcess(v); lsSet('soma_log_process', v); }} options={pm2Options} className="w-36" />
                             )}
-                            <Select value={logType}  onChange={setLogType}  options={typeOptions} className="w-28" />
-                            <Select value={logCount} onChange={v => setLogCount(Number(v))} options={lineOptions} className="w-28" />
+                            <Select value={logType}  onChange={v => { setLogType(v);  lsSet('soma_log_type', v); }}  options={typeOptions} className="w-28" />
+                            <Select value={logCount} onChange={v => { setLogCount(Number(v)); lsSet('soma_log_count', v); }} options={lineOptions} className="w-28" />
                             <div className="ml-auto flex items-center gap-1.5 text-[10px] text-zinc-600">
-                                <div className={cn('w-1.5 h-1.5 rounded-full', paused ? 'bg-amber-500' : 'bg-emerald-500 animate-pulse')} />
-                                {paused ? 'pausado' : 'live · 5s'}
+                                <div className={cn('w-1.5 h-1.5 rounded-full', stateIndicator.dot)} />
+                                {stateIndicator.label}
                             </div>
                         </div>
 
