@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
     House, LayoutDashboard, TrendingUp, TrendingDown, PieChart,
     Settings, Menu, Users, PiggyBank, Waves, BookOpen, LogOut,
-    Brain, ChevronLeft, DollarSign, LayoutGrid, Gauge, Server, Terminal
+    Brain, ChevronLeft, DollarSign, LayoutGrid, Gauge, Server, Terminal, CalendarDays
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { getTeams } from '../services/synapseService';
@@ -34,6 +34,16 @@ const MODULES = [
         ],
     },
     {
+        id: 'calendario',
+        Icon: CalendarDays,
+        label: 'Calendario',
+        accent: 'text-indigo-400',
+        accentBg: 'bg-indigo-500/12',
+        items: [
+            { icon: CalendarDays, label: 'Agenda', path: '/calendario', tone: 'text-indigo-400', activeBg: 'bg-indigo-500/14' },
+        ],
+    },
+    {
         id: 'synapse',
         Icon: Brain,
         label: 'Synapse',
@@ -50,7 +60,8 @@ const MODULES = [
 ];
 
 function getActiveModule(pathname) {
-    if (pathname.startsWith('/synapse')) return 'synapse';
+    if (pathname.startsWith('/synapse'))    return 'synapse';
+    if (pathname.startsWith('/calendario')) return 'calendario';
     return 'finance';
 }
 
@@ -334,7 +345,7 @@ export default function MainLayout({ children }) {
                 </header>
 
                 {/* Área de contenido — full-height sin padding para páginas tipo terminal */}
-                {pathname?.startsWith('/synapse/monitor') ? (
+                {(pathname?.startsWith('/synapse/monitor') || pathname?.startsWith('/calendario')) ? (
                     <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
                         {children}
                     </div>
