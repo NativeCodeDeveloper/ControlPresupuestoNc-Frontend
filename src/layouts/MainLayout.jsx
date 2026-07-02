@@ -9,7 +9,6 @@ import {
     Brain, ChevronLeft, DollarSign, LayoutGrid, Gauge, Server
 } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { getTeams } from '../services/synapseService';
 import { ThemeTogglerButton } from '../components/animate-ui/components/buttons/theme-toggler';
 import { useClerk } from '@clerk/nextjs';
 
@@ -94,11 +93,6 @@ function NavItem({ item, isActive, onClick }) {
 export default function MainLayout({ children }) {
     const [isMobileOpen, setIsMobileOpen] = useState(false);
     const [isPanelOpen, setIsPanelOpen]   = useState(true);
-    const [teams, setTeams]               = useState([]);
-
-    useEffect(() => {
-        getTeams().then(data => setTeams(Array.isArray(data) ? data : [])).catch(() => {});
-    }, []);
     const pathname = usePathname();
     const router   = useRouter();
     const { signOut } = useClerk();
@@ -241,28 +235,6 @@ export default function MainLayout({ children }) {
                             />
                         ))}
 
-                        {/* Teams — solo en módulo Synapse */}
-                        {activeModuleId === 'synapse' && teams.length > 0 && (
-                            <div className="pt-3">
-                                <p className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider px-3 py-1.5">
-                                    Equipos
-                                </p>
-                                {teams.map(team => (
-                                    <NavItem
-                                        key={team.id_team}
-                                        item={{
-                                            emoji: team.emoji,
-                                            label: team.nombre,
-                                            path: `/synapse/team/${team.id_team}`,
-                                            tone: 'text-violet-400',
-                                            activeBg: 'bg-violet-500/14',
-                                        }}
-                                        isActive={pathname === `/synapse/team/${team.id_team}`}
-                                        onClick={() => setIsMobileOpen(false)}
-                                    />
-                                ))}
-                            </div>
-                        )}
 
                     </nav>
 
