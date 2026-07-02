@@ -9,6 +9,7 @@ import {
 import { cn } from '../../lib/utils';
 import * as workspaceService from '../../services/workspaceService';
 import dynamic from 'next/dynamic';
+import AdjuntosPanel from '../../components/AdjuntosPanel';
 
 const WorkspaceEditor = dynamic(() => import('./WorkspaceEditor'), { ssr: false, loading: () => (
     <div className="w-full min-h-[400px] rounded-lg border border-border/30 bg-foreground/2 animate-pulse" />
@@ -382,6 +383,11 @@ export default function WorkspaceDetail({ id }) {
                                 onChange={handleContenido}
                             />
                         )}
+                    </div>
+
+                    {/* Adjuntos */}
+                    <div className="mt-8 pt-6 border-t border-border/30">
+                        <AdjuntosPanel entidad="iniciativa" idEntidad={data?.id_iniciativa} />
                     </div>
                 </div>
             </div>

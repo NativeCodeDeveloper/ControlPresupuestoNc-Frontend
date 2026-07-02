@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import * as synapseService from '../../services/synapseService';
+import AdjuntosPanel from '../../components/AdjuntosPanel';
 
 const PRIORIDADES = [
     { val: 'baja',    label: 'Baja',    color: '#6B7280' },
@@ -416,6 +417,13 @@ export default function SynapseTaskModal({ tarea, estados, initialEstadoId, init
                         )}
                     </div>
                 </div>
+
+                {/* Adjuntos — solo en tareas existentes */}
+                {!isNew && tarea?.id_tarea && (
+                    <div className="px-6 pb-4 border-t border-border/30 pt-4">
+                        <AdjuntosPanel entidad="tarea" idEntidad={tarea.id_tarea} compact />
+                    </div>
+                )}
 
                 {/* Footer */}
                 <div className="px-6 py-4 border-t border-border/50 bg-secondary/10 shrink-0 flex items-center justify-between gap-3">
