@@ -2,7 +2,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
     RefreshCw, Loader2, Terminal, Server, Cpu, HardDrive, MemoryStick,
-    Circle, ChevronDown, Pause, Play, Square, Plus, X, Trash2, Send, ChevronUp
+    Circle, ChevronDown, Pause, Play, Square, Plus, X, Trash2, Send, ChevronUp,
+    Users, Check, ExternalLink, AlertCircle
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import * as adminService from '../../services/adminService';
@@ -242,6 +243,240 @@ function CommandConsole({ serverId }) {
     );
 }
 
+// ── Vista por cliente ─────────────────────────────────────────────────────────
+
+const STATUS_CLS = {
+    online:  { dot: 'bg-emerald-500', badge: 'bg-emerald-500/12 text-emerald-400 border-emerald-500/20' },
+    errored: { dot: 'bg-red-500',     badge: 'bg-red-500/12     text-red-400     border-red-500/20'     },
+    stopped: { dot: 'bg-zinc-500',    badge: 'bg-zinc-500/12    text-zinc-400    border-zinc-500/20'    },
+    unknown: { dot: 'bg-amber-500',   badge: 'bg-amber-500/12   text-amber-400   border-amber-500/20'   },
+};
+function statusCls(s) { return STATUS_CLS[s] || STATUS_CLS.unknown; }
+
+function ClientCard({ client, servers, onSaved }) {
+    const [editing, setEditing]       = useState(false);
+    const [selServer, setSelServer]   = useState(client.id_monitor_server || servers[0]?.id || 1);
+    const [selProcess, setSelProcess] = useState(client.pm2_process || '');
+    const [processes, setProcesses]   = useState([]);
+    const [loadingP, setLoadingP]     = useState(false);
+    const [saving, setSaving]         = useState(false);
+    const [err, setErr]               = useState('');
+
+    const openEdit = async () => {
+        setEditing(true);
+        setErr('');
+        setLoadingP(true);
+        try {
+            const procs = await adminService.listServerProcesses(selServer);
+            setProcesses(Array.isArray(procs) ? procs : []);
+        } catch { setProcesses([]); }
+        finally { setLoadingP(false); }
+    };
+
+    const handleServerChange = async (sid) => {
+        setSelServer(Number(sid));
+        setSelProcess('');
+        setLoadingP(true);
+        try {
+            const procs = await adminService.listServerProcesses(sid);
+            setProcesses(Array.isArray(procs) ? procs : []);
+        } catch { setProcesses([]); }
+        finally { setLoadingP(false); }
+    };
+
+    const save = async () => {
+        setSaving(true);
+        setErr('');
+        try {
+            await adminService.updateClientProcess(client.id_servidor, {
+                pm2_process:       selProcess || null,
+                id_monitor_server: selServer,
+            });
+            onSaved(client.id_servidor, selProcess || null, selServer);
+            setEditing(false);
+        } catch { setErr('Error al guardar'); }
+        finally { setSaving(false); }
+    };
+
+    const proc   = client.proc_stats;
+    const status = proc?.status || 'unknown';
+    const cls    = statusCls(status);
+    const hasProc = !!client.pm2_process;
+
+    return (
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 space-y-3 flex flex-col">
+
+            {/* Header */}
+            <div className="flex items-start gap-2.5">
+                <div className={cn('mt-1 w-2 h-2 rounded-full shrink-0', hasProc ? cls.dot : 'bg-zinc-700')} />
+                <div className="min-w-0">
+                    <p className="font-semibold text-[13px] text-zinc-100 leading-tight truncate">
+                        {client.nombre_cliente}
+                    </p>
+                    <p className="text-[11px] text-zinc-500 truncate">
+                        {client.nombre_proyecto}
+                        {client.codigo_interno && <span className="ml-1 text-zinc-600">· {client.codigo_interno}</span>}
+                    </p>
+                </div>
+            </div>
+
+            {/* Backend URL */}
+            <a href={client.ruta_backend} target="_blank" rel="noopener noreferrer"
+               className="flex items-center gap-1 text-[11px] text-zinc-600 hover:text-violet-400 transition-colors truncate">
+                <ExternalLink size={10} className="shrink-0" />
+                <span className="truncate">{client.ruta_backend}</span>
+            </a>
+
+            {/* Process badge o vacío */}
+            <div className="mt-auto">
+                {!editing && hasProc && proc && (
+                    <button onClick={openEdit}
+                            className={cn('w-full flex items-center gap-2 text-[11px] px-2.5 py-1.5 rounded-lg border transition-colors', cls.badge)}>
+                        <Circle size={6} fill="currentColor" className="shrink-0" />
+                        <span className="font-mono font-semibold truncate">{proc.name}</span>
+                        <span className="opacity-60">{proc.status}</span>
+                        {proc.cpu  != null && <span className="opacity-60 ml-auto">CPU {proc.cpu}%</span>}
+                        {proc.memory != null && <span className="opacity-60">{proc.memory}MB</span>}
+                    </button>
+                )}
+                {!editing && !hasProc && (
+                    <button onClick={openEdit}
+                            className="w-full text-[11px] text-zinc-600 hover:text-emerald-400 border border-dashed border-zinc-800 hover:border-emerald-600/40 rounded-lg py-1.5 transition-colors">
+                        + Asignar proceso PM2
+                    </button>
+                )}
+
+                {/* Formulario inline */}
+                {editing && (
+                    <div className="space-y-2">
+                        {servers.length > 1 && (
+                            <select value={selServer} onChange={e => handleServerChange(e.target.value)}
+                                    className="w-full text-[11px] bg-zinc-800 border border-zinc-700 text-zinc-300 rounded-lg px-2 py-1.5 outline-none focus:border-violet-500">
+                                {servers.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+                            </select>
+                        )}
+                        {loadingP ? (
+                            <div className="flex items-center gap-1.5 text-[11px] text-zinc-600 py-1">
+                                <Loader2 size={11} className="animate-spin" /> Cargando procesos…
+                            </div>
+                        ) : (
+                            <select value={selProcess} onChange={e => setSelProcess(e.target.value)}
+                                    className="w-full text-[11px] bg-zinc-800 border border-zinc-700 text-zinc-300 rounded-lg px-2 py-1.5 outline-none focus:border-violet-500">
+                                <option value="">— Sin proceso —</option>
+                                {processes.map(p => (
+                                    <option key={p.name} value={p.name}>
+                                        {p.name} ({p.status})
+                                    </option>
+                                ))}
+                            </select>
+                        )}
+                        {err && <p className="text-red-400 text-[10px]">{err}</p>}
+                        <div className="flex gap-1.5">
+                            <button onClick={save} disabled={saving}
+                                    className="flex-1 flex items-center justify-center gap-1 text-[11px] bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-lg py-1.5 transition-colors">
+                                {saving ? <Loader2 size={10} className="animate-spin" /> : <Check size={10} />}
+                                Guardar
+                            </button>
+                            <button onClick={() => setEditing(false)}
+                                    className="px-2.5 text-[11px] text-zinc-500 hover:text-zinc-300 border border-zinc-700 rounded-lg transition-colors">
+                                <X size={11} />
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* VPS label (si está asignado y no editando) */}
+            {!editing && client.nombre_vps && (
+                <p className="text-[10px] text-zinc-700">
+                    <Server size={9} className="inline mr-1" />{client.nombre_vps}
+                </p>
+            )}
+        </div>
+    );
+}
+
+function ClientsView({ servers }) {
+    const [clients, setClients]   = useState([]);
+    const [loading, setLoading]   = useState(true);
+    const [error, setError]       = useState(null);
+
+    const load = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const data = await adminService.listClients();
+            setClients(Array.isArray(data) ? data : []);
+        } catch { setError('No se pudieron cargar los clientes'); }
+        finally { setLoading(false); }
+    }, []);
+
+    useEffect(() => { load(); }, [load]);
+
+    const handleSaved = (idServidor, pm2Process, idMonitorServer) => {
+        setClients(prev => prev.map(c =>
+            c.id_servidor === idServidor
+                ? { ...c, pm2_process: pm2Process, id_monitor_server: idMonitorServer, proc_stats: null }
+                : c
+        ));
+        // Refrescar para obtener stats actualizados
+        setTimeout(load, 500);
+    };
+
+    if (loading) return (
+        <div className="flex-1 flex items-center justify-center gap-2 text-zinc-500">
+            <Loader2 size={16} className="animate-spin" />
+            <span className="text-[13px]">Cargando clientes…</span>
+        </div>
+    );
+
+    if (error) return (
+        <div className="flex-1 flex items-center justify-center">
+            <div className="flex items-center gap-2 text-red-400 text-[13px]">
+                <AlertCircle size={15} /> {error}
+            </div>
+        </div>
+    );
+
+    const sinAsignar = clients.filter(c => !c.pm2_process).length;
+    const online     = clients.filter(c => c.proc_stats?.status === 'online').length;
+    const errored    = clients.filter(c => c.proc_stats?.status === 'errored').length;
+
+    return (
+        <div className="flex-1 min-h-0 overflow-y-auto">
+            {/* Resumen */}
+            <div className="flex items-center gap-4 px-5 py-3 border-b border-zinc-800 text-[11px] text-zinc-500 shrink-0">
+                <span><span className="text-zinc-300 font-semibold">{clients.length}</span> clientes</span>
+                {online  > 0 && <span><span className="text-emerald-400 font-semibold">{online}</span> online</span>}
+                {errored > 0 && <span><span className="text-red-400 font-semibold">{errored}</span> con error</span>}
+                {sinAsignar > 0 && <span><span className="text-amber-400 font-semibold">{sinAsignar}</span> sin proceso</span>}
+                <button onClick={load} className="ml-auto text-zinc-600 hover:text-zinc-300 transition-colors">
+                    <RefreshCw size={12} />
+                </button>
+            </div>
+
+            {clients.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-64 text-center gap-3">
+                    <Users size={32} className="text-zinc-700" />
+                    <p className="text-[14px] text-zinc-500">No hay clientes con servidor asignado</p>
+                    <p className="text-[12px] text-zinc-700">Asigna un servidor en Backserver → proyecto → servidor</p>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 p-5">
+                    {clients.map(c => (
+                        <ClientCard
+                            key={c.id_servidor}
+                            client={c}
+                            servers={servers}
+                            onSaved={handleSaved}
+                        />
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
 // ── Componente principal ──────────────────────────────────────────────────────
 
 const REFRESH_INTERVAL = 5000;
@@ -271,6 +506,7 @@ export default function MonitorTerminal() {
         return localStorage.getItem(STORAGE_KEY) || 'stopped';
     });
     const [showAddModal, setShowAddModal] = useState(false);
+    const [view, setView]               = useState('servers'); // 'servers' | 'clients'
     const logsRef  = useRef(null);
     const timerRef = useRef(null);
 
@@ -351,6 +587,25 @@ export default function MonitorTerminal() {
                         </span>
                     )}
                 </div>
+
+                {/* Toggle Servidores / Clientes */}
+                <div className="flex items-center bg-zinc-900 border border-zinc-800 rounded-lg p-0.5 text-[11px]">
+                    <button
+                        onClick={() => setView('servers')}
+                        className={cn('flex items-center gap-1.5 px-3 py-1 rounded-md transition-colors',
+                            view === 'servers' ? 'bg-zinc-700 text-zinc-100' : 'text-zinc-500 hover:text-zinc-300')}
+                    >
+                        <Server size={11} /> Servidores
+                    </button>
+                    <button
+                        onClick={() => setView('clients')}
+                        className={cn('flex items-center gap-1.5 px-3 py-1 rounded-md transition-colors',
+                            view === 'clients' ? 'bg-zinc-700 text-zinc-100' : 'text-zinc-500 hover:text-zinc-300')}
+                    >
+                        <Users size={11} /> Clientes
+                    </button>
+                </div>
+
                 <div className="flex items-center gap-1.5">
                     {/* Play */}
                     <button
@@ -411,8 +666,8 @@ export default function MonitorTerminal() {
                 </div>
             </div>
 
-            {/* ── Tabs de servidores ── */}
-            <div className="flex items-center gap-1 px-4 pt-2 pb-1 shrink-0 border-b border-zinc-800/50">
+            {/* ── Tabs de servidores (solo en vista servidor) ── */}
+            {view === 'servers' && <div className="flex items-center gap-1 px-4 pt-2 pb-1 shrink-0 border-b border-zinc-800/50">
                 {servers.map(s => (
                     <button
                         key={s.id}
@@ -435,13 +690,21 @@ export default function MonitorTerminal() {
                 >
                     <Plus size={12} />
                 </button>
-            </div>
+            </div>}
 
-            {error && (
+            {/* ── Vista Clientes (oculta tabs de servidor y logs) ── */}
+            {view === 'clients' && (
+                <ClientsView servers={servers} />
+            )}
+
+            {view === 'servers' && error && (
                 <div className="mx-4 mt-3 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-[13px] shrink-0">
                     {error}
                 </div>
             )}
+
+            {/* ── Contenido vista servidores ── */}
+            {view === 'servers' && <>
 
             {/* ── Pantalla detenida / pausada (sin datos) ── */}
             {!isPlaying && !stats && !loading && (
@@ -536,6 +799,9 @@ export default function MonitorTerminal() {
                     {activeId && <CommandConsole serverId={activeId} />}
                 </>
             )}
+
+            </>}
+            {/* /vista servidores */}
 
             {showAddModal && (
                 <AddServerModal
