@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { RefreshCw, Loader2, Terminal, Server, Cpu, HardDrive, MemoryStick, Circle, ChevronDown } from 'lucide-react';
+import { RefreshCw, Loader2, Terminal, Server, Cpu, HardDrive, MemoryStick, Circle, ChevronDown, Pause, Play } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import * as adminService from '../../services/adminService';
 
@@ -108,6 +108,7 @@ export default function MonitorTerminal() {
     const [loadingLogs, setLoadingLogs] = useState(false);
     const [lastUpdate, setLastUpdate] = useState(null);
     const [error, setError]           = useState(null);
+    const [paused, setPaused]         = useState(false);
     const logsEndRef                  = useRef(null);
     const timerRef                    = useRef(null);
 
@@ -140,14 +141,16 @@ export default function MonitorTerminal() {
         }
     }, [logCount, logType, logProcess]);
 
-    // Auto-refresh cada 5s
+    // Auto-refresh cada 5s (respeta pausa)
     useEffect(() => {
         if (!activeId) return;
         setLoading(true);
         fetchAll(activeId);
-        timerRef.current = setInterval(() => fetchAll(activeId), REFRESH_INTERVAL);
+        if (!paused) {
+            timerRef.current = setInterval(() => fetchAll(activeId), REFRESH_INTERVAL);
+        }
         return () => clearInterval(timerRef.current);
-    }, [activeId, fetchAll]);
+    }, [activeId, fetchAll, paused]);
 
     // Auto-scroll logs
     useEffect(() => {
@@ -173,13 +176,27 @@ export default function MonitorTerminal() {
                         </span>
                     )}
                 </div>
-                <button
-                    onClick={() => { setLoadingLogs(true); fetchAll(activeId); }}
-                    className="flex items-center gap-1.5 text-[12px] text-zinc-400 hover:text-violet-400 transition-colors"
-                >
-                    {loadingLogs ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
-                    Actualizar
-                </button>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => { setLoadingLogs(true); fetchAll(activeId); }}
+                        disabled={paused}
+                        className="flex items-center gap-1.5 text-[12px] text-zinc-400 hover:text-violet-400 transition-colors disabled:opacity-40"
+                    >
+                        {loadingLogs ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+                        Actualizar
+                    </button>
+                    <button
+                        onClick={() => setPaused(p => !p)}
+                        className={cn(
+                            'flex items-center gap-1.5 text-[12px] px-2.5 py-1 rounded-lg border transition-colors',
+                            paused
+                                ? 'bg-amber-500/15 border-amber-500/30 text-amber-400 hover:bg-amber-500/25'
+                                : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-zinc-200'
+                        )}
+                    >
+                        {paused ? <><Play size={11} /> Reanudar</> : <><Pause size={11} /> Pausar</>}
+                    </button>
+                </div>
             </div>
 
             {/* ── Tabs de servidores ── */}
@@ -286,9 +303,9 @@ export default function MonitorTerminal() {
                                 )}
                                 <Select value={logType}    onChange={setLogType}    options={typeOptions}  className="w-40" />
                                 <Select value={logCount}   onChange={v => setLogCount(Number(v))} options={lineOptions} className="w-32" />
-                                <div className="ml-auto flex items-center gap-1.5 text-[10px] text-zinc-700">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                    live · cada 5s
+                                <div className="ml-auto flex items-center gap-1.5 text-[10px] text-zinc-600">
+                                    <div className={cn('w-1.5 h-1.5 rounded-full', paused ? 'bg-amber-500' : 'bg-emerald-500 animate-pulse')} />
+                                    {paused ? 'pausado' : 'live · cada 5s'}
                                 </div>
                             </div>
 
