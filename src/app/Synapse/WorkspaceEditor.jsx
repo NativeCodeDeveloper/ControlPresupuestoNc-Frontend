@@ -12,7 +12,7 @@ import { tags } from '@lezer/highlight';
 // Tema visual — fondo transparente para integrarse con el dark mode de la app
 const appTheme = EditorView.theme({
     '&': {
-        fontSize: '14px',
+        fontSize: '12.5px',
         fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
         background: 'transparent',
         color: 'hsl(var(--foreground))',
