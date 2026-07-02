@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { usePersistedState } from '../../hooks/usePersistedState';
 import { getFlujoCaja } from '../../services/financeService';
 import {
     ArrowDownRight,
@@ -82,7 +83,7 @@ const CustomTooltip = ({ active, payload, label }) => {
 
 export default function FlujoCaja() {
     const currentYear = new Date().getFullYear();
-    const [year, setYear] = useState(currentYear);
+    const [year, setYear] = usePersistedState('flujocaja:year', currentYear);
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);

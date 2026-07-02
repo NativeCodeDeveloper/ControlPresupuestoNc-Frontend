@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { usePersistedState } from '../../hooks/usePersistedState';
 import * as projectsService from '../../services/projectsService';
 import * as configService from '../../services/configService';
 import {
@@ -27,12 +28,12 @@ import { cn } from '../../lib/utils';
 import { Input, Select } from '../../components/ui/FormElements';
 
 export default function Ingresos() {
-    const [activeTab, setActiveTab] = useState('projects');
-    const [searchTerm, setSearchTerm] = useState('');
-    const [filterType, setFilterType] = useState('Todos');
-    const [filterStatus, setFilterStatus] = useState('Todos');
-    const [filterMonth, setFilterMonth] = useState('Todos');
-    const [filterPago, setFilterPago] = useState('Todos');
+    const [activeTab, setActiveTab]       = usePersistedState('ingresos:activeTab', 'projects');
+    const [searchTerm, setSearchTerm]     = usePersistedState('ingresos:search', '');
+    const [filterType, setFilterType]     = usePersistedState('ingresos:filterType', 'Todos');
+    const [filterStatus, setFilterStatus] = usePersistedState('ingresos:filterStatus', 'Todos');
+    const [filterMonth, setFilterMonth]   = usePersistedState('ingresos:filterMonth', 'Todos');
+    const [filterPago, setFilterPago]     = usePersistedState('ingresos:filterPago', 'Todos');
     const [expandedProject, setExpandedProject] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     const [projects, setProjects] = useState([]);
@@ -416,7 +417,7 @@ export default function Ingresos() {
         let matchesMonth = true;
         if (filterMonth !== 'Todos') {
             const targetMonth = Number(filterMonth);
-            const dateRef = p.fecha_creacion;
+            const dateRef = p.fecha_entrega || p.fecha_inicio_servicio || p.fecha_creacion;
             if (dateRef) {
                 const d = new Date(dateRef);
                 matchesMonth = d.getUTCMonth() === targetMonth;

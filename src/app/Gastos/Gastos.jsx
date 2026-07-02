@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { usePersistedState } from '../../hooks/usePersistedState';
 import * as costsService from '../../services/costsService';
 import * as projectsService from '../../services/projectsService';
 import * as financeService from '../../services/financeService';
@@ -23,7 +24,7 @@ import { cn } from '../../lib/utils';
 import { Input, Select } from '../../components/ui/FormElements';
 
 export default function Gastos() {
-    const [activeTab, setActiveTab] = useState('fixed');
+    const [activeTab, setActiveTab] = usePersistedState('gastos:activeTab', 'fixed');
     const [isLoading, setIsLoading] = useState(false);
     const [fixedCostsData, setFixedCostsData] = useState([]);
     const [variableCostsData, setVariableCostsData] = useState([]);

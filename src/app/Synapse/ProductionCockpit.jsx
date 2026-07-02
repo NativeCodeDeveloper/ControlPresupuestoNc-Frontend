@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { usePersistedState } from '../../hooks/usePersistedState';
 import {
     Gauge, RefreshCw, Loader2, Search, ChevronDown, ChevronUp,
     Mail, MessageSquare, Eye, EyeOff, Settings2, X, Check,
@@ -293,15 +294,15 @@ export default function ProductionCockpit() {
     const [savingId, setSavingId]           = useState(null);
     const [quickPayId, setQuickPayId]       = useState(null);
 
-    const [mes, setMes]   = useState(now.getMonth() + 1);
-    const [anio, setAnio] = useState(now.getFullYear());
-    const [vistaGeneral, setVistaGeneral]   = useState(false);
+    const [mes, setMes]   = usePersistedState('cockpit:mes', now.getMonth() + 1);
+    const [anio, setAnio] = usePersistedState('cockpit:anio', now.getFullYear());
+    const [vistaGeneral, setVistaGeneral]   = usePersistedState('cockpit:vistaGeneral', false);
 
-    const [search, setSearch]               = useState('');
-    const [filterAlerta, setFilterAlerta]   = useState('');
-    const [filterServidor, setFilterServidor] = useState('');
-    const [sortField, setSortField]         = useState('nombre_cliente');
-    const [sortDir, setSortDir]             = useState('asc');
+    const [search, setSearch]               = usePersistedState('cockpit:search', '');
+    const [filterAlerta, setFilterAlerta]   = usePersistedState('cockpit:filterAlerta', '');
+    const [filterServidor, setFilterServidor] = usePersistedState('cockpit:filterServidor', '');
+    const [sortField, setSortField]         = usePersistedState('cockpit:sortField', 'nombre_cliente');
+    const [sortDir, setSortDir]             = usePersistedState('cockpit:sortDir', 'asc');
 
     const [emailModal, setEmailModal]       = useState(null);
     const [metaModal, setMetaModal]         = useState(false);
