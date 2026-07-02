@@ -44,7 +44,7 @@ const MODULES = [
             { icon: Gauge,       label: 'Production Cockpit',  path: '/synapse/cockpit',      tone: 'text-violet-400', activeBg: 'bg-violet-500/14' },
             { icon: Server,      label: 'Backserver',          path: '/synapse/backserver',   tone: 'text-violet-400', activeBg: 'bg-violet-500/14' },
             { icon: BookOpen,    label: 'Workspace',           path: '/synapse/workspace',    tone: 'text-violet-400', activeBg: 'bg-violet-500/14' },
-            { icon: Terminal,    label: '>_',                  path: '/synapse/monitor',      tone: 'text-emerald-400', activeBg: 'bg-emerald-500/14' },
+            { icon: Terminal,    label: 'Soma',                path: '/synapse/monitor',      tone: 'text-emerald-400', activeBg: 'bg-emerald-500/14' },
         ],
     },
 ];

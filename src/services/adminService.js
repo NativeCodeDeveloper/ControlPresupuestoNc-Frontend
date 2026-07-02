@@ -2,6 +2,9 @@ import apiClient from './apiClient';
 
 const BASE = '/api/admin';
 
-export const listServers    = ()          => apiClient.get(`${BASE}/servers`);
-export const getStats       = (id)        => apiClient.get(`${BASE}/servers/${id}/stats`);
-export const getLogs        = (id, params) => apiClient.get(`${BASE}/servers/${id}/logs?${new URLSearchParams(params)}`);
+export const listServers    = ()            => apiClient.get(`${BASE}/servers`);
+export const createServer   = (data)        => apiClient.post(`${BASE}/servers`, data);
+export const deleteServer   = (id)          => apiClient.delete(`${BASE}/servers/${id}`);
+export const getStats       = (id)          => apiClient.get(`${BASE}/servers/${id}/stats`);
+export const getLogs        = (id, params)  => apiClient.get(`${BASE}/servers/${id}/logs?${new URLSearchParams(params)}`);
+export const execCommand    = (id, command) => apiClient.post(`${BASE}/servers/${id}/exec`, { command });

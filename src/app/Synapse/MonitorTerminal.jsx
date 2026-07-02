@@ -1,73 +1,65 @@
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { RefreshCw, Loader2, Terminal, Server, Cpu, HardDrive, MemoryStick, Circle, ChevronDown, Pause, Play } from 'lucide-react';
+import {
+    RefreshCw, Loader2, Terminal, Server, Cpu, HardDrive, MemoryStick,
+    Circle, ChevronDown, Pause, Play, Plus, X, Trash2, Send, ChevronUp
+} from 'lucide-react';
 import { cn } from '../../lib/utils';
 import * as adminService from '../../services/adminService';
 
-// ── Barra de uso ─────────────────────────────────────────────────────────────
+// ── Barra de uso ──────────────────────────────────────────────────────────────
 
 function UsageBar({ label, value, total, unit = 'MB', color = 'violet' }) {
     const pct = value != null && total ? Math.min(100, Math.round(value / total * 100)) : value;
-    const colors = {
-        violet:  { bar: 'bg-violet-500',  track: 'bg-violet-500/15', text: 'text-violet-400'  },
+    const c = pct >= 85 ? 'red' : pct >= 65 ? 'amber' : color;
+    const COLORS = {
+        violet:  { bar: 'bg-violet-500',  track: 'bg-violet-500/15',  text: 'text-violet-400'  },
         emerald: { bar: 'bg-emerald-500', track: 'bg-emerald-500/15', text: 'text-emerald-400' },
         amber:   { bar: 'bg-amber-500',   track: 'bg-amber-500/15',   text: 'text-amber-400'   },
         red:     { bar: 'bg-red-500',     track: 'bg-red-500/15',     text: 'text-red-400'     },
     };
-    const c     = (pct >= 85 ? colors.red : pct >= 65 ? colors.amber : colors[color]) || colors.violet;
+    const cls   = COLORS[c] || COLORS.violet;
     const label2 = total ? `${value?.toLocaleString()} / ${total?.toLocaleString()} ${unit}` : (pct != null ? `${pct}%` : '—');
-
     return (
-        <div className="space-y-1">
+        <div className="space-y-1.5">
             <div className="flex items-center justify-between text-[11px]">
                 <span className="text-zinc-400 font-medium">{label}</span>
-                <span className={cn('font-semibold tabular-nums', c.text)}>{label2}</span>
+                <span className={cn('font-bold tabular-nums', cls.text)}>{label2}</span>
             </div>
-            <div className={cn('h-1.5 rounded-full', c.track)}>
-                <div
-                    className={cn('h-full rounded-full transition-all duration-700', c.bar)}
-                    style={{ width: `${pct ?? 0}%` }}
-                />
+            <div className={cn('h-1.5 rounded-full', cls.track)}>
+                <div className={cn('h-full rounded-full transition-all duration-700', cls.bar)} style={{ width: `${pct ?? 0}%` }} />
             </div>
+            <div className="text-[10px] text-zinc-600">{pct ?? 0}% usado</div>
         </div>
     );
 }
 
-// ── Chip de proceso PM2 ───────────────────────────────────────────────────────
+// ── Chip PM2 ─────────────────────────────────────────────────────────────────
 
 function Pm2Chip({ proc }) {
-    const statusColor = {
-        online:  'bg-emerald-500/15 text-emerald-400 border-emerald-500/20',
-        stopped: 'bg-zinc-500/15 text-zinc-400 border-zinc-500/20',
-        errored: 'bg-red-500/15 text-red-400 border-red-500/20',
-    }[proc.status] || 'bg-zinc-500/15 text-zinc-400 border-zinc-500/20';
-
+    const cls = { online: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20', stopped: 'bg-zinc-500/15 text-zinc-400 border-zinc-500/20', errored: 'bg-red-500/15 text-red-400 border-red-500/20' }[proc.status] || 'bg-zinc-500/15 text-zinc-400 border-zinc-500/20';
     return (
-        <div className={cn('flex items-center gap-2 border rounded-lg px-2.5 py-1.5 text-[11px]', statusColor)}>
+        <div className={cn('flex items-center gap-2 border rounded-lg px-2.5 py-1.5 text-[11px]', cls)}>
             <Circle size={6} fill="currentColor" />
             <span className="font-semibold">{proc.name}</span>
-            {proc.cpu != null && <span className="opacity-60">CPU {proc.cpu}%</span>}
+            {proc.cpu  != null && <span className="opacity-60">CPU {proc.cpu}%</span>}
             {proc.memory != null && <span className="opacity-60">RAM {proc.memory} MB</span>}
             {proc.restarts > 0 && <span className="opacity-60">↺{proc.restarts}</span>}
         </div>
     );
 }
 
-// ── Colorear línea de log ─────────────────────────────────────────────────────
+// ── Línea de log coloreada ────────────────────────────────────────────────────
 
 function LogLine({ line, idx }) {
     const isError = /error|exception|fatal|err\b/i.test(line);
     const isWarn  = /warn|warning/i.test(line);
-    const isInfo  = /info|✓|ok|success|started|running/i.test(line);
-
+    const isInfo  = /info|✓|ok|success|started|running|online/i.test(line);
     return (
         <div className={cn(
             'font-mono text-[11px] leading-5 px-3 py-[1px] select-text whitespace-pre-wrap break-all',
             idx % 2 === 0 ? 'bg-transparent' : 'bg-white/[0.012]',
-            isError ? 'text-red-400'    :
-            isWarn  ? 'text-amber-400'  :
-            isInfo  ? 'text-emerald-400' :
-                      'text-zinc-400'
+            isError ? 'text-red-400' : isWarn ? 'text-amber-400' : isInfo ? 'text-emerald-400' : 'text-zinc-400'
         )}>
             <span className="text-zinc-700 select-none mr-2">{String(idx + 1).padStart(3, ' ')}</span>
             {line}
@@ -75,19 +67,177 @@ function LogLine({ line, idx }) {
     );
 }
 
-// ── Selector dropdown ─────────────────────────────────────────────────────────
+// ── Select ────────────────────────────────────────────────────────────────────
 
 function Select({ value, onChange, options, className }) {
     return (
         <div className={cn('relative', className)}>
-            <select
-                value={value}
-                onChange={e => onChange(e.target.value)}
-                className="appearance-none bg-zinc-900 border border-zinc-700 text-zinc-300 text-[12px] rounded-lg pl-3 pr-7 py-1.5 outline-none focus:border-violet-500 cursor-pointer w-full"
-            >
+            <select value={value} onChange={e => onChange(e.target.value)}
+                className="appearance-none bg-zinc-900 border border-zinc-700 text-zinc-300 text-[12px] rounded-lg pl-3 pr-7 py-1.5 outline-none focus:border-violet-500 cursor-pointer w-full">
                 {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
             <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
+        </div>
+    );
+}
+
+// ── Modal Agregar Servidor ────────────────────────────────────────────────────
+
+function AddServerModal({ onClose, onCreated }) {
+    const [form, setForm] = useState({ nombre: '', host: '', ssh_user: 'root', pm2_processes: 'finance-back', log_dir: '/root/.pm2/logs', is_local: false });
+    const [saving, setSaving] = useState(false);
+    const [error, setError]   = useState('');
+    const set = k => v => setForm(p => ({ ...p, [k]: v }));
+
+    const save = async () => {
+        if (!form.nombre.trim()) return setError('El nombre es requerido');
+        setSaving(true);
+        try {
+            const data = {
+                ...form,
+                pm2_processes: form.pm2_processes.split(',').map(s => s.trim()).filter(Boolean),
+            };
+            const srv = await adminService.createServer(data);
+            onCreated(srv);
+            onClose();
+        } catch { setError('Error al guardar el servidor'); }
+        finally { setSaving(false); }
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+            <div className="bg-zinc-900 border border-zinc-700 rounded-2xl shadow-2xl w-full max-w-md">
+                <div className="flex items-center justify-between p-5 border-b border-zinc-800">
+                    <div className="flex items-center gap-2">
+                        <Server size={14} className="text-emerald-400" />
+                        <span className="font-semibold text-[14px] text-zinc-100">Agregar servidor</span>
+                    </div>
+                    <button onClick={onClose} className="text-zinc-500 hover:text-zinc-300"><X size={16} /></button>
+                </div>
+                <div className="p-5 space-y-3">
+                    {[
+                        { label: 'Nombre', key: 'nombre', placeholder: 'VPS Producción 2' },
+                        { label: 'Host / IP', key: 'host', placeholder: '192.168.1.10' },
+                        { label: 'Usuario SSH', key: 'ssh_user', placeholder: 'root' },
+                        { label: 'Procesos PM2 (separados por coma)', key: 'pm2_processes', placeholder: 'finance-back, api-otro' },
+                        { label: 'Directorio de logs', key: 'log_dir', placeholder: '/root/.pm2/logs' },
+                    ].map(({ label, key, placeholder }) => (
+                        <div key={key}>
+                            <label className="text-[11px] text-zinc-500 uppercase tracking-wide font-medium block mb-1">{label}</label>
+                            <input
+                                value={form[key]}
+                                onChange={e => set(key)(e.target.value)}
+                                placeholder={placeholder}
+                                className="w-full text-[13px] bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 outline-none focus:border-emerald-500 text-zinc-200 placeholder:text-zinc-600"
+                            />
+                        </div>
+                    ))}
+                    <label className="flex items-center gap-2 cursor-pointer text-[13px] text-zinc-300">
+                        <input type="checkbox" checked={form.is_local} onChange={e => set('is_local')(e.target.checked)} className="accent-emerald-500" />
+                        Es el servidor local (sin SSH)
+                    </label>
+                    {error && <p className="text-red-400 text-[12px]">{error}</p>}
+                </div>
+                <div className="flex justify-end gap-2 p-5 pt-0">
+                    <button onClick={onClose} className="px-4 py-2 text-[13px] text-zinc-400 hover:text-zinc-200 border border-zinc-700 rounded-lg">Cancelar</button>
+                    <button onClick={save} disabled={saving} className="flex items-center gap-2 px-4 py-2 text-[13px] bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg disabled:opacity-50">
+                        {saving ? <Loader2 size={13} className="animate-spin" /> : <Plus size={13} />}
+                        Agregar
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ── Consola de comandos ───────────────────────────────────────────────────────
+
+const SUGGESTIONS = [
+    'pm2 list', 'pm2 status', 'df -h /', 'free -m', 'uptime',
+    'top -bn1 | head -5', 'ps aux | head -10',
+    'ls -la /root/.pm2/logs/', 'node --version', 'npm --version',
+];
+
+function CommandConsole({ serverId }) {
+    const [cmd, setCmd]         = useState('');
+    const [history, setHistory] = useState([]);
+    const [running, setRunning] = useState(false);
+    const [open, setOpen]       = useState(true);
+    const outputRef             = useRef(null);
+
+    const run = async (command) => {
+        const c = (command || cmd).trim();
+        if (!c) return;
+        setCmd('');
+        setRunning(true);
+        setHistory(h => [...h, { type: 'cmd', text: `$ ${c}` }]);
+        try {
+            const { output } = await adminService.execCommand(serverId, c);
+            setHistory(h => [...h, { type: 'out', text: output }]);
+        } catch (e) {
+            setHistory(h => [...h, { type: 'err', text: e.message }]);
+        } finally {
+            setRunning(false);
+            setTimeout(() => outputRef.current?.scrollTo({ top: 99999, behavior: 'smooth' }), 50);
+        }
+    };
+
+    return (
+        <div className="border-t border-zinc-800 shrink-0">
+            <button
+                onClick={() => setOpen(o => !o)}
+                className="w-full flex items-center gap-2 px-4 py-2 text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors bg-zinc-900/60"
+            >
+                <Terminal size={11} />
+                <span className="font-mono font-semibold uppercase tracking-widest">Consola</span>
+                {open ? <ChevronDown size={11} className="ml-auto" /> : <ChevronUp size={11} className="ml-auto" />}
+            </button>
+
+            {open && (
+                <div className="bg-black/60">
+                    {/* Historial */}
+                    <div ref={outputRef} className="max-h-48 overflow-y-auto px-3 py-2 space-y-0.5 font-mono text-[11px]">
+                        {history.length === 0 && (
+                            <p className="text-zinc-700 py-2">
+                                Comandos disponibles: {SUGGESTIONS.join(' · ')}
+                            </p>
+                        )}
+                        {history.map((h, i) => (
+                            <div key={i} className={cn(
+                                'whitespace-pre-wrap break-all leading-5',
+                                h.type === 'cmd' ? 'text-emerald-400 font-semibold' :
+                                h.type === 'err' ? 'text-red-400' : 'text-zinc-400'
+                            )}>{h.text}</div>
+                        ))}
+                        {running && <div className="text-zinc-600 animate-pulse">ejecutando…</div>}
+                    </div>
+
+                    {/* Sugerencias rápidas */}
+                    <div className="flex flex-wrap gap-1 px-3 pb-2">
+                        {SUGGESTIONS.map(s => (
+                            <button key={s} onClick={() => run(s)} className="text-[10px] font-mono px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-500 hover:text-zinc-300 rounded transition-colors">
+                                {s}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Input */}
+                    <div className="flex items-center gap-2 px-3 pb-3">
+                        <span className="font-mono text-[12px] text-emerald-500 shrink-0">$</span>
+                        <input
+                            value={cmd}
+                            onChange={e => setCmd(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && !running && run()}
+                            placeholder="pm2 list"
+                            disabled={running}
+                            className="flex-1 bg-transparent font-mono text-[12px] text-zinc-300 outline-none placeholder:text-zinc-700 disabled:opacity-50"
+                        />
+                        <button onClick={() => run()} disabled={running || !cmd.trim()} className="text-emerald-500 hover:text-emerald-400 disabled:opacity-30 transition-colors">
+                            <Send size={13} />
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
@@ -97,28 +247,24 @@ function Select({ value, onChange, options, className }) {
 const REFRESH_INTERVAL = 5000;
 
 export default function MonitorTerminal() {
-    const [servers, setServers]       = useState([]);
-    const [activeId, setActiveId]     = useState(null);
-    const [stats, setStats]           = useState(null);
-    const [logLines, setLogLines]     = useState([]);
-    const [logProcess, setLogProcess] = useState('finance-back');
-    const [logType, setLogType]       = useState('out');
-    const [logCount, setLogCount]     = useState(150);
-    const [loading, setLoading]       = useState(true);
-    const [loadingLogs, setLoadingLogs] = useState(false);
-    const [lastUpdate, setLastUpdate] = useState(null);
-    const [error, setError]           = useState(null);
-    const [paused, setPaused]         = useState(false);
-    const logsEndRef                  = useRef(null);
-    const timerRef                    = useRef(null);
+    const [servers, setServers]         = useState([]);
+    const [activeId, setActiveId]       = useState(null);
+    const [stats, setStats]             = useState(null);
+    const [logLines, setLogLines]       = useState([]);
+    const [logProcess, setLogProcess]   = useState('finance-back');
+    const [logType, setLogType]         = useState('out');
+    const [logCount, setLogCount]       = useState(150);
+    const [loading, setLoading]         = useState(true);
+    const [lastUpdate, setLastUpdate]   = useState(null);
+    const [error, setError]             = useState(null);
+    const [paused, setPaused]           = useState(false);
+    const [showAddModal, setShowAddModal] = useState(false);
+    const logsRef                       = useRef(null);
+    const timerRef                      = useRef(null);
 
-    // Cargar lista de servidores
     useEffect(() => {
         adminService.listServers()
-            .then(data => {
-                setServers(data);
-                if (data.length) setActiveId(data[0].id);
-            })
+            .then(data => { setServers(data); if (data.length) setActiveId(data[0].id); })
             .catch(() => setError('No se pudo conectar con el servidor'));
     }, []);
 
@@ -133,15 +279,10 @@ export default function MonitorTerminal() {
             setLogLines(logsData.lines || []);
             setLastUpdate(new Date());
             setError(null);
-        } catch {
-            setError('Error al obtener datos del servidor');
-        } finally {
-            setLoading(false);
-            setLoadingLogs(false);
-        }
+        } catch { setError('Error al obtener datos del servidor'); }
+        finally { setLoading(false); }
     }, [logCount, logType, logProcess]);
 
-    // Auto-refresh cada 5s (respeta pausa)
     useEffect(() => {
         if (!activeId) return;
         setLoading(true);
@@ -152,39 +293,28 @@ export default function MonitorTerminal() {
         return () => clearInterval(timerRef.current);
     }, [activeId, fetchAll, paused]);
 
-    // Auto-scroll logs
-    useEffect(() => {
-        logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [logLines]);
-
-    const pm2Processes = stats?.pm2?.map(p => p.name) || [];
-    const pm2Options   = pm2Processes.map(n => ({ value: n, label: n }));
-    const lineOptions  = [50, 100, 150, 250, 500].map(n => ({ value: n, label: `${n} líneas` }));
-    const typeOptions  = [{ value: 'out', label: 'Output (stdout)' }, { value: 'error', label: 'Errores (stderr)' }];
+    const pm2Options  = (stats?.pm2 || []).map(p => ({ value: p.name, label: p.name }));
+    const lineOptions = [50, 100, 150, 250, 500].map(n => ({ value: n, label: `${n} líneas` }));
+    const typeOptions = [{ value: 'out', label: 'stdout' }, { value: 'error', label: 'stderr' }];
 
     return (
-        <div className="h-full flex flex-col bg-zinc-950 text-zinc-100">
+        <div className="h-full flex flex-col bg-zinc-950 text-zinc-100 overflow-hidden">
 
-            {/* ── Header ── */}
+            {/* ── Topbar ── */}
             <div className="flex items-center justify-between px-5 py-3 border-b border-zinc-800 shrink-0">
                 <div className="flex items-center gap-2">
-                    <Terminal size={16} className="text-violet-400" />
-                    <span className="font-semibold text-[14px]">&gt;_  Monitor</span>
+                    <Terminal size={15} className="text-emerald-400" />
+                    <span className="font-bold text-[14px] tracking-tight">
+                        <span className="text-emerald-400 font-mono">&gt;_</span>
+                        <span className="ml-1.5">Soma</span>
+                    </span>
                     {lastUpdate && (
                         <span className="text-[10px] text-zinc-600 ml-2">
-                            actualizado {lastUpdate.toLocaleTimeString('es-CL')}
+                            {lastUpdate.toLocaleTimeString('es-CL')}
                         </span>
                     )}
                 </div>
                 <div className="flex items-center gap-2">
-                    <button
-                        onClick={() => { setLoadingLogs(true); fetchAll(activeId); }}
-                        disabled={paused}
-                        className="flex items-center gap-1.5 text-[12px] text-zinc-400 hover:text-violet-400 transition-colors disabled:opacity-40"
-                    >
-                        {loadingLogs ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
-                        Actualizar
-                    </button>
                     <button
                         onClick={() => setPaused(p => !p)}
                         className={cn(
@@ -196,132 +326,126 @@ export default function MonitorTerminal() {
                     >
                         {paused ? <><Play size={11} /> Reanudar</> : <><Pause size={11} /> Pausar</>}
                     </button>
+                    <button
+                        onClick={() => { setLoading(true); fetchAll(activeId); }}
+                        disabled={paused}
+                        className="flex items-center gap-1.5 text-[12px] text-zinc-400 hover:text-emerald-400 transition-colors disabled:opacity-40"
+                    >
+                        <RefreshCw size={13} />
+                    </button>
                 </div>
             </div>
 
             {/* ── Tabs de servidores ── */}
-            {servers.length > 1 && (
-                <div className="flex items-center gap-1 px-4 pt-3 shrink-0">
-                    {servers.map(s => (
-                        <button
-                            key={s.id}
-                            onClick={() => { setActiveId(s.id); setLoading(true); }}
-                            className={cn(
-                                'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] transition-colors',
-                                activeId === s.id
-                                    ? 'bg-violet-500/20 text-violet-300 border border-violet-500/30'
-                                    : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'
-                            )}
-                        >
-                            <Server size={11} />
-                            {s.nombre}
-                        </button>
-                    ))}
+            <div className="flex items-center gap-1 px-4 pt-2 pb-1 shrink-0 border-b border-zinc-800/50">
+                {servers.map(s => (
+                    <button
+                        key={s.id}
+                        onClick={() => { setActiveId(s.id); setLoading(true); }}
+                        className={cn(
+                            'flex items-center gap-1.5 px-3 py-1 rounded-lg text-[12px] transition-colors',
+                            activeId === s.id
+                                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800'
+                        )}
+                    >
+                        <Server size={10} />
+                        {s.nombre}
+                    </button>
+                ))}
+                <button
+                    onClick={() => setShowAddModal(true)}
+                    className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] text-zinc-600 hover:text-emerald-400 hover:bg-zinc-800 transition-colors ml-1"
+                    title="Agregar servidor"
+                >
+                    <Plus size={12} />
+                </button>
+            </div>
+
+            {error && (
+                <div className="mx-4 mt-3 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-[13px] shrink-0">
+                    {error}
                 </div>
             )}
 
-            <div className="flex-1 min-h-0 overflow-y-auto">
-                {error && (
-                    <div className="m-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-[13px]">
-                        {error}
-                    </div>
-                )}
-
-                {loading ? (
-                    <div className="flex items-center justify-center h-40 gap-2 text-zinc-500">
-                        <Loader2 size={16} className="animate-spin" />
-                        <span className="text-[13px]">Conectando con el servidor…</span>
-                    </div>
-                ) : (
-                    <>
-                        {/* ── Stats ── */}
-                        {stats && (
-                            <div className="px-5 py-4 border-b border-zinc-800 space-y-4 shrink-0">
-                                <p className="text-[10px] uppercase tracking-widest text-zinc-600 font-semibold">
-                                    Recursos — {stats.server?.nombre}
-                                </p>
-
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-3 space-y-2.5">
-                                        <div className="flex items-center gap-1.5 text-[11px] text-zinc-500 font-medium">
-                                            <Cpu size={11} /> CPU
-                                        </div>
-                                        <UsageBar
-                                            label="Uso"
-                                            value={stats.cpu}
-                                            color="violet"
-                                        />
+            {loading ? (
+                <div className="flex items-center justify-center flex-1 gap-2 text-zinc-500">
+                    <Loader2 size={16} className="animate-spin" />
+                    <span className="text-[13px]">Conectando…</span>
+                </div>
+            ) : (
+                <>
+                    {/* ── Stats (fijo, no hace scroll) ── */}
+                    {stats && (
+                        <div className="px-5 py-4 border-b border-zinc-800 shrink-0 space-y-3">
+                            <div className="grid grid-cols-3 gap-3">
+                                <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-3">
+                                    <div className="flex items-center gap-1.5 text-[10px] text-zinc-500 font-semibold uppercase tracking-wider mb-2.5">
+                                        <Cpu size={10} /> CPU
                                     </div>
-
-                                    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-3 space-y-2.5">
-                                        <div className="flex items-center gap-1.5 text-[11px] text-zinc-500 font-medium">
-                                            <MemoryStick size={11} /> RAM
-                                        </div>
-                                        {stats.ram ? (
-                                            <UsageBar
-                                                label="Memoria"
-                                                value={stats.ram.used}
-                                                total={stats.ram.total}
-                                                unit="MB"
-                                                color="emerald"
-                                            />
-                                        ) : <span className="text-zinc-600 text-[11px]">—</span>}
-                                    </div>
-
-                                    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-3 space-y-2.5">
-                                        <div className="flex items-center gap-1.5 text-[11px] text-zinc-500 font-medium">
-                                            <HardDrive size={11} /> Disco
-                                        </div>
-                                        {stats.disk ? (
-                                            <UsageBar
-                                                label="Almacenamiento"
-                                                value={stats.disk.used}
-                                                total={stats.disk.total}
-                                                unit="MB"
-                                                color="amber"
-                                            />
-                                        ) : <span className="text-zinc-600 text-[11px]">—</span>}
-                                    </div>
+                                    <UsageBar label="Uso" value={stats.cpu} color="violet" />
                                 </div>
-
-                                {/* Procesos PM2 */}
-                                {stats.pm2?.length > 0 && (
-                                    <div className="flex flex-wrap gap-2">
-                                        {stats.pm2.map(p => <Pm2Chip key={p.name} proc={p} />)}
+                                <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-3">
+                                    <div className="flex items-center gap-1.5 text-[10px] text-zinc-500 font-semibold uppercase tracking-wider mb-2.5">
+                                        <MemoryStick size={10} /> RAM
                                     </div>
-                                )}
-                            </div>
-                        )}
-
-                        {/* ── Log viewer ── */}
-                        <div className="flex flex-col">
-                            {/* toolbar */}
-                            <div className="flex items-center gap-2 px-4 py-2.5 border-b border-zinc-800 bg-zinc-900/50 shrink-0 flex-wrap">
-                                <span className="text-[10px] uppercase tracking-widest text-zinc-600 font-semibold mr-1">Logs</span>
-                                {pm2Options.length > 0 && (
-                                    <Select value={logProcess} onChange={setLogProcess} options={pm2Options} className="w-36" />
-                                )}
-                                <Select value={logType}    onChange={setLogType}    options={typeOptions}  className="w-40" />
-                                <Select value={logCount}   onChange={v => setLogCount(Number(v))} options={lineOptions} className="w-32" />
-                                <div className="ml-auto flex items-center gap-1.5 text-[10px] text-zinc-600">
-                                    <div className={cn('w-1.5 h-1.5 rounded-full', paused ? 'bg-amber-500' : 'bg-emerald-500 animate-pulse')} />
-                                    {paused ? 'pausado' : 'live · cada 5s'}
+                                    {stats.ram
+                                        ? <UsageBar label="Memoria" value={stats.ram.used} total={stats.ram.total} unit="MB" color="emerald" />
+                                        : <span className="text-zinc-600 text-[11px]">—</span>}
+                                </div>
+                                <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-3">
+                                    <div className="flex items-center gap-1.5 text-[10px] text-zinc-500 font-semibold uppercase tracking-wider mb-2.5">
+                                        <HardDrive size={10} /> Disco
+                                    </div>
+                                    {stats.disk
+                                        ? <UsageBar label="Almacenamiento" value={stats.disk.used} total={stats.disk.total} unit="MB" color="amber" />
+                                        : <span className="text-zinc-600 text-[11px]">—</span>}
                                 </div>
                             </div>
+                            {stats.pm2?.length > 0 && (
+                                <div className="flex flex-wrap gap-2">
+                                    {stats.pm2.map(p => <Pm2Chip key={p.name} proc={p} />)}
+                                </div>
+                            )}
+                        </div>
+                    )}
 
-                            {/* líneas */}
-                            <div className="bg-zinc-950 min-h-[300px] py-1">
-                                {logLines.length === 0 ? (
-                                    <p className="text-zinc-700 text-[12px] text-center py-10">Sin registros en este archivo</p>
-                                ) : (
-                                    logLines.map((line, i) => <LogLine key={i} line={line} idx={i} />)
-                                )}
-                                <div ref={logsEndRef} />
+                    {/* ── Log viewer (scroll propio) ── */}
+                    <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+                        {/* toolbar */}
+                        <div className="flex items-center gap-2 px-4 py-2 border-b border-zinc-800 bg-zinc-900/50 shrink-0 flex-wrap">
+                            <span className="text-[10px] uppercase tracking-widest text-zinc-600 font-semibold mr-1">Logs</span>
+                            {pm2Options.length > 0 && (
+                                <Select value={logProcess} onChange={setLogProcess} options={pm2Options} className="w-36" />
+                            )}
+                            <Select value={logType}  onChange={setLogType}  options={typeOptions} className="w-28" />
+                            <Select value={logCount} onChange={v => setLogCount(Number(v))} options={lineOptions} className="w-28" />
+                            <div className="ml-auto flex items-center gap-1.5 text-[10px] text-zinc-600">
+                                <div className={cn('w-1.5 h-1.5 rounded-full', paused ? 'bg-amber-500' : 'bg-emerald-500 animate-pulse')} />
+                                {paused ? 'pausado' : 'live · 5s'}
                             </div>
                         </div>
-                    </>
-                )}
-            </div>
+
+                        {/* líneas — scroll independiente */}
+                        <div ref={logsRef} className="flex-1 overflow-y-auto bg-zinc-950 py-1">
+                            {logLines.length === 0
+                                ? <p className="text-zinc-700 text-[12px] text-center py-10">Sin registros</p>
+                                : logLines.map((line, i) => <LogLine key={i} line={line} idx={i} />)
+                            }
+                        </div>
+                    </div>
+
+                    {/* ── Consola ── */}
+                    {activeId && <CommandConsole serverId={activeId} />}
+                </>
+            )}
+
+            {showAddModal && (
+                <AddServerModal
+                    onClose={() => setShowAddModal(false)}
+                    onCreated={srv => setServers(p => [...p, srv])}
+                />
+            )}
         </div>
     );
 }
