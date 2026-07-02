@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { X, Plus, Trash2, Video } from 'lucide-react';
+import { X, Plus, Trash2, Video, Users } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import {
     CATEGORIAS, COLORES, TAGS_PRESET, RECORDATORIO_OPTS, COLOR_MAP, toDatetimeLocal
@@ -12,7 +12,7 @@ const EMPTY = {
     meet_link: '', tags: [], recordatorios: [],
 };
 
-export default function EventModal({ event, onClose, onSave, onDelete }) {
+export default function EventModal({ event, teams = [], onClose, onSave, onDelete }) {
     const [form, setForm] = useState(EMPTY);
     const [saving, setSaving] = useState(false);
 
@@ -48,6 +48,18 @@ export default function EventModal({ event, onClose, onSave, onDelete }) {
             ...f,
             tags: f.tags.includes(tag) ? f.tags.filter(t => t !== tag) : [...f.tags, tag],
         }));
+    }
+
+    function toggleTeam(team) {
+        setForm(f => {
+            const exists = f.participantes.some(p => p.tipo === 'team' && p.id_referencia === team.id_team);
+            return {
+                ...f,
+                participantes: exists
+                    ? f.participantes.filter(p => !(p.tipo === 'team' && p.id_referencia === team.id_team))
+                    : [...f.participantes, { tipo: 'team', id_referencia: team.id_team, nombre: team.nombre }],
+            };
+        });
     }
 
     function addRecordatorio() {
@@ -211,6 +223,37 @@ export default function EventModal({ event, onClose, onSave, onDelete }) {
                             ))}
                         </div>
                     </div>
+
+                    {/* Participantes / Equipos */}
+                    {teams.length > 0 && (
+                        <div>
+                            <label className="text-[11px] text-muted-foreground mb-1.5 flex items-center gap-1 block">
+                                <Users size={11} /> Participantes
+                            </label>
+                            <div className="flex flex-wrap gap-1.5">
+                                {teams.map(team => {
+                                    const selected = form.participantes.some(
+                                        p => p.tipo === 'team' && p.id_referencia === team.id_team
+                                    );
+                                    return (
+                                        <button key={team.id_team} type="button"
+                                            disabled={isReadonly}
+                                            onClick={() => toggleTeam(team)}
+                                            className={cn(
+                                                "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium transition-all border",
+                                                selected
+                                                    ? "bg-violet-500/20 text-violet-400 border-violet-500/40"
+                                                    : "bg-foreground/5 text-muted-foreground border-border/40 hover:border-foreground/30"
+                                            )}
+                                        >
+                                            <div className="w-1.5 h-1.5 rounded-full bg-violet-500" />
+                                            {team.nombre}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
 
                     {/* Recordatorios */}
                     {!isReadonly && (
