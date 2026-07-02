@@ -40,9 +40,10 @@ const MODULES = [
         accent: 'text-violet-400',
         accentBg: 'bg-violet-500/12',
         items: [
-            { icon: LayoutGrid, label: 'Synapse System',      path: '/synapse',            tone: 'text-violet-400', activeBg: 'bg-violet-500/14' },
-            { icon: Gauge,      label: 'Production Cockpit',  path: '/synapse/cockpit',    tone: 'text-violet-400', activeBg: 'bg-violet-500/14' },
-            { icon: Server,     label: 'Backserver',          path: '/synapse/backserver', tone: 'text-violet-400', activeBg: 'bg-violet-500/14' },
+            { icon: LayoutGrid,  label: 'Synapse System',      path: '/synapse',              tone: 'text-violet-400', activeBg: 'bg-violet-500/14' },
+            { icon: Gauge,       label: 'Production Cockpit',  path: '/synapse/cockpit',      tone: 'text-violet-400', activeBg: 'bg-violet-500/14' },
+            { icon: Server,      label: 'Backserver',          path: '/synapse/backserver',   tone: 'text-violet-400', activeBg: 'bg-violet-500/14' },
+            { icon: BookOpen,    label: 'Workspace',           path: '/synapse/workspace',    tone: 'text-violet-400', activeBg: 'bg-violet-500/14' },
         ],
     },
 ];
