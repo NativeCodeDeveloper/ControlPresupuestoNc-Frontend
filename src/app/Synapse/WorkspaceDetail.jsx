@@ -4,11 +4,15 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
     ArrowLeft, Check, ChevronDown, Calendar, User,
-    Bold, Italic, List, ListOrdered, Code, Heading2, Quote,
     Save, Loader2, Eye, EyeOff
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import * as workspaceService from '../../services/workspaceService';
+import dynamic from 'next/dynamic';
+
+const WorkspaceEditor = dynamic(() => import('./WorkspaceEditor'), { ssr: false, loading: () => (
+    <div className="w-full min-h-[400px] rounded-lg border border-border/30 bg-foreground/2 animate-pulse" />
+) });
 
 const ESTADO_CONFIG = {
     activa:     { label: 'Activa',     dot: 'bg-emerald-400' },
@@ -192,8 +196,7 @@ export default function WorkspaceDetail({ id }) {
     const [preview, setPreview]     = useState(false);
     const [previewHtml, setPreviewHtml] = useState('');
     const [dirty, setDirty]         = useState(false);
-    const textareaRef = useRef(null);
-    const saveTimer   = useRef(null);
+    const saveTimer = useRef(null);
     const router      = useRouter();
 
     useEffect(() => {
@@ -240,21 +243,6 @@ export default function WorkspaceDetail({ id }) {
         if (!preview) return;
         renderMarkdown(data?.contenido || '').then(setPreviewHtml);
     }, [preview, data?.contenido]);
-
-    // Insert markdown helper
-    const insertMd = (before, after = '') => {
-        const el = textareaRef.current;
-        if (!el) return;
-        const start = el.selectionStart;
-        const end   = el.selectionEnd;
-        const selected = data?.contenido?.slice(start, end) || '';
-        const newVal = (data?.contenido || '').slice(0, start) + before + selected + after + (data?.contenido || '').slice(end);
-        handleContenido(newVal);
-        setTimeout(() => {
-            el.focus();
-            el.setSelectionRange(start + before.length, start + before.length + selected.length);
-        }, 0);
-    };
 
     if (loading) {
         return <div className="flex items-center justify-center h-full text-muted-foreground text-sm">Cargando...</div>;
@@ -374,22 +362,14 @@ export default function WorkspaceDetail({ id }) {
 
                     {/* Editor */}
                     <div className="mb-2">
-                        <p className="text-[11px] text-muted-foreground/50 uppercase tracking-wider font-medium mb-3">Descripción</p>
-
-                        {!preview && (
-                            <div className="flex items-center gap-0.5 mb-2 p-1 bg-foreground/3 rounded-lg border border-border/30 w-fit">
-                                <ToolbarBtn onClick={() => insertMd('## ')}          title="Encabezado"><Heading2 size={13} /></ToolbarBtn>
-                                <ToolbarBtn onClick={() => insertMd('**', '**')}     title="Negrita"><Bold size={13} /></ToolbarBtn>
-                                <ToolbarBtn onClick={() => insertMd('*', '*')}       title="Cursiva"><Italic size={13} /></ToolbarBtn>
-                                <ToolbarBtn onClick={() => insertMd('`', '`')}       title="Código inline"><Code size={13} /></ToolbarBtn>
-                                <div className="w-px h-4 bg-border/50 mx-0.5" />
-                                <ToolbarBtn onClick={() => insertMd('- ')}           title="Lista"><List size={13} /></ToolbarBtn>
-                                <ToolbarBtn onClick={() => insertMd('1. ')}          title="Lista numerada"><ListOrdered size={13} /></ToolbarBtn>
-                                <ToolbarBtn onClick={() => insertMd('> ')}           title="Cita"><Quote size={13} /></ToolbarBtn>
-                                <div className="w-px h-4 bg-border/50 mx-0.5" />
-                                <ToolbarBtn onClick={() => insertMd('```\n', '\n```')} title="Bloque de código"><Code size={13} className="opacity-60" /></ToolbarBtn>
-                            </div>
-                        )}
+                        <div className="flex items-center justify-between mb-3">
+                            <p className="text-[11px] text-muted-foreground/50 uppercase tracking-wider font-medium">Descripción</p>
+                            {!preview && (
+                                <p className="text-[10px] text-muted-foreground/30">
+                                    Markdown · <code className="font-mono">## título</code> · <code className="font-mono">**negrita**</code> · <code className="font-mono">```js</code> código <code className="font-mono">```</code>
+                                </p>
+                            )}
+                        </div>
 
                         {preview ? (
                             <div
@@ -397,12 +377,9 @@ export default function WorkspaceDetail({ id }) {
                                 dangerouslySetInnerHTML={{ __html: previewHtml }}
                             />
                         ) : (
-                            <textarea
-                                ref={textareaRef}
+                            <WorkspaceEditor
                                 value={data.contenido || ''}
-                                onChange={e => handleContenido(e.target.value)}
-                                placeholder={'Escribe la documentación aquí...\n\nSoporte markdown:\n## Título\n**negrita** *cursiva*\n- lista\n`código`\n```bloque de código```'}
-                                className="w-full min-h-[400px] bg-transparent outline-none resize-none text-[14px] leading-relaxed text-foreground placeholder:text-muted-foreground/30 font-mono"
+                                onChange={handleContenido}
                             />
                         )}
                     </div>
