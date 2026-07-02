@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
     House, LayoutDashboard, TrendingUp, TrendingDown, PieChart,
     Settings, Menu, Users, PiggyBank, Waves, BookOpen, LogOut,
-    Brain, ChevronLeft, DollarSign, LayoutGrid, Gauge, Server
+    Brain, ChevronLeft, DollarSign, LayoutGrid, Gauge, Server, Terminal
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { getTeams } from '../services/synapseService';
@@ -44,6 +44,7 @@ const MODULES = [
             { icon: Gauge,       label: 'Production Cockpit',  path: '/synapse/cockpit',      tone: 'text-violet-400', activeBg: 'bg-violet-500/14' },
             { icon: Server,      label: 'Backserver',          path: '/synapse/backserver',   tone: 'text-violet-400', activeBg: 'bg-violet-500/14' },
             { icon: BookOpen,    label: 'Workspace',           path: '/synapse/workspace',    tone: 'text-violet-400', activeBg: 'bg-violet-500/14' },
+            { icon: Terminal,    label: '>_',                  path: '/synapse/monitor',      tone: 'text-emerald-400', activeBg: 'bg-emerald-500/14' },
         ],
     },
 ];
