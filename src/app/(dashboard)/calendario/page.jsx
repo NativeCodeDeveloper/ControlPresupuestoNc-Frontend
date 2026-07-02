@@ -1,4 +1,4 @@
-import CalendarioView from '../../../Calendario/CalendarioView';
+import CalendarioView from '../../Calendario/CalendarioView';
 
 export default function CalendarioPage() {
     return <CalendarioView />;
