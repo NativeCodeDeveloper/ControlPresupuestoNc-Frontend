@@ -3,9 +3,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-    ArrowLeft, Check, ChevronDown, Calendar, User, Target,
+    ArrowLeft, Check, ChevronDown, Calendar, User,
     Bold, Italic, List, ListOrdered, Code, Heading2, Quote,
-    Save, Loader2, Eye, EyeOff, Trash2
+    Save, Loader2, Eye, EyeOff
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import * as workspaceService from '../../services/workspaceService';
@@ -24,24 +24,110 @@ const PRIORIDAD_CONFIG = {
     baja:          { label: 'Baja'          },
 };
 
-function renderMarkdown(text) {
+// Highlight un bloque de código con highlight.js (carga dinámica para no aumentar bundle SSR)
+let hljs = null;
+async function getHljs() {
+    if (hljs) return hljs;
+    const mod = await import('highlight.js/lib/core');
+    const h = mod.default;
+    // Lenguajes más comunes
+    const [js, ts, bash, sql, python, json, css, html, yaml, php, java, go, rust] = await Promise.all([
+        import('highlight.js/lib/languages/javascript'),
+        import('highlight.js/lib/languages/typescript'),
+        import('highlight.js/lib/languages/bash'),
+        import('highlight.js/lib/languages/sql'),
+        import('highlight.js/lib/languages/python'),
+        import('highlight.js/lib/languages/json'),
+        import('highlight.js/lib/languages/css'),
+        import('highlight.js/lib/languages/xml'),
+        import('highlight.js/lib/languages/yaml'),
+        import('highlight.js/lib/languages/php'),
+        import('highlight.js/lib/languages/java'),
+        import('highlight.js/lib/languages/go'),
+        import('highlight.js/lib/languages/rust'),
+    ]);
+    h.registerLanguage('javascript', js.default);
+    h.registerLanguage('js', js.default);
+    h.registerLanguage('typescript', ts.default);
+    h.registerLanguage('ts', ts.default);
+    h.registerLanguage('bash', bash.default);
+    h.registerLanguage('sh', bash.default);
+    h.registerLanguage('shell', bash.default);
+    h.registerLanguage('sql', sql.default);
+    h.registerLanguage('python', python.default);
+    h.registerLanguage('py', python.default);
+    h.registerLanguage('json', json.default);
+    h.registerLanguage('css', css.default);
+    h.registerLanguage('html', html.default);
+    h.registerLanguage('xml', html.default);
+    h.registerLanguage('yaml', yaml.default);
+    h.registerLanguage('yml', yaml.default);
+    h.registerLanguage('php', php.default);
+    h.registerLanguage('java', java.default);
+    h.registerLanguage('go', go.default);
+    h.registerLanguage('rust', rust.default);
+    hljs = h;
+    return h;
+}
+
+function escapeHtml(text) {
+    return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+async function renderMarkdown(text) {
     if (!text) return '';
-    let html = text
+    const h = await getHljs();
+
+    // Extraer bloques de código primero para no procesarlos con el resto
+    const codeBlocks = [];
+    const withPlaceholders = text.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) => {
+        let highlighted;
+        try {
+            highlighted = lang && h.getLanguage(lang)
+                ? h.highlight(code.trim(), { language: lang }).value
+                : h.highlightAuto(code.trim()).value;
+        } catch {
+            highlighted = escapeHtml(code.trim());
+        }
+        const langLabel = lang ? `<span class="hljs-lang-label">${lang}</span>` : '';
+        codeBlocks.push(
+            `<div class="code-block-wrap">` +
+            `${langLabel}` +
+            `<pre class="hljs"><code>${highlighted}</code></pre>` +
+            `</div>`
+        );
+        return `%%CODE_BLOCK_${codeBlocks.length - 1}%%`;
+    });
+
+    // Procesar el markdown restante
+    let html = withPlaceholders
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-        .replace(/^#{1}\s+(.+)$/gm, '<h1 class="text-2xl font-bold mt-6 mb-2 text-foreground">$1</h1>')
-        .replace(/^#{2}\s+(.+)$/gm, '<h2 class="text-xl font-semibold mt-5 mb-2 text-foreground">$1</h2>')
-        .replace(/^#{3}\s+(.+)$/gm, '<h3 class="text-base font-semibold mt-4 mb-1 text-foreground">$1</h3>')
-        .replace(/^&gt;\s+(.+)$/gm, '<blockquote class="border-l-3 border-violet-500 pl-4 my-3 text-muted-foreground italic">$1</blockquote>')
-        .replace(/```([\s\S]*?)```/g, '<pre class="bg-foreground/5 border border-border rounded-lg p-4 my-3 overflow-x-auto text-[13px] font-mono"><code>$1</code></pre>')
-        .replace(/`([^`]+)`/g, '<code class="bg-foreground/8 px-1.5 py-0.5 rounded text-[13px] font-mono text-violet-300">$1</code>')
+        .replace(/^# (.+)$/gm,  '<h1 class="md-h1">$1</h1>')
+        .replace(/^## (.+)$/gm, '<h2 class="md-h2">$2</h2>'.replace('$2', '$1'))
+        .replace(/^### (.+)$/gm,'<h3 class="md-h3">$1</h3>')
+        .replace(/^&gt; (.+)$/gm,'<blockquote class="md-bq">$1</blockquote>')
+        .replace(/`([^`\n]+)`/g, '<code class="md-inline-code">$1</code>')
         .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*(.+?)\*/g, '<em>$1</em>')
-        .replace(/^[-*]\s+(.+)$/gm, '<li class="ml-4 list-disc">$1</li>')
-        .replace(/^\d+\.\s+(.+)$/gm, '<li class="ml-4 list-decimal">$1</li>')
-        .replace(/(<li[\s\S]*?<\/li>)/gm, (match) => `<ul class="my-2 space-y-0.5">${match}</ul>`)
-        .replace(/\n{2,}/g, '</p><p class="mb-3">')
-        .replace(/\n/g, '<br>');
-    return `<p class="mb-3">${html}</p>`;
+        .replace(/\*(.+?)\*/g,     '<em>$1</em>')
+        .replace(/^[-*] (.+)$/gm, '<li class="md-li-disc">$1</li>')
+        .replace(/^\d+\. (.+)$/gm,'<li class="md-li-num">$1</li>')
+        .split('\n')
+        .map(line => {
+            if (line.match(/^<(h[123]|blockquote|li)/)) return line;
+            if (line.match(/^%%CODE_BLOCK/)) return line;
+            if (line.trim() === '') return '<div class="md-spacer"></div>';
+            return `<p class="md-p">${line}</p>`;
+        })
+        .join('\n');
+
+    // Restaurar bloques de código
+    html = html.replace(/%%CODE_BLOCK_(\d+)%%/g, (_, i) => codeBlocks[parseInt(i)]);
+
+    return html;
 }
 
 function ToolbarBtn({ onClick, title, children }) {
@@ -99,12 +185,13 @@ function Dropdown({ label, options, value, onSelect, dotColor }) {
 }
 
 export default function WorkspaceDetail({ id }) {
-    const [data, setData]         = useState(null);
-    const [loading, setLoading]   = useState(true);
-    const [saving, setSaving]     = useState(false);
-    const [saved, setSaved]       = useState(false);
-    const [preview, setPreview]   = useState(false);
-    const [dirty, setDirty]       = useState(false);
+    const [data, setData]           = useState(null);
+    const [loading, setLoading]     = useState(true);
+    const [saving, setSaving]       = useState(false);
+    const [saved, setSaved]         = useState(false);
+    const [preview, setPreview]     = useState(false);
+    const [previewHtml, setPreviewHtml] = useState('');
+    const [dirty, setDirty]         = useState(false);
     const textareaRef = useRef(null);
     const saveTimer   = useRef(null);
     const router      = useRouter();
@@ -147,6 +234,12 @@ export default function WorkspaceDetail({ id }) {
     const handleBlurField = (field) => {
         if (data) save({ [field]: data[field] });
     };
+
+    // Generar HTML del preview cuando se activa
+    useEffect(() => {
+        if (!preview) return;
+        renderMarkdown(data?.contenido || '').then(setPreviewHtml);
+    }, [preview, data?.contenido]);
 
     // Insert markdown helper
     const insertMd = (before, after = '') => {
@@ -300,8 +393,8 @@ export default function WorkspaceDetail({ id }) {
 
                         {preview ? (
                             <div
-                                className="prose prose-sm max-w-none text-[14px] leading-relaxed text-foreground"
-                                dangerouslySetInnerHTML={{ __html: renderMarkdown(data.contenido) }}
+                                className="md-preview"
+                                dangerouslySetInnerHTML={{ __html: previewHtml }}
                             />
                         ) : (
                             <textarea
