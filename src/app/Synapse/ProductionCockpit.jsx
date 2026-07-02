@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
-    Rocket, RefreshCw, Loader2, Search, ChevronDown, ChevronUp,
+    Gauge, RefreshCw, Loader2, Search, ChevronDown, ChevronUp,
     Mail, MessageSquare, Eye, EyeOff, Settings2, X, Check,
     ExternalLink, Server, Calendar, Target, TrendingUp,
     AlertCircle, Clock, CheckCircle2, Minus, Filter
@@ -484,7 +484,7 @@ export default function ProductionCockpit() {
                 <div className="flex items-start justify-between gap-4 flex-wrap">
                     <div>
                         <div className="flex items-center gap-2 mb-1">
-                            <Rocket size={18} className="text-violet-400" strokeWidth={1.8} />
+                            <Gauge size={18} className="text-violet-400" strokeWidth={1.8} />
                             <h1 className="text-[18px] font-semibold tracking-tight">Production Cockpit</h1>
                         </div>
                         <p className="text-[12px] text-muted-foreground">

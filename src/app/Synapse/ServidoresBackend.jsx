@@ -264,7 +264,7 @@ export default function ServidoresBackend() {
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                     <Server size={16} className="text-violet-400" strokeWidth={1.8} />
-                    <h2 className="text-[15px] font-semibold tracking-tight">Servidores Backend</h2>
+                    <h2 className="text-[15px] font-semibold tracking-tight">Backserver</h2>
                     <span className="text-[11px] text-muted-foreground bg-foreground/5 border border-border rounded-full px-2 py-0.5">
                         {servidores.length} registros
                     </span>
