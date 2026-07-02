@@ -172,9 +172,60 @@ function KanbanColumn({ estado, tareas, draggingId, onDrop, onCardClick, onCardD
 
 // ── Vista Lista ───────────────────────────────────────────────────────────────
 
+function ListEstadoPicker({ tarea, estados, onSelect }) {
+    const [open, setOpen] = useState(false);
+    const ref = useRef(null);
+    const estadoActual = estados.find(e => e.id_estado === tarea.id_estado);
+    const isDone = !!estadoActual?.es_final;
+
+    useEffect(() => {
+        if (!open) return;
+        const fn = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+        document.addEventListener('mousedown', fn);
+        return () => document.removeEventListener('mousedown', fn);
+    }, [open]);
+
+    return (
+        <div ref={ref} className="relative shrink-0" onClick={e => e.stopPropagation()}>
+            <button
+                onClick={() => setOpen(v => !v)}
+                title="Cambiar estado"
+                className={cn(
+                    "w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors",
+                    isDone
+                        ? "border-emerald-500 bg-emerald-500 text-white"
+                        : "border-border hover:border-violet-400 hover:bg-violet-500/10"
+                )}
+            >
+                {isDone && <Check size={10} strokeWidth={2.5} />}
+            </button>
+
+            {open && (
+                <div className="absolute left-0 top-7 z-50 bg-popover border border-border rounded-xl shadow-xl py-1.5 min-w-[160px]">
+                    {estados.map(e => (
+                        <button
+                            key={e.id_estado}
+                            onClick={() => { onSelect(tarea, e.id_estado); setOpen(false); }}
+                            className={cn(
+                                "w-full flex items-center gap-2.5 px-3 py-1.5 text-[12px] hover:bg-foreground/5 transition-colors text-left",
+                                e.id_estado === tarea.id_estado ? "opacity-40 cursor-default" : ""
+                            )}
+                        >
+                            <span className="w-2 h-2 rounded-full shrink-0" style={{ background: e.color_hex }} />
+                            {e.nombre}
+                            {e.id_estado === tarea.id_estado && (
+                                <Check size={10} className="ml-auto text-muted-foreground" />
+                            )}
+                        </button>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
 function ListView({ tareas, estados, onCardClick, onChangeEstado }) {
     const estadoMap = Object.fromEntries(estados.map(e => [e.id_estado, e]));
-    const ultimoEstado = [...estados].sort((a, b) => a.orden - b.orden).at(-1);
 
     if (!tareas.length) {
         return (
@@ -184,7 +235,6 @@ function ListView({ tareas, estados, onCardClick, onChangeEstado }) {
         );
     }
 
-    // Agrupar por estado respetando el orden de las columnas
     const grupos = estados
         .map(e => ({ estado: e, items: tareas.filter(t => t.id_estado === e.id_estado) }))
         .filter(g => g.items.length > 0);
@@ -193,7 +243,6 @@ function ListView({ tareas, estados, onCardClick, onChangeEstado }) {
         <div className="space-y-5">
             {grupos.map(({ estado, items }) => (
                 <div key={estado.id_estado}>
-                    {/* Cabecera de grupo */}
                     <div className="flex items-center gap-2 mb-2 px-1">
                         <span className="w-2 h-2 rounded-full shrink-0" style={{ background: estado.color_hex }} />
                         <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -206,7 +255,7 @@ function ListView({ tareas, estados, onCardClick, onChangeEstado }) {
                         {items.map(t => {
                             const prio = PRIORIDAD_CONFIG[t.prioridad];
                             const tipo = TIPO_CONFIG[t.tipo];
-                            const isDone = estado.es_final || t.id_estado === ultimoEstado?.id_estado;
+                            const isDone = !!estado.es_final;
                             const isOverdue = t.fecha_vencimiento && !t.fecha_completado &&
                                 new Date(t.fecha_vencimiento) < new Date(new Date().toDateString());
 
@@ -217,23 +266,15 @@ function ListView({ tareas, estados, onCardClick, onChangeEstado }) {
                                     className={cn(
                                         "flex items-center gap-3 border rounded-xl px-4 py-3 cursor-pointer transition-all",
                                         isDone
-                                            ? "bg-emerald-500/5 border-emerald-500/25 hover:border-emerald-500/50"
+                                            ? "bg-emerald-500/5 border-emerald-500/25 hover:border-emerald-500/40"
                                             : "bg-card border-border/40 hover:border-violet-500/40 hover:bg-secondary/20"
                                     )}
                                 >
-                                    {/* Botón cambiar estado */}
-                                    <button
-                                        onClick={e => { e.stopPropagation(); onChangeEstado(t); }}
-                                        title="Cambiar estado"
-                                        className={cn(
-                                            "w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors",
-                                            isDone
-                                                ? "border-emerald-500 bg-emerald-500 text-white"
-                                                : "border-border hover:border-violet-400"
-                                        )}
-                                    >
-                                        {isDone && <Check size={10} strokeWidth={2.5} />}
-                                    </button>
+                                    <ListEstadoPicker
+                                        tarea={t}
+                                        estados={estados}
+                                        onSelect={onChangeEstado}
+                                    />
 
                                     <span className="text-[11px] text-muted-foreground shrink-0 w-8 text-center">{tipo?.emoji}</span>
                                     <span className={cn(
@@ -378,20 +419,18 @@ export default function Synapse({ teamId = null }) {
 
     // ── Drag & Drop ────────────────────────────────────────────────────────────
 
-    // Avanza la tarea al siguiente estado (desde vista lista)
-    const handleListChangeEstado = async (tarea) => {
-        const ordenados = [...estados].sort((a, b) => a.orden - b.orden);
-        const idxActual = ordenados.findIndex(e => e.id_estado === tarea.id_estado);
-        const siguiente = ordenados[idxActual + 1] ?? ordenados[idxActual]; // si es el último, queda igual
-        if (siguiente.id_estado === tarea.id_estado) return;
-        const fechaCompletado = siguiente.es_final ? new Date().toISOString().split('T')[0] : null;
+    // Cambia la tarea a cualquier estado desde la vista lista
+    const handleListChangeEstado = async (tarea, nuevoEstadoId) => {
+        if (tarea.id_estado === nuevoEstadoId) return;
+        const estadoDestino = estados.find(e => e.id_estado === nuevoEstadoId);
+        const fechaCompletado = estadoDestino?.es_final ? new Date().toISOString().split('T')[0] : null;
         setTareas(prev => prev.map(t =>
             t.id_tarea === tarea.id_tarea
-                ? { ...t, id_estado: siguiente.id_estado, fecha_completado: fechaCompletado }
+                ? { ...t, id_estado: nuevoEstadoId, fecha_completado: fechaCompletado }
                 : t
         ));
         try {
-            await synapseService.updateTareaEstado(tarea.id_tarea, siguiente.id_estado);
+            await synapseService.updateTareaEstado(tarea.id_tarea, nuevoEstadoId);
         } catch {
             await loadAll();
         }
