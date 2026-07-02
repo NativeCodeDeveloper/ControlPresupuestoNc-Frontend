@@ -650,7 +650,7 @@ export default function ProductionCockpit() {
                     </div>
                 ) : proyectosFiltrados.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-16 gap-2 text-muted-foreground">
-                        <Rocket size={28} strokeWidth={1.4} className="opacity-30" />
+                        <Gauge size={28} strokeWidth={1.4} className="opacity-30" />
                         <p className="text-[13px]">No hay proyectos para mostrar</p>
                     </div>
                 ) : (
