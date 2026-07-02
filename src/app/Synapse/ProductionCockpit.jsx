@@ -558,7 +558,7 @@ export default function ProductionCockpit() {
                     </div>
 
                     {/* Total general acumulado */}
-                    <div className="flex flex-col gap-1 bg-card border border-border rounded-xl px-4 py-3 min-w-[180px]">
+                    <div className="flex flex-col gap-1 bg-card border border-border rounded-xl px-4 py-3 min-w-0 sm:min-w-[180px] flex-1 sm:flex-none">
                         <div className="flex items-center gap-1.5">
                             <TrendingUp size={12} className="text-emerald-400" />
                             <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -573,7 +573,7 @@ export default function ProductionCockpit() {
 
                     {/* Meta mensual chip */}
                     <div
-                        className="flex flex-col gap-1 bg-card border border-border rounded-xl px-4 py-3 min-w-[220px] cursor-pointer hover:border-violet-500/40 transition-colors"
+                        className="flex flex-col gap-1 bg-card border border-border rounded-xl px-4 py-3 min-w-0 sm:min-w-[220px] flex-1 sm:flex-none cursor-pointer hover:border-violet-500/40 transition-colors"
                         onClick={() => setMetaModal(true)}
                     >
                         <div className="flex items-center justify-between gap-3">
@@ -608,7 +608,7 @@ export default function ProductionCockpit() {
             <div className="flex items-center gap-2 mb-4 flex-wrap">
 
                 {/* Búsqueda */}
-                <div className="relative flex-1 min-w-[200px] max-w-[300px]">
+                <div className="relative flex-1 min-w-[160px] max-w-full sm:max-w-[300px]">
                     <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                     <input
                         value={search}

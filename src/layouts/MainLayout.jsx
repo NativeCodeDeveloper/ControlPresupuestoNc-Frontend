@@ -333,14 +333,20 @@ export default function MainLayout({ children }) {
                     />
                 </header>
 
-                {/* Área scrollable */}
-                <div className="flex-1 overflow-y-auto">
-                    <div className="p-4 lg:p-8">
-                        <div className="max-w-7xl mx-auto">
-                            {children}
+                {/* Área de contenido — full-height sin padding para páginas tipo terminal */}
+                {pathname?.startsWith('/synapse/monitor') ? (
+                    <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+                        {children}
+                    </div>
+                ) : (
+                    <div className="flex-1 overflow-y-auto">
+                        <div className="p-4 lg:p-8">
+                            <div className="max-w-7xl mx-auto">
+                                {children}
+                            </div>
                         </div>
                     </div>
-                </div>
+                )}
             </main>
         </div>
     );

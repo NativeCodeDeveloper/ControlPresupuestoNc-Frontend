@@ -378,7 +378,7 @@ export default function MonitorTerminal() {
                     {/* ── Stats (fijo, no hace scroll) ── */}
                     {stats && (
                         <div className="px-5 py-4 border-b border-zinc-800 shrink-0 space-y-3">
-                            <div className="grid grid-cols-3 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                 <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-3">
                                     <div className="flex items-center gap-1.5 text-[10px] text-zinc-500 font-semibold uppercase tracking-wider mb-2.5">
                                         <Cpu size={10} /> CPU
