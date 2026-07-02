@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
     Server, Plus, RefreshCw, Loader2, ExternalLink,
-    Pencil, Trash2, Check, X, ChevronDown
+    Pencil, Trash2, Check, X, Search
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import * as synapseService from '../../services/synapseService';
@@ -210,6 +210,8 @@ export default function ServidoresBackend() {
     const [showForm, setShowForm]     = useState(false);
     const [form, setForm]             = useState(EMPTY_FORM);
     const [saving, setSaving]         = useState(false);
+    const [search, setSearch]         = useState('');
+    const [filterEstado, setFilterEstado] = useState('');
 
     const loadData = useCallback(async () => {
         setLoading(true);
@@ -258,6 +260,19 @@ export default function ServidoresBackend() {
         Object.keys(ESTADO_CONFIG).map(k => [k, servidores.filter(s => s.estado === k).length])
     );
 
+    const servidoresFiltrados = servidores.filter(s => {
+        if (filterEstado && s.estado !== filterEstado) return false;
+        if (search) {
+            const q = search.toLowerCase();
+            const matchUrl     = s.ruta_backend?.toLowerCase().includes(q);
+            const matchCliente = s.proyecto_cliente?.toLowerCase().includes(q);
+            const matchNombre  = s.proyecto_nombre?.toLowerCase().includes(q);
+            const matchVersion = s.version?.toLowerCase().includes(q);
+            if (!matchUrl && !matchCliente && !matchNombre && !matchVersion) return false;
+        }
+        return true;
+    });
+
     return (
         <div className="mt-8">
             {/* Header */}
@@ -266,7 +281,7 @@ export default function ServidoresBackend() {
                     <Server size={16} className="text-violet-400" strokeWidth={1.8} />
                     <h2 className="text-[15px] font-semibold tracking-tight">Backserver</h2>
                     <span className="text-[11px] text-muted-foreground bg-foreground/5 border border-border rounded-full px-2 py-0.5">
-                        {servidores.length} registros
+                        {servidoresFiltrados.length}{servidoresFiltrados.length !== servidores.length && ` / ${servidores.length}`} registros
                     </span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -285,6 +300,37 @@ export default function ServidoresBackend() {
                         Agregar servidor
                     </button>
                 </div>
+            </div>
+
+            {/* Barra de filtros */}
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+                <div className="relative flex-1 min-w-48">
+                    <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                    <input
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        placeholder="Buscar por URL, cliente o versión…"
+                        className="w-full pl-8 pr-3 text-[12px] bg-card border border-border rounded-lg py-1.5 outline-none focus:border-violet-500 transition-colors"
+                    />
+                </div>
+                <select
+                    value={filterEstado}
+                    onChange={e => setFilterEstado(e.target.value)}
+                    className="text-[12px] bg-card border border-border rounded-lg px-2.5 py-1.5 outline-none focus:border-violet-500 transition-colors text-foreground"
+                >
+                    <option value="">Todos los estados</option>
+                    {Object.entries(ESTADO_CONFIG).map(([k, v]) => (
+                        <option key={k} value={k}>{v.label}</option>
+                    ))}
+                </select>
+                {(search || filterEstado) && (
+                    <button
+                        onClick={() => { setSearch(''); setFilterEstado(''); }}
+                        className="flex items-center gap-1 text-[12px] text-muted-foreground hover:text-foreground px-2.5 py-1.5 border border-border rounded-lg hover:bg-foreground/5 transition-colors"
+                    >
+                        <X size={11} /> Limpiar
+                    </button>
+                )}
             </div>
 
             {/* Leyenda */}
@@ -388,6 +434,11 @@ export default function ServidoresBackend() {
                         <Server size={24} strokeWidth={1.4} className="opacity-30" />
                         <p className="text-[12px]">No hay servidores registrados</p>
                     </div>
+                ) : servidoresFiltrados.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-10 gap-2 text-muted-foreground">
+                        <Search size={20} strokeWidth={1.4} className="opacity-30" />
+                        <p className="text-[12px]">Sin resultados para los filtros aplicados</p>
+                    </div>
                 ) : (
                     <div className="overflow-x-auto">
                         <table className="w-full text-[13px]">
@@ -402,7 +453,7 @@ export default function ServidoresBackend() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-border/50">
-                                {servidores.map(s => (
+                                {servidoresFiltrados.map(s => (
                                     <ServidorRow
                                         key={s.id_servidor}
                                         servidor={s}
