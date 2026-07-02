@@ -115,11 +115,23 @@ function EmailModal({ proyecto, onClose }) {
     const [to, setTo]           = useState(proyecto?.email_cliente || '');
     const [subject, setSubject] = useState(DEFAULT_EMAIL_SUBJECT(proyecto));
     const [body, setBody]       = useState(DEFAULT_EMAIL_TEMPLATE(proyecto));
+    const [sending, setSending] = useState(false);
+    const [sent, setSent]       = useState(false);
+    const [error, setError]     = useState('');
 
-    const send = () => {
-        const url = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-        window.open(url, '_blank');
-        onClose();
+    const send = async () => {
+        if (!to.trim()) return;
+        setSending(true);
+        setError('');
+        try {
+            await synapseService.sendCockpitEmail({ to, subject, body });
+            setSent(true);
+            setTimeout(onClose, 1500);
+        } catch (e) {
+            setError('Error al enviar el correo. Intenta nuevamente.');
+        } finally {
+            setSending(false);
+        }
     };
 
     return (
@@ -137,52 +149,63 @@ function EmailModal({ proyecto, onClose }) {
                 </div>
 
                 <div className="p-5 space-y-3">
-                    <div>
-                        <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1 block">Para</label>
-                        <input
-                            value={to}
-                            onChange={e => setTo(e.target.value)}
-                            placeholder="correo@ejemplo.com, otro@ejemplo.com"
-                            className="w-full text-[13px] bg-input border border-border rounded-lg px-3 py-2 outline-none focus:border-violet-500 transition-colors"
-                        />
-                        <p className="text-[10px] text-muted-foreground mt-1">Separa múltiples correos con coma</p>
-                    </div>
-
-                    <div>
-                        <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1 block">Asunto</label>
-                        <input
-                            value={subject}
-                            onChange={e => setSubject(e.target.value)}
-                            className="w-full text-[13px] bg-input border border-border rounded-lg px-3 py-2 outline-none focus:border-violet-500 transition-colors"
-                        />
-                    </div>
-
-                    <div>
-                        <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1 block">Mensaje</label>
-                        <textarea
-                            value={body}
-                            onChange={e => setBody(e.target.value)}
-                            rows={7}
-                            className="w-full text-[13px] bg-input border border-border rounded-lg px-3 py-2 outline-none focus:border-violet-500 transition-colors resize-none"
-                        />
-                    </div>
+                    {sent ? (
+                        <div className="flex flex-col items-center justify-center py-8 gap-2">
+                            <CheckCircle2 size={32} className="text-emerald-400" />
+                            <p className="text-[14px] font-medium text-emerald-400">¡Correo enviado!</p>
+                        </div>
+                    ) : (
+                        <>
+                            <div>
+                                <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1 block">Para</label>
+                                <input
+                                    value={to}
+                                    onChange={e => setTo(e.target.value)}
+                                    placeholder="correo@ejemplo.com, otro@ejemplo.com"
+                                    className="w-full text-[13px] bg-input border border-border rounded-lg px-3 py-2 outline-none focus:border-violet-500 transition-colors"
+                                />
+                                <p className="text-[10px] text-muted-foreground mt-1">Separa múltiples correos con coma</p>
+                            </div>
+                            <div>
+                                <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1 block">Asunto</label>
+                                <input
+                                    value={subject}
+                                    onChange={e => setSubject(e.target.value)}
+                                    className="w-full text-[13px] bg-input border border-border rounded-lg px-3 py-2 outline-none focus:border-violet-500 transition-colors"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1 block">Mensaje</label>
+                                <textarea
+                                    value={body}
+                                    onChange={e => setBody(e.target.value)}
+                                    rows={7}
+                                    className="w-full text-[13px] bg-input border border-border rounded-lg px-3 py-2 outline-none focus:border-violet-500 transition-colors resize-none"
+                                />
+                            </div>
+                            {error && <p className="text-[12px] text-red-400">{error}</p>}
+                        </>
+                    )}
                 </div>
 
-                <div className="flex justify-end gap-2 p-5 pt-0">
-                    <button
-                        onClick={onClose}
-                        className="px-4 py-2 text-[13px] rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors"
-                    >
-                        Cancelar
-                    </button>
-                    <button
-                        onClick={send}
-                        disabled={!to.trim()}
-                        className="px-4 py-2 text-[13px] rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-medium transition-colors disabled:opacity-40"
-                    >
-                        Abrir correo
-                    </button>
-                </div>
+                {!sent && (
+                    <div className="flex justify-end gap-2 p-5 pt-0">
+                        <button
+                            onClick={onClose}
+                            className="px-4 py-2 text-[13px] rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            onClick={send}
+                            disabled={!to.trim() || sending}
+                            className="flex items-center gap-2 px-4 py-2 text-[13px] rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-medium transition-colors disabled:opacity-40"
+                        >
+                            {sending ? <Loader2 size={13} className="animate-spin" /> : <Mail size={13} />}
+                            {sending ? 'Enviando…' : 'Enviar correo'}
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -276,6 +299,7 @@ export default function ProductionCockpit() {
 
     const [search, setSearch]               = useState('');
     const [filterAlerta, setFilterAlerta]   = useState('');
+    const [filterServidor, setFilterServidor] = useState('');
     const [sortField, setSortField]         = useState('nombre_cliente');
     const [sortDir, setSortDir]             = useState('asc');
 
@@ -406,6 +430,8 @@ export default function ProductionCockpit() {
 
     // ── Filtrado y ordenamiento ───────────────────────────────────────────────
 
+    const servidoresUnicos = [...new Set(proyectos.map(p => p.servidor).filter(Boolean))].sort();
+
     const proyectosFiltrados = proyectos
         .filter(p => {
             const q = search.toLowerCase();
@@ -413,6 +439,9 @@ export default function ProductionCockpit() {
                 !p.nombre_cliente?.toLowerCase().includes(q) &&
                 !p.codigo_interno?.toLowerCase().includes(q)) return false;
             if (filterAlerta && p.estado_alerta_pago !== filterAlerta) return false;
+            if (filterServidor && p.servidor !== filterServidor) return false;
+            // En vista "Este mes": solo proyectos con al menos un pago en ese mes
+            if (!vistaGeneral && Number(p.total_pagado_mes) === 0) return false;
             return true;
         })
         .sort((a, b) => {
@@ -520,8 +549,21 @@ export default function ProductionCockpit() {
                     <option value="verde">Al día</option>
                     <option value="naranja">Por vencer</option>
                     <option value="rojo">Vencida</option>
-                    <option value="">Único</option>
                 </select>
+
+                {/* Filtro servidor */}
+                {servidoresUnicos.length > 0 && (
+                    <select
+                        value={filterServidor}
+                        onChange={e => setFilterServidor(e.target.value)}
+                        className="text-[12px] bg-card border border-border rounded-lg px-2.5 py-1.5 outline-none focus:border-violet-500 transition-colors text-foreground"
+                    >
+                        <option value="">Todos los servidores</option>
+                        {servidoresUnicos.map(s => (
+                            <option key={s} value={s}>{s}</option>
+                        ))}
+                    </select>
+                )}
 
                 {/* Vista mes / todo */}
                 <div className="flex items-center gap-0 bg-card border border-border rounded-lg overflow-hidden">

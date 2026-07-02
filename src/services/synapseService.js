@@ -50,6 +50,13 @@ export const getCockpit = (params = {}) => {
     ).toString();
     return apiClient.get(`${BASE}/cockpit${qs ? `?${qs}` : ''}`);
 };
-export const updateCockpit = (id, data) => apiClient.patch(`${BASE}/cockpit/${id}`, data);
-export const getCockpitConfig = () => apiClient.get(`${BASE}/cockpit/config`);
+export const updateCockpit    = (id, data) => apiClient.patch(`${BASE}/cockpit/${id}`, data);
+export const getCockpitConfig = ()         => apiClient.get(`${BASE}/cockpit/config`);
 export const updateCockpitConfig = (data) => apiClient.put(`${BASE}/cockpit/config`, data);
+export const sendCockpitEmail = (data)    => apiClient.post(`${BASE}/cockpit/send-email`, data);
+
+// ── Servidores Backend ────────────────────────────────────────────────────────
+export const getServidores    = ()         => apiClient.get(`${BASE}/servidores`);
+export const createServidor   = (data)     => apiClient.post(`${BASE}/servidores`, data);
+export const updateServidor   = (id, data) => apiClient.put(`${BASE}/servidores/${id}`, data);
+export const deleteServidor   = (id)       => apiClient.delete(`${BASE}/servidores/${id}`);
