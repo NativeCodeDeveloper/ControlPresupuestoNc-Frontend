@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
     X, Save, Trash2, MessageSquare, Send, Calendar, Link2,
-    User, Tag, AlertCircle, ChevronDown, Check, Loader2
+    User, Tag, AlertCircle, ChevronDown, Check, Loader2, ArrowLeft
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import * as synapseService from '../../services/synapseService';
@@ -187,8 +187,192 @@ export default function SynapseTaskModal({ tarea, estados, initialEstadoId, init
     const estadoActual = estados.find(e => String(e.id_estado) === String(form.id_estado));
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-sm">
-            <div className="bg-card border border-border/50 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] flex flex-col overflow-hidden">
+        <>
+        {/* ── MÓVIL: pantalla completa estilo Linear ── */}
+        <div className="md:hidden fixed inset-0 z-50 flex flex-col bg-background">
+
+            {/* Header */}
+            <div className="flex items-center gap-3 px-4 py-3 border-b border-border/50 shrink-0">
+                <button onClick={onClose} className="p-1.5 text-muted-foreground hover:text-foreground rounded-lg transition-colors shrink-0">
+                    <ArrowLeft size={18} />
+                </button>
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                    {estadoActual && <span className="w-2 h-2 rounded-full shrink-0" style={{ background: estadoActual.color_hex }} />}
+                    <span className="text-xs text-muted-foreground font-mono truncate">
+                        {isNew ? 'Nueva tarea' : `#${tarea.id_tarea}`}
+                    </span>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                    {!isNew && (
+                        <button onClick={handleDelete} disabled={deleting} className="p-1.5 text-muted-foreground hover:text-red-400 rounded-lg transition-colors">
+                            {deleting ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
+                        </button>
+                    )}
+                    <button onClick={handleSave} disabled={saving} className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white rounded-xl text-xs font-medium transition-colors">
+                        {saving ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
+                        {isNew ? 'Crear' : 'Guardar'}
+                    </button>
+                </div>
+            </div>
+
+            {/* Contenido scrollable */}
+            <div className="flex-1 overflow-y-auto">
+
+                {/* Título */}
+                <div className="px-4 pt-5 pb-2">
+                    <input
+                        type="text"
+                        value={form.titulo}
+                        onChange={(e) => set('titulo', e.target.value)}
+                        placeholder="Título de la tarea..."
+                        className="w-full text-[20px] font-bold bg-transparent border-0 focus:outline-none text-foreground placeholder:text-muted-foreground/40 leading-snug"
+                    />
+                </div>
+
+                {/* Propiedades como chips */}
+                <div className="px-4 py-3 flex flex-wrap gap-2 border-b border-border/20">
+
+                    {/* Estado */}
+                    <div className="relative">
+                        {estadoActual && <span className="absolute left-2.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full pointer-events-none" style={{ background: estadoActual.color_hex }} />}
+                        <select value={String(form.id_estado)} onChange={(e) => set('id_estado', e.target.value)}
+                            className="text-xs bg-secondary border border-border/50 rounded-full pl-6 pr-6 py-1.5 appearance-none focus:outline-none text-foreground">
+                            {estados.map(e => <option key={e.id_estado} value={String(e.id_estado)}>{e.nombre}</option>)}
+                        </select>
+                        <ChevronDown size={9} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                    </div>
+
+                    {/* Prioridad */}
+                    <div className="relative">
+                        <select value={form.prioridad} onChange={(e) => set('prioridad', e.target.value)}
+                            className="text-xs bg-secondary border border-border/50 rounded-full px-3 pr-6 py-1.5 appearance-none focus:outline-none text-foreground">
+                            {PRIORIDADES.map(p => <option key={p.val} value={p.val}>{p.label}</option>)}
+                        </select>
+                        <ChevronDown size={9} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                    </div>
+
+                    {/* Tipo */}
+                    <div className="relative">
+                        <select value={form.tipo} onChange={(e) => set('tipo', e.target.value)}
+                            className="text-xs bg-secondary border border-border/50 rounded-full px-3 pr-6 py-1.5 appearance-none focus:outline-none text-foreground">
+                            {TIPOS.map(t => <option key={t.val} value={t.val}>{t.label}</option>)}
+                        </select>
+                        <ChevronDown size={9} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                    </div>
+
+                    {/* Asignado */}
+                    {socios.length > 0 && (
+                        <div className="relative">
+                            <User size={9} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                            <select value={String(form.id_asignado || '')} onChange={(e) => set('id_asignado', e.target.value ? parseInt(e.target.value) : '')}
+                                className="text-xs bg-secondary border border-border/50 rounded-full pl-6 pr-6 py-1.5 appearance-none focus:outline-none text-foreground">
+                                <option value="">Sin asignar</option>
+                                {socios.map(s => <option key={s.id_socio} value={String(s.id_socio)}>{s.nombre}</option>)}
+                            </select>
+                            <ChevronDown size={9} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                        </div>
+                    )}
+
+                    {/* Proyecto */}
+                    {proyectos.length > 0 && (
+                        <div className="relative">
+                            <Link2 size={9} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                            <select value={String(form.id_proyecto || '')} onChange={(e) => set('id_proyecto', e.target.value ? parseInt(e.target.value) : '')}
+                                className="text-xs bg-secondary border border-border/50 rounded-full pl-6 pr-6 py-1.5 appearance-none focus:outline-none text-foreground">
+                                <option value="">Sin proyecto</option>
+                                {proyectos.map(p => <option key={p.id_proyecto} value={String(p.id_proyecto)}>{p.nombre}</option>)}
+                            </select>
+                            <ChevronDown size={9} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                        </div>
+                    )}
+
+                    {/* Fecha vencimiento */}
+                    <div className="relative">
+                        <Calendar size={9} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                        <input type="date" value={form.fecha_vencimiento} onChange={(e) => set('fecha_vencimiento', e.target.value)}
+                            className="text-xs bg-secondary border border-border/50 rounded-full pl-6 pr-3 py-1.5 focus:outline-none text-foreground" />
+                    </div>
+
+                    {/* Etiquetas */}
+                    {etiquetas.length > 0 && etiquetas.map(et => {
+                        const active = form.etiqueta_ids.includes(et.id_etiqueta);
+                        return (
+                            <button key={et.id_etiqueta} onClick={() => toggleEtiqueta(et.id_etiqueta)}
+                                className={cn("flex items-center gap-1 text-[11px] font-medium px-2.5 py-1.5 rounded-full border transition-all",
+                                    active ? "border-transparent text-white" : "border-border/50 text-muted-foreground")}
+                                style={active ? { background: et.color_hex } : {}}>
+                                {active && <Check size={9} />}{et.nombre}
+                            </button>
+                        );
+                    })}
+                </div>
+
+                {/* Descripción */}
+                <div className="px-4 py-4">
+                    <p className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider mb-2">Descripción</p>
+                    <textarea value={form.descripcion} onChange={(e) => set('descripcion', e.target.value)}
+                        placeholder="Describe la tarea, contexto, pasos a seguir..."
+                        rows={5}
+                        className="w-full text-sm bg-secondary/30 border border-border/40 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-violet-500/30 text-foreground placeholder:text-muted-foreground/40 resize-none transition-colors" />
+                </div>
+
+                {/* Comentarios */}
+                {!isNew && (
+                    <div className="px-4 pb-4 space-y-3 border-t border-border/20 pt-4">
+                        <div className="flex items-center gap-2">
+                            <MessageSquare size={13} className="text-muted-foreground" />
+                            <span className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider">
+                                Notas ({comentarios.length})
+                            </span>
+                        </div>
+                        {comentarios.length > 0 && (
+                            <div className="space-y-2">
+                                {comentarios.map(c => (
+                                    <div key={c.id_comentario} className="group bg-secondary/30 border border-border/30 rounded-xl px-3 py-2.5 relative">
+                                        <p className="text-sm text-foreground whitespace-pre-wrap pr-6">{c.contenido}</p>
+                                        <p className="text-[10px] text-muted-foreground mt-1">
+                                            {new Date(c.creado_en).toLocaleString('es-CL', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                        </p>
+                                        <button onClick={() => handleDeleteComentario(c.id_comentario)}
+                                            className="absolute top-2 right-2 p-1 text-muted-foreground hover:text-red-400 rounded transition-colors">
+                                            <X size={11} />
+                                        </button>
+                                    </div>
+                                ))}
+                                <div ref={comentariosEndRef} />
+                            </div>
+                        )}
+                        <div className="flex gap-2">
+                            <textarea value={nuevoComentario} onChange={(e) => setNuevoComentario(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleSendComentario(); }}
+                                placeholder="Agregar nota... (Ctrl+Enter para enviar)" rows={2}
+                                className="flex-1 text-sm bg-background border border-border/60 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-violet-500/30 text-foreground placeholder:text-muted-foreground/40 resize-none transition-colors" />
+                            <button onClick={handleSendComentario} disabled={!nuevoComentario.trim() || sendingComment}
+                                className="self-end p-3 bg-violet-500 hover:bg-violet-600 disabled:opacity-40 text-white rounded-xl transition-colors">
+                                {sendingComment ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Adjuntos */}
+                {!isNew && tarea?.id_tarea && (
+                    <div className="px-4 pb-6 border-t border-border/30 pt-4">
+                        <AdjuntosPanel entidad="tarea" idEntidad={tarea.id_tarea} compact />
+                    </div>
+                )}
+
+                {error && (
+                    <div className="px-4 pb-4 flex items-center gap-2 text-red-400 text-xs">
+                        <AlertCircle size={13} /><span>{error}</span>
+                    </div>
+                )}
+            </div>
+        </div>
+
+        {/* ── DESKTOP: modal overlay (sin cambios) ── */}
+        <div className="hidden md:flex fixed inset-0 z-50 items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <div className="bg-card border border-border/50 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
 
                 {/* Header */}
                 <div className="flex items-center justify-between px-6 py-4 border-b border-border/50 bg-secondary/20 shrink-0">
@@ -220,10 +404,10 @@ export default function SynapseTaskModal({ tarea, estados, initialEstadoId, init
                 </div>
 
                 {/* Body */}
-                <div className="flex flex-col md:flex-row flex-1 min-h-0 overflow-hidden">
+                <div className="flex flex-1 min-h-0 overflow-hidden">
 
                     {/* Left: Title + Description + Comments */}
-                    <div className="flex-1 flex flex-col min-w-0 overflow-y-auto p-4 sm:p-6 space-y-4">
+                    <div className="flex-1 flex flex-col min-w-0 overflow-y-auto p-6 space-y-5">
 
                         {/* Título */}
                         <div>
@@ -300,7 +484,7 @@ export default function SynapseTaskModal({ tarea, estados, initialEstadoId, init
                     </div>
 
                     {/* Right: Metadata panel */}
-                    <div className="w-full md:w-72 shrink-0 border-t md:border-t-0 md:border-l border-border/40 bg-secondary/10 overflow-y-auto p-4 sm:p-5 space-y-4">
+                    <div className="w-72 shrink-0 border-l border-border/40 bg-secondary/10 overflow-y-auto p-5 space-y-5">
 
                         {/* Estado */}
                         <SelectField
@@ -462,5 +646,6 @@ export default function SynapseTaskModal({ tarea, estados, initialEstadoId, init
                 </div>
             </div>
         </div>
+        </>
     );
 }
