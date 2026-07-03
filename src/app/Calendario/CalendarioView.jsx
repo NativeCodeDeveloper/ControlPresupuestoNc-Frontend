@@ -801,11 +801,10 @@ export default function CalendarioView() {
 
             {/* ── Sidebar izquierdo ── */}
             <aside className={cn(
-                "w-52 shrink-0 border-r border-border/30 flex-col py-4 px-3 gap-4 overflow-y-auto",
-                "md:flex",
-                sidebarOpen
-                    ? "flex fixed inset-y-0 left-0 z-50 bg-background shadow-2xl"
-                    : "hidden"
+                "w-52 shrink-0 border-r border-border/30 flex flex-col py-4 px-3 gap-4 overflow-y-auto",
+                "transition-transform duration-300 ease-in-out",
+                "fixed inset-y-0 left-0 z-50 bg-background md:static md:bg-transparent md:shadow-none md:translate-x-0",
+                sidebarOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full md:translate-x-0"
             )}>
                 {sidebarContent}
             </aside>

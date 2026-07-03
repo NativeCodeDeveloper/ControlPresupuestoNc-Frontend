@@ -72,6 +72,7 @@ function InlineEdit({ value, onSave, placeholder = '—', multiline = false }) {
     const ref = useRef(null);
 
     useEffect(() => { if (editing) ref.current?.focus(); }, [editing]);
+    useEffect(() => { if (!editing) setDraft(value || ''); }, [value, editing]);
 
     const save = () => {
         setEditing(false);
@@ -806,7 +807,7 @@ export default function ProductionCockpit() {
 
                     {/* ── Vista tabla (desktop) ── */}
                     <div className="hidden md:block overflow-x-auto">
-                        <table className="w-full table-fixed text-[13px]">
+                        <table className="w-full table-fixed text-[13px] min-w-[700px]">
                             <colgroup>
                                 <col className="w-[16%]" />
                                 <col className="w-[14%]" />

@@ -92,13 +92,15 @@ export default function SynapseTaskModal({ tarea, estados, initialEstadoId, init
             setEtiquetas(Array.isArray(e) ? e : []);
             setTeams(Array.isArray(tms) ? tms : []);
         }).catch(() => {});
+    }, []);
 
+    useEffect(() => {
         if (!isNew) {
             synapseService.getComentarios(tarea.id_tarea)
                 .then(c => setComentarios(Array.isArray(c) ? c : []))
                 .catch(() => {});
         }
-    }, []);
+    }, [tarea?.id_tarea, isNew]);
 
     useEffect(() => {
         comentariosEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -348,8 +350,8 @@ export default function SynapseTaskModal({ tarea, estados, initialEstadoId, init
                                 placeholder="Agregar nota... (Ctrl+Enter para enviar)" rows={2}
                                 className="flex-1 text-sm bg-background border border-border/60 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-violet-500/30 text-foreground placeholder:text-muted-foreground/40 resize-none transition-colors" />
                             <button onClick={handleSendComentario} disabled={!nuevoComentario.trim() || sendingComment}
-                                className="self-end p-3 bg-violet-500 hover:bg-violet-600 disabled:opacity-40 text-white rounded-xl transition-colors">
-                                {sendingComment ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                                className="self-end p-4 bg-violet-500 hover:bg-violet-600 disabled:opacity-40 text-white rounded-xl transition-colors min-w-[48px] min-h-[48px] flex items-center justify-center">
+                                {sendingComment ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
                             </button>
                         </div>
                     </div>

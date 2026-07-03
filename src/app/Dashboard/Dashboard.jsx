@@ -2,6 +2,7 @@
 
 import { createElement, useState, useEffect } from 'react';
 import * as financeService from '../../services/financeService';
+import { formatCLP } from '../../lib/utils';
 import {
     DollarSign,
     TrendingUp,
@@ -176,9 +177,6 @@ export default function Dashboard() {
     const currentYear = new Date().getFullYear();
     const yearOptions = [currentYear - 2, currentYear - 1, currentYear, currentYear + 1];
 
-    const formatCurrency = (val) => {
-        return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(val || 0);
-    };
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
@@ -210,13 +208,13 @@ export default function Dashboard() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatCard title="Ingresos Totales" value={formatCurrency(stats.totalIncome)} icon={DollarSign}
+                <StatCard title="Ingresos Totales" value={formatCLP(stats.totalIncome)} icon={DollarSign}
                     color="bg-[hsl(var(--emerald-premium))]/10 text-[hsl(var(--emerald-premium))]" change={monthChange.income} />
-                <StatCard title="Gastos Operativos" value={formatCurrency(stats.totalExpenses)} icon={Activity}
+                <StatCard title="Gastos Operativos" value={formatCLP(stats.totalExpenses)} icon={Activity}
                     color="bg-[hsl(var(--copper))]/10 text-[hsl(var(--copper))]" change={monthChange.expenses} />
-                <StatCard title="Retenciones (Fondo + Reinv.)" value={formatCurrency(stats.emergencyFundDeduction + stats.reinvestmentDeduction)} icon={TrendingUp}
+                <StatCard title="Retenciones (Fondo + Reinv.)" value={formatCLP(stats.emergencyFundDeduction + stats.reinvestmentDeduction)} icon={TrendingUp}
                     color="bg-[hsl(var(--purple-premium))]/10 text-[hsl(var(--purple-premium))]" change={monthChange.retentions} />
-                <StatCard title="Neto a Repartir (Real)" value={formatCurrency(stats.partnersAvailable)} icon={TrendingUp}
+                <StatCard title="Neto a Repartir (Real)" value={formatCLP(stats.partnersAvailable)} icon={TrendingUp}
                     color="bg-[hsl(var(--gold))]/10 text-[hsl(var(--gold))]" change={monthChange.partnersAvailable} />
             </div>
 
@@ -243,7 +241,7 @@ export default function Dashboard() {
                         <div className="space-y-4">
                             <div className="flex justify-between text-sm">
                                 <span className="text-muted-foreground">Costos Fijos</span>
-                                <span className="font-medium text-foreground">{formatCurrency(stats.totalFixedCosts)}</span>
+                                <span className="font-medium text-foreground">{formatCLP(stats.totalFixedCosts)}</span>
                             </div>
                             <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
                                 <div
@@ -256,7 +254,7 @@ export default function Dashboard() {
 
                             <div className="flex justify-between text-sm mt-4">
                                 <span className="text-muted-foreground">Costos Variables</span>
-                                <span className="font-medium text-foreground">{formatCurrency(stats.totalVariableCosts)}</span>
+                                <span className="font-medium text-foreground">{formatCLP(stats.totalVariableCosts)}</span>
                             </div>
                             <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
                                 <div
@@ -268,7 +266,7 @@ export default function Dashboard() {
                             </div>
                             <div className="flex justify-between text-sm mt-4">
                                 <span className="text-muted-foreground">Fijos Vigentes (Compromiso)</span>
-                                <span className="font-medium text-[hsl(var(--corporate-blue))]">{formatCurrency(stats.totalFixedCostsCommitted)}</span>
+                                <span className="font-medium text-[hsl(var(--corporate-blue))]">{formatCLP(stats.totalFixedCostsCommitted)}</span>
                             </div>
                         </div>
                     ) : (

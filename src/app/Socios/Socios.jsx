@@ -11,7 +11,7 @@ import {
     PieChart,
     ShieldCheck
 } from 'lucide-react';
-import { cn } from '../../lib/utils';
+import { cn, formatCLP } from '../../lib/utils';
 import { Input, Select } from '../../components/ui/FormElements';
 
 export default function Socios() {
@@ -132,9 +132,6 @@ export default function Socios() {
     const currentYear = new Date().getFullYear();
     const yearOptions = [currentYear - 2, currentYear - 1, currentYear, currentYear + 1];
 
-    const formatCurrency = (val) => {
-        return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(val || 0);
-    };
 
     const handlePercentageInput = (id, val) => {
         setPartnersData((prev) => prev.map((p) =>
@@ -184,9 +181,9 @@ export default function Socios() {
                 const errData = result?.error || result;
                 let detail = '';
                 if (errData?.limiteMensual && errData?.margenMensual !== undefined) {
-                    detail = `\nLímite mensual: ${formatCurrency(errData.limiteMensual)}\nMargen restante este mes: ${formatCurrency(errData.margenMensual)}\nAcumulado total: ${formatCurrency(errData.acumulado)}`;
+                    detail = `\nLímite mensual: ${formatCLP(errData.limiteMensual)}\nMargen restante este mes: ${formatCLP(errData.margenMensual)}\nAcumulado total: ${formatCLP(errData.acumulado)}`;
                 } else if (errData?.disponible !== undefined) {
-                    detail = `\nDisponible: ${formatCurrency(errData.disponible)}`;
+                    detail = `\nDisponible: ${formatCLP(errData.disponible)}`;
                 }
                 alert(msg + detail);
             }
@@ -245,34 +242,34 @@ export default function Socios() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatCard
                     title="Ingresos Totales"
-                    value={formatCurrency(stats.totalIncome)}
+                    value={formatCLP(stats.totalIncome)}
                     icon={DollarSign}
                     iconTone="bg-[hsl(var(--emerald-premium))]/12 text-[hsl(var(--emerald-premium))]"
                 />
                 <StatCard
                     title="Gastos Operativos"
-                    value={formatCurrency(stats.totalExpenses)}
+                    value={formatCLP(stats.totalExpenses)}
                     icon={Wallet}
                     iconTone="bg-[hsl(var(--copper))]/12 text-[hsl(var(--copper))]"
                 />
                 <StatCard
                     title="Retenciones Empresa"
-                    value={formatCurrency(stats.emergencyFundDeduction + stats.reinvestmentDeduction)}
+                    value={formatCLP(stats.emergencyFundDeduction + stats.reinvestmentDeduction)}
                     icon={ShieldCheck}
                     subtitle="Fondo Emergencia + Reinversión"
                     iconTone="bg-[hsl(var(--corporate-blue))]/12 text-[hsl(var(--corporate-blue))]"
                 />
                 <StatCard
                     title="Total Disponible Socios"
-                    value={formatCurrency(stats.totalPartnerAvailable)}
+                    value={formatCLP(stats.totalPartnerAvailable)}
                     icon={PieChart}
                     trendColor="text-[hsl(var(--gold))]"
-                    subtitle={`Asignado ${formatCurrency(stats.totalPartnerAssigned)} · Retirado ${formatCurrency(stats.totalPartnerWithdrawn)}`}
+                    subtitle={`Asignado ${formatCLP(stats.totalPartnerAssigned)} · Retirado ${formatCLP(stats.totalPartnerWithdrawn)}`}
                     iconTone="bg-[hsl(var(--gold))]/14 text-[hsl(var(--gold))]"
                 />
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-6">
                     {(partnersData || []).map((partner) => {
                         const acumulado = Number(partner.acumulado || 0);
@@ -310,7 +307,7 @@ export default function Socios() {
                                     </div>
                                     <div className="text-right">
                                         <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-1">Acumulado Total</p>
-                                        <p className="text-2xl font-bold text-foreground tracking-tight">{formatCurrency(acumulado)}</p>
+                                        <p className="text-2xl font-bold text-foreground tracking-tight">{formatCLP(acumulado)}</p>
                                         <p className="text-[10px] text-muted-foreground mt-0.5">histórico acumulado</p>
                                     </div>
                                 </div>
@@ -318,7 +315,7 @@ export default function Socios() {
                                 {/* Barra de uso del límite mensual */}
                                 <div className="mb-4">
                                     <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
-                                        <span>Uso límite mensual ({formatCurrency(retiradoMes)} / {formatCurrency(limiteMensual)})</span>
+                                        <span>Uso límite mensual ({formatCLP(retiradoMes)} / {formatCLP(limiteMensual)})</span>
                                         <span className={pctUsadoMes >= 90 ? 'text-rose-500 font-semibold' : ''}>{Math.round(pctUsadoMes)}%</span>
                                     </div>
                                     <div className="h-1.5 bg-foreground/10 rounded-full overflow-hidden">
@@ -335,16 +332,16 @@ export default function Socios() {
                                             <div className="h-2 w-2 rounded-full bg-foreground/40"></div>
                                             <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Retirado este Mes</p>
                                         </div>
-                                        <p className="text-lg font-bold text-foreground/70">{formatCurrency(retiradoMes)}</p>
-                                        <p className="text-[10px] text-muted-foreground mt-1">Margen: {formatCurrency(margenMensual)}</p>
+                                        <p className="text-lg font-bold text-foreground/70">{formatCLP(retiradoMes)}</p>
+                                        <p className="text-[10px] text-muted-foreground mt-1">Margen: {formatCLP(margenMensual)}</p>
                                     </div>
                                     <div className="bg-[hsl(var(--emerald-premium))]/10 rounded-xl p-4 border border-[hsl(var(--emerald-premium))]/20 backdrop-blur-sm">
                                         <div className="flex items-center gap-2 mb-2">
                                             <div className="h-2 w-2 rounded-full bg-[hsl(var(--emerald-premium))]"></div>
                                             <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Disponible Ahora</p>
                                         </div>
-                                        <p className="text-lg font-bold text-[hsl(var(--emerald-premium))]">{formatCurrency(available)}</p>
-                                        <p className="text-[10px] text-muted-foreground mt-1">Límite: {formatCurrency(limiteMensual)}/mes</p>
+                                        <p className="text-lg font-bold text-[hsl(var(--emerald-premium))]">{formatCLP(available)}</p>
+                                        <p className="text-[10px] text-muted-foreground mt-1">Límite: {formatCLP(limiteMensual)}/mes</p>
                                     </div>
                                 </div>
 
