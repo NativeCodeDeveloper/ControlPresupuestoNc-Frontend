@@ -985,7 +985,6 @@ export default function ProductionCockpit() {
                             </tbody>
                         </table>
                     </div>
-                    </div>
                     </>
                 )}
 
