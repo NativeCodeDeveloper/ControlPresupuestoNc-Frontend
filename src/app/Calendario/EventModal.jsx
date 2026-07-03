@@ -35,10 +35,11 @@ export default function EventModal({ event, teams = [], onClose, onSave, onDelet
                 })),
             });
         } else {
-            const now = new Date();
-            now.setMinutes(0, 0, 0);
-            const later = new Date(now); later.setHours(later.getHours() + 1);
-            setForm({ ...EMPTY, fecha_inicio: toDatetimeLocal(now), fecha_fin: toDatetimeLocal(later) });
+            const start = defaultDate ? new Date(defaultDate) : new Date();
+            start.setSeconds(0, 0);
+            if (!defaultDate) start.setMinutes(0); // redondear al inicio de la hora actual
+            const end = new Date(start); end.setHours(end.getHours() + 1);
+            setForm({ ...EMPTY, fecha_inicio: toDatetimeLocal(start), fecha_fin: toDatetimeLocal(end) });
         }
     }, [event]);
 
@@ -88,7 +89,12 @@ export default function EventModal({ event, teams = [], onClose, onSave, onDelet
         if (!form.titulo.trim()) return;
         setSaving(true);
         try {
-            await onSave(form);
+            // Convertir datetime-local (sin zona) a ISO UTC para evitar desfase de -4h en Chile
+            await onSave({
+                ...form,
+                fecha_inicio: form.fecha_inicio ? new Date(form.fecha_inicio).toISOString() : form.fecha_inicio,
+                fecha_fin:    form.fecha_fin    ? new Date(form.fecha_fin).toISOString()    : form.fecha_fin,
+            });
         } finally {
             setSaving(false);
         }
