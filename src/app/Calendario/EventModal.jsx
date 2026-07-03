@@ -12,7 +12,7 @@ const EMPTY = {
     meet_link: '', tags: [], recordatorios: [], participantes: [],
 };
 
-export default function EventModal({ event, teams = [], onClose, onSave, onDelete }) {
+export default function EventModal({ event, defaultDate, teams = [], onClose, onSave, onDelete }) {
     const [form, setForm] = useState(EMPTY);
     const [saving, setSaving] = useState(false);
     const [error,  setError]  = useState('');
@@ -42,7 +42,7 @@ export default function EventModal({ event, teams = [], onClose, onSave, onDelet
             const end = new Date(start); end.setHours(end.getHours() + 1);
             setForm({ ...EMPTY, fecha_inicio: toDatetimeLocal(start), fecha_fin: toDatetimeLocal(end) });
         }
-    }, [event]);
+    }, [event, defaultDate]);
 
     function set(k, v) { setForm(f => ({ ...f, [k]: v })); }
 
