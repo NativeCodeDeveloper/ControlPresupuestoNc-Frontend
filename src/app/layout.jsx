@@ -6,6 +6,9 @@ import FinanceProviderWrapper from '../components/providers/FinanceProviderWrapp
 export const metadata = {
     title: 'NativeCode Finance',
     description: 'Plataforma de control financiero para decisiones ejecutivas',
+    icons: {
+        icon: '/logosoloncf.png',
+    },
 };
 
 export default function RootLayout({ children }) {

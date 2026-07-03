@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
     ArrowLeft, Check, ChevronDown, Calendar, User,
-    Save, Loader2, Eye, EyeOff
+    Save, Loader2, Eye, EyeOff, Paperclip
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import * as workspaceService from '../../services/workspaceService';
@@ -197,8 +197,13 @@ export default function WorkspaceDetail({ id }) {
     const [preview, setPreview]     = useState(false);
     const [previewHtml, setPreviewHtml] = useState('');
     const [dirty, setDirty]         = useState(false);
-    const saveTimer = useRef(null);
-    const router      = useRouter();
+    const saveTimer    = useRef(null);
+    const adjuntosRef  = useRef(null);
+    const router       = useRouter();
+
+    const scrollToAdjuntos = () => {
+        adjuntosRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
 
     useEffect(() => {
         workspaceService.getIniciativa(id)
@@ -264,6 +269,14 @@ export default function WorkspaceDetail({ id }) {
                     <ArrowLeft size={14} /> Workspace
                 </button>
                 <div className="flex items-center gap-2">
+                    <button
+                        onClick={scrollToAdjuntos}
+                        className="flex items-center gap-1.5 text-[12px] text-muted-foreground hover:text-foreground border border-border/50 hover:border-border rounded-lg px-2.5 py-1.5 transition-colors"
+                        title="Ir a adjuntos"
+                    >
+                        <Paperclip size={13} />
+                        Adjuntos
+                    </button>
                     <button
                         onClick={() => setPreview(v => !v)}
                         className="flex items-center gap-1.5 text-[12px] text-muted-foreground hover:text-foreground border border-border/50 hover:border-border rounded-lg px-2.5 py-1.5 transition-colors"
@@ -386,7 +399,7 @@ export default function WorkspaceDetail({ id }) {
                     </div>
 
                     {/* Adjuntos */}
-                    <div className="mt-8 pt-6 border-t border-border/30">
+                    <div ref={adjuntosRef} className="mt-8 pt-6 border-t border-border/30">
                         <AdjuntosPanel entidad="iniciativa" idEntidad={data?.id_iniciativa} />
                     </div>
                 </div>

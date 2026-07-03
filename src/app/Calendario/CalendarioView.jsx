@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
     ChevronLeft, ChevronRight, Plus, Search,
-    LayoutGrid, CalendarDays, Clock, List, Filter, ChevronDown, Video, Users, X
+    LayoutGrid, CalendarDays, Clock, List, Filter, ChevronDown, Video, Users, X, SlidersHorizontal
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import MiniCalendar from './MiniCalendar';
@@ -252,13 +252,13 @@ function MonthView({ anchor, eventos, onDayClick, onEventClick, teamColorMap = {
 
 // ─── Panel izquierdo vista Día ────────────────────────────────────────────────
 
-function DaySidebar({ day, eventos, onEventClick, onNewEvent }) {
+function DaySidebar({ day, eventos, onEventClick, onNewEvent, className = '' }) {
     const venc  = eventos.filter(e => e.categoria === 'vencimiento');
     const otros = eventos.filter(e => e.categoria !== 'vencimiento')
         .sort((a, b) => new Date(a.fecha_inicio) - new Date(b.fecha_inicio));
 
     return (
-        <div className="w-64 shrink-0 border-r border-border/30 flex flex-col overflow-hidden bg-background">
+        <div className={cn("w-64 shrink-0 border-r border-border/30 flex flex-col overflow-hidden bg-background", className)}>
             <div className="px-3 py-3 border-b border-border/20 flex items-center justify-between">
                 <p className="text-xs font-semibold text-foreground capitalize">
                     {day.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' })}
@@ -441,12 +441,13 @@ function DayView({ day, eventos, onSlotClick, onEventClick, onNewEvent, teamColo
 
     return (
         <div className="flex flex-1 min-h-0">
-            {/* Panel izquierdo: lista del día */}
+            {/* Panel izquierdo: lista del día — oculto en móvil */}
             <DaySidebar
                 day={day}
                 eventos={dayEventos}
                 onEventClick={onEventClick}
                 onNewEvent={onNewEvent}
+                className="hidden md:flex"
             />
 
             {/* Grid horario */}
@@ -633,12 +634,13 @@ function navigate(view, anchor, dir) {
 export default function CalendarioView() {
     const prefs = loadPrefs();
 
-    const [view,   setView]   = useState(prefs?.view || 'month');
-    const [anchor, setAnchor] = useState(new Date());
-    const [eventos,  setEventos]  = useState([]);
-    const [loading,  setLoading]  = useState(false);
-    const [search,   setSearch]   = useState('');
-    const [teams,    setTeams]    = useState([]);
+    const [view,        setView]       = useState(prefs?.view || 'month');
+    const [anchor,      setAnchor]     = useState(new Date());
+    const [eventos,     setEventos]    = useState([]);
+    const [loading,     setLoading]    = useState(false);
+    const [search,      setSearch]     = useState('');
+    const [teams,       setTeams]      = useState([]);
+    const [sidebarOpen, setSidebarOpen] = useState(false);
 
     const [activeCats, setActiveCats] = useState(
         () => new Set(prefs?.activeCats || ALL_CATS)
@@ -716,76 +718,113 @@ export default function CalendarioView() {
     const colorOpts = COLORES.map(c => ({ value: c.value, label: c.label, dot: COLOR_MAP[c.value]?.dot }));
     const tagOpts   = TAGS_PRESET.map(t => ({ value: t, label: t }));
 
+    const sidebarContent = (
+        <>
+            <div className="flex items-center justify-between md:hidden">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Filtros</span>
+                <button onClick={() => setSidebarOpen(false)} className="p-1 text-muted-foreground hover:text-foreground transition-colors">
+                    <X size={14} />
+                </button>
+            </div>
+
+            <button onClick={() => { openNewEvent(new Date()); setSidebarOpen(false); }}
+                className="flex items-center gap-2 w-full px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-medium transition-colors">
+                <Plus size={15} /> Nuevo evento
+            </button>
+
+            <MiniCalendar
+                selected={anchor}
+                onSelect={date => { setAnchor(date); setView('day'); setSidebarOpen(false); }}
+            />
+
+            <div>
+                <p className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider mb-2 px-1">Categorías</p>
+                <div className="space-y-0.5">
+                    {CAT_SIDEBAR.map(cat => {
+                        const active = activeCats.has(cat.value);
+                        return (
+                            <button key={cat.value} onClick={() => toggleCat(cat.value)}
+                                className="flex items-center gap-2 w-full px-2 py-1.5 rounded-lg text-xs transition-colors hover:bg-foreground/5">
+                                <div className={cn(
+                                    "w-3.5 h-3.5 rounded shrink-0 border flex items-center justify-center transition-all",
+                                    active ? `${cat.dot} border-transparent` : "border-border/60 bg-transparent"
+                                )}>
+                                    {active && (
+                                        <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                                            <path d="M1 4l2 2 4-4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                                        </svg>
+                                    )}
+                                </div>
+                                <span className={cn("transition-colors", active ? "text-foreground" : "text-muted-foreground/50")}>
+                                    {cat.label}
+                                </span>
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+
+            {teams.length > 0 && (
+                <div>
+                    <p className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider mb-2 px-1">Equipos</p>
+                    <div className="space-y-0.5">
+                        <button onClick={() => setFilterTeam(null)}
+                            className={cn("flex items-center gap-2 w-full px-2 py-1.5 rounded-lg text-xs transition-colors",
+                                filterTeam === null ? "bg-foreground/8 text-foreground font-medium" : "text-muted-foreground hover:bg-foreground/5 hover:text-foreground")}>
+                            <Users size={11} className="shrink-0" /> Todos
+                        </button>
+                        {teams.map(team => (
+                            <button key={team.id_team}
+                                onClick={() => setFilterTeam(filterTeam === team.id_team ? null : team.id_team)}
+                                className={cn("flex items-center gap-2 w-full px-2 py-1.5 rounded-lg text-xs transition-colors",
+                                    filterTeam === team.id_team ? "bg-violet-500/15 text-violet-400 font-medium" : "text-muted-foreground hover:bg-foreground/5 hover:text-foreground")}>
+                                <div className="w-2 h-2 rounded-full bg-violet-500 shrink-0" />
+                                {team.nombre}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+        </>
+    );
+
     return (
         <div className="flex h-full min-h-0 overflow-hidden bg-background">
 
-            {/* ── Sidebar izquierdo ── */}
-            <aside className="w-52 shrink-0 border-r border-border/30 flex flex-col py-4 px-3 gap-4 overflow-y-auto">
-                <button onClick={() => openNewEvent(new Date())}
-                    className="flex items-center gap-2 w-full px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-medium transition-colors">
-                    <Plus size={15} /> Nuevo evento
-                </button>
-
-                <MiniCalendar
-                    selected={anchor}
-                    onSelect={date => { setAnchor(date); if (view === 'list') setView('month'); }}
+            {/* ── Backdrop móvil ── */}
+            {sidebarOpen && (
+                <div
+                    className="fixed inset-0 bg-black/60 z-40 md:hidden"
+                    onClick={() => setSidebarOpen(false)}
                 />
+            )}
 
-                <div>
-                    <p className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider mb-2 px-1">Categorías</p>
-                    <div className="space-y-0.5">
-                        {CAT_SIDEBAR.map(cat => {
-                            const active = activeCats.has(cat.value);
-                            return (
-                                <button key={cat.value} onClick={() => toggleCat(cat.value)}
-                                    className="flex items-center gap-2 w-full px-2 py-1.5 rounded-lg text-xs transition-colors hover:bg-foreground/5">
-                                    <div className={cn(
-                                        "w-3.5 h-3.5 rounded shrink-0 border flex items-center justify-center transition-all",
-                                        active ? `${cat.dot} border-transparent` : "border-border/60 bg-transparent"
-                                    )}>
-                                        {active && (
-                                            <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-                                                <path d="M1 4l2 2 4-4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                                            </svg>
-                                        )}
-                                    </div>
-                                    <span className={cn("transition-colors", active ? "text-foreground" : "text-muted-foreground/50")}>
-                                        {cat.label}
-                                    </span>
-                                </button>
-                            );
-                        })}
-                    </div>
-                </div>
-
-                {teams.length > 0 && (
-                    <div>
-                        <p className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider mb-2 px-1">Equipos</p>
-                        <div className="space-y-0.5">
-                            <button onClick={() => setFilterTeam(null)}
-                                className={cn("flex items-center gap-2 w-full px-2 py-1.5 rounded-lg text-xs transition-colors",
-                                    filterTeam === null ? "bg-foreground/8 text-foreground font-medium" : "text-muted-foreground hover:bg-foreground/5 hover:text-foreground")}>
-                                <Users size={11} className="shrink-0" /> Todos
-                            </button>
-                            {teams.map(team => (
-                                <button key={team.id_team}
-                                    onClick={() => setFilterTeam(filterTeam === team.id_team ? null : team.id_team)}
-                                    className={cn("flex items-center gap-2 w-full px-2 py-1.5 rounded-lg text-xs transition-colors",
-                                        filterTeam === team.id_team ? "bg-violet-500/15 text-violet-400 font-medium" : "text-muted-foreground hover:bg-foreground/5 hover:text-foreground")}>
-                                    <div className="w-2 h-2 rounded-full bg-violet-500 shrink-0" />
-                                    {team.nombre}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                )}
+            {/* ── Sidebar izquierdo ── */}
+            <aside className={cn(
+                "w-52 shrink-0 border-r border-border/30 flex-col py-4 px-3 gap-4 overflow-y-auto",
+                "md:flex",
+                sidebarOpen
+                    ? "flex fixed inset-y-0 left-0 z-50 bg-background shadow-2xl"
+                    : "hidden"
+            )}>
+                {sidebarContent}
             </aside>
 
             {/* ── Área principal ── */}
             <div className="flex-1 flex flex-col min-h-0 min-w-0">
 
                 {/* Barra superior */}
-                <div className="flex items-center gap-3 px-4 py-3 border-b border-border/30 shrink-0 flex-wrap gap-y-2">
+                <div className="flex items-center gap-2 px-4 py-3 border-b border-border/30 shrink-0 flex-wrap gap-y-2">
+
+                    {/* Botón filtros — solo móvil */}
+                    <button
+                        onClick={() => setSidebarOpen(true)}
+                        className="flex md:hidden items-center gap-1.5 p-1.5 rounded-lg border border-border/50 text-muted-foreground hover:text-foreground transition-colors"
+                        title="Filtros y categorías"
+                    >
+                        <SlidersHorizontal size={14} />
+                    </button>
+
                     <div className="flex items-center gap-1">
                         <button onClick={() => setAnchor(navigate(view, anchor, -1))}
                             className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/8 transition-colors">
@@ -801,28 +840,31 @@ export default function CalendarioView() {
                         </button>
                     </div>
 
-                    <h2 className="text-sm font-semibold text-foreground capitalize flex-1">
+                    <h2 className="text-sm font-semibold text-foreground capitalize flex-1 truncate min-w-0">
                         {getTitle(view, anchor)}
                         {loading && <span className="ml-2 text-[11px] text-muted-foreground font-normal">Cargando…</span>}
                     </h2>
 
-                    <div className="relative">
+                    <div className="relative hidden sm:block">
                         <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
                         <input value={search} onChange={e => setSearch(e.target.value)}
                             placeholder="Buscar eventos…"
-                            className="pl-7 pr-3 py-1.5 text-xs bg-foreground/5 border border-border/50 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-indigo-500/60 w-44 transition-colors"
+                            className="pl-7 pr-3 py-1.5 text-xs bg-foreground/5 border border-border/50 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-indigo-500/60 w-36 transition-colors"
                         />
                     </div>
 
-                    <FilterDropdown label="Colores" options={colorOpts} value={filterColor} onChange={setFilterColor} />
-                    <FilterDropdown label="Tags"    options={tagOpts}   value={filterTag}   onChange={setFilterTag} />
+                    <div className="hidden sm:flex items-center gap-1.5">
+                        <FilterDropdown label="Colores" options={colorOpts} value={filterColor} onChange={setFilterColor} />
+                        <FilterDropdown label="Tags"    options={tagOpts}   value={filterTag}   onChange={setFilterTag} />
+                    </div>
 
                     <div className="flex items-center gap-0.5 bg-foreground/5 rounded-lg p-0.5 border border-border/30">
                         {VIEWS.map(v => (
                             <button key={v.id} onClick={() => setView(v.id)}
-                                className={cn("flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs transition-all",
+                                className={cn("flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-md text-xs transition-all",
                                     view === v.id ? "bg-background text-foreground shadow-sm font-medium" : "text-muted-foreground hover:text-foreground")}>
-                                <v.Icon size={12} /> {v.label}
+                                <v.Icon size={12} />
+                                <span className="hidden sm:inline">{v.label}</span>
                             </button>
                         ))}
                     </div>

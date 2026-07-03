@@ -720,7 +720,7 @@ export default function ProductionCockpit() {
                 </div>
             </div>
 
-            {/* ── Tabla ── */}
+            {/* ── Tabla / Cards ── */}
             <div className="bg-card border border-border rounded-xl overflow-hidden">
                 {loading ? (
                     <div className="flex items-center justify-center py-16 gap-2 text-muted-foreground">
@@ -733,7 +733,79 @@ export default function ProductionCockpit() {
                         <p className="text-[13px]">No hay proyectos para mostrar</p>
                     </div>
                 ) : (
-                    <div className="overflow-x-auto">
+                    <>
+                    {/* ── Vista cards (móvil) ── */}
+                    <div className="md:hidden divide-y divide-border/40">
+                        {proyectosFiltrados.map(p => {
+                            const isPaying = quickPayId === p.id_proyecto;
+                            const esRecurrente = p.ciclo_facturacion && p.ciclo_facturacion !== 'Unico';
+                            return (
+                                <div key={p.id_proyecto} className="px-4 py-4 space-y-3">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0">
+                                            <p className="font-semibold text-[13px] text-foreground truncate">{p.nombre}</p>
+                                            {p.codigo_interno && (
+                                                <span className="text-[10px] text-violet-400/80 font-mono">{p.codigo_interno}</span>
+                                            )}
+                                            <p className="text-[12px] text-muted-foreground mt-0.5 truncate">{p.nombre_cliente}</p>
+                                        </div>
+                                        <AlertaBadge alerta={p.estado_alerta_pago} />
+                                    </div>
+
+                                    <div className="flex items-center gap-3 text-[11px] text-muted-foreground flex-wrap">
+                                        {p.monto_acordado && (
+                                            <span className="font-semibold text-foreground">{fmt(p.monto_acordado)}</span>
+                                        )}
+                                        {esRecurrente && p.fecha_proximo_pago && (
+                                            <span>
+                                                {p.dias_para_vencer !== null
+                                                    ? p.dias_para_vencer >= 0
+                                                        ? `Vence en ${p.dias_para_vencer}d`
+                                                        : `Vencido ${Math.abs(p.dias_para_vencer)}d`
+                                                    : fmtDate(p.fecha_proximo_pago)
+                                                }
+                                            </span>
+                                        )}
+                                        {p.servidor && <span className="text-muted-foreground/60">{p.servidor}</span>}
+                                    </div>
+
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <button
+                                            onClick={() => setEmailModal(p)}
+                                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-[12px] text-muted-foreground hover:text-violet-400 hover:border-violet-500/30 hover:bg-violet-500/5 transition-colors"
+                                        >
+                                            <Mail size={12} /> Correo
+                                        </button>
+                                        {p.telefono_cliente && (
+                                            <button
+                                                onClick={() => handleWhatsapp(p)}
+                                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-[12px] text-muted-foreground hover:text-emerald-400 hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-colors"
+                                            >
+                                                <MessageSquare size={12} /> WhatsApp
+                                            </button>
+                                        )}
+                                        {esRecurrente && (p.estado_alerta_pago === 'naranja' || p.estado_alerta_pago === 'rojo') && (
+                                            <button
+                                                onClick={() => handleMarkPaid(p)}
+                                                disabled={isPaying}
+                                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-emerald-500/30 text-[12px] text-emerald-400 hover:bg-emerald-500/10 transition-colors disabled:opacity-40"
+                                            >
+                                                {isPaying ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle2 size={12} />}
+                                                Marcar pagada
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    {p.cockpit_observaciones && (
+                                        <p className="text-[11px] text-muted-foreground/70 italic">{p.cockpit_observaciones}</p>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    {/* ── Vista tabla (desktop) ── */}
+                    <div className="hidden md:block overflow-x-auto">
                         <table className="w-full table-fixed text-[13px]">
                             <colgroup>
                                 <col className="w-[16%]" />
@@ -913,6 +985,8 @@ export default function ProductionCockpit() {
                             </tbody>
                         </table>
                     </div>
+                    </div>
+                    </>
                 )}
 
                 {/* Footer con conteo */}

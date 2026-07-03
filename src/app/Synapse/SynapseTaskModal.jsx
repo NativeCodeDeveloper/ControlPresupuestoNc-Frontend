@@ -243,7 +243,7 @@ export default function SynapseTaskModal({ tarea, estados, initialEstadoId, init
                                 value={form.descripcion}
                                 onChange={(e) => set('descripcion', e.target.value)}
                                 placeholder="Describe la tarea, contexto, pasos a seguir..."
-                                rows={5}
+                                rows={9}
                                 className="w-full text-sm bg-background border border-border/60 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/50 text-foreground placeholder:text-muted-foreground/40 resize-none transition-colors"
                             />
                         </div>
