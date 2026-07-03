@@ -30,6 +30,13 @@ export default function NotificationBell() {
         setOpen(o => !o);
     }
 
+    // Auto-marcar como leídas después de 4 segundos con panel abierto
+    useEffect(() => {
+        if (!open || notifs.length === 0) return;
+        const t = setTimeout(() => { marcarTodasLeidas(); }, 4000);
+        return () => clearTimeout(t);
+    }, [open, notifs.length, marcarTodasLeidas]);
+
     useEffect(() => {
         if (!open) return;
         function onDown(e) {

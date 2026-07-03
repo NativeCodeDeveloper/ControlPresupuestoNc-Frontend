@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
     ChevronLeft, ChevronRight, Plus, Search,
     LayoutGrid, CalendarDays, Clock, List, Filter, ChevronDown, Video, Users
@@ -14,6 +14,22 @@ import {
     getMonthGrid, getWeekDays, isSameDay, isToday, addDays, addMonths,
     startOfMonth, endOfMonth, eventOverlapsDay, formatHour
 } from './calUtils';
+
+// ─── Persistencia localStorage ────────────────────────────────────────────────
+
+const STORAGE_KEY = 'cal_prefs_v1';
+
+function loadPrefs() {
+    if (typeof window === 'undefined') return null;
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null'); } catch { return null; }
+}
+
+function savePrefs(prefs) {
+    if (typeof window === 'undefined') return;
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs)); } catch {}
+}
+
+const ALL_CATS = ['reunion', 'tarea', 'recordatorio', 'personal', 'vencimiento'];
 
 // ─── Helpers de rango ─────────────────────────────────────────────────────────
 
@@ -39,6 +55,26 @@ function getRangeForView(view, anchor) {
     return { desde: s.toISOString(), hasta: e.toISOString() };
 }
 
+// Interpreta una fecha DATE de MySQL (que llega como UTC midnight) como fecha local
+function parseDateLocal(str) {
+    if (!str) return null;
+    // "2026-07-14T00:00:00.000Z" → extraer YYYY-MM-DD y crear en hora local
+    const s = typeof str === 'string' ? str : new Date(str).toISOString();
+    const [y, m, d] = s.slice(0, 10).split('-').map(Number);
+    return new Date(y, m - 1, d);
+}
+
+// Devuelve true si el evento cae en ese día, interpretando DATE de MySQL correctamente
+function eventFallsOnDay(ev, day) {
+    const start = ev.todo_el_dia ? parseDateLocal(ev.fecha_inicio) : new Date(ev.fecha_inicio);
+    const end   = ev.todo_el_dia ? parseDateLocal(ev.fecha_fin)    : new Date(ev.fecha_fin);
+    if (!start || !end) return false;
+    const d = new Date(day); d.setHours(0,0,0,0);
+    const s = new Date(start); s.setHours(0,0,0,0);
+    const e = new Date(end);   e.setHours(0,0,0,0);
+    return s <= d && d <= e;
+}
+
 // ─── Chip de evento ───────────────────────────────────────────────────────────
 
 function EventChip({ ev, onClick }) {
@@ -60,11 +96,16 @@ function EventChip({ ev, onClick }) {
 
 function MonthView({ anchor, eventos, onDayClick, onEventClick }) {
     const grid = getMonthGrid(anchor);
+
+    // Construir mapa de eventos por día
     const evMap = {};
     eventos.forEach(ev => {
-        let d = new Date(ev.fecha_inicio); d.setHours(0,0,0,0);
-        const end = new Date(ev.fecha_fin); end.setHours(0,0,0,0);
-        while (d <= end) {
+        const start = ev.todo_el_dia ? parseDateLocal(ev.fecha_inicio) : new Date(ev.fecha_inicio);
+        const end   = ev.todo_el_dia ? parseDateLocal(ev.fecha_fin)    : new Date(ev.fecha_fin);
+        if (!start || !end) return;
+        let d = new Date(start); d.setHours(0,0,0,0);
+        const endD = new Date(end); endD.setHours(0,0,0,0);
+        while (d <= endD) {
             const k = d.toDateString();
             if (!evMap[k]) evMap[k] = [];
             evMap[k].push(ev);
@@ -83,7 +124,16 @@ function MonthView({ anchor, eventos, onDayClick, onEventClick }) {
                 {grid.map((day, i) => {
                     const isCurrentMonth = day.getMonth() === anchor.getMonth();
                     const isTod = isToday(day);
-                    const dayEvs = evMap[day.toDateString()] || [];
+                    const allEvs = evMap[day.toDateString()] || [];
+
+                    // Separar vencimientos de eventos normales
+                    const vencEvs  = allEvs.filter(e => e.categoria === 'vencimiento');
+                    const normalEvs = allEvs.filter(e => e.categoria !== 'vencimiento');
+
+                    // Mostrar primero normales, luego un chip resumen de vencimientos
+                    const chips = [...normalEvs];
+                    const MAX_NORMAL = vencEvs.length > 0 ? 2 : 3;
+
                     return (
                         <div key={i}
                             onClick={() => onDayClick(day)}
@@ -99,11 +149,21 @@ function MonthView({ anchor, eventos, onDayClick, onEventClick }) {
                                 {day.getDate()}
                             </div>
                             <div className="space-y-0.5 overflow-hidden">
-                                {dayEvs.slice(0, 3).map(ev => (
+                                {chips.slice(0, MAX_NORMAL).map(ev => (
                                     <EventChip key={ev.id} ev={ev} onClick={onEventClick} />
                                 ))}
-                                {dayEvs.length > 3 && (
-                                    <p className="text-[9px] text-muted-foreground pl-1">+{dayEvs.length - 3} más</p>
+                                {/* Chip resumen vencimientos */}
+                                {vencEvs.length > 0 && (
+                                    <button
+                                        onClick={e => { e.stopPropagation(); onEventClick(vencEvs[0]); }}
+                                        className="w-full text-left px-1.5 py-0.5 rounded text-[10px] font-medium truncate bg-red-500/15 text-red-400 hover:opacity-80 transition-opacity"
+                                    >
+                                        {vencEvs.length === 1 ? vencEvs[0].titulo : `${vencEvs.length} vencimientos`}
+                                    </button>
+                                )}
+                                {/* Overflow de normales */}
+                                {chips.length > MAX_NORMAL && (
+                                    <p className="text-[9px] text-muted-foreground pl-1">+{chips.length - MAX_NORMAL} más</p>
                                 )}
                             </div>
                         </div>
@@ -114,65 +174,109 @@ function MonthView({ anchor, eventos, onDayClick, onEventClick }) {
     );
 }
 
+// ─── All-day strip en TimeGrid ────────────────────────────────────────────────
+
+function AllDayStrip({ days, allDayEvs, onEventClick }) {
+    if (!allDayEvs.length) return null;
+    return (
+        <div className="flex border-b border-border/30 shrink-0">
+            <div className="w-14 shrink-0 border-r border-border/30 px-1 py-1 flex items-center">
+                <span className="text-[9px] text-muted-foreground/50 uppercase">Día</span>
+            </div>
+            {days.map((day, di) => {
+                const dayEvs = allDayEvs.filter(ev => eventFallsOnDay(ev, day));
+                const venc   = dayEvs.filter(e => e.categoria === 'vencimiento');
+                const otros  = dayEvs.filter(e => e.categoria !== 'vencimiento');
+                return (
+                    <div key={di} className="flex-1 border-r border-border/20 px-1 py-1 space-y-0.5 min-w-0">
+                        {otros.map(ev => (
+                            <EventChip key={ev.id} ev={ev} onClick={onEventClick} />
+                        ))}
+                        {venc.length === 1 && (
+                            <EventChip key={venc[0].id} ev={venc[0]} onClick={onEventClick} />
+                        )}
+                        {venc.length > 1 && (
+                            <button
+                                onClick={() => onEventClick(venc[0])}
+                                className="w-full text-left px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-500/15 text-red-400 hover:opacity-80 transition-opacity truncate"
+                            >
+                                {venc.length} vencimientos
+                            </button>
+                        )}
+                    </div>
+                );
+            })}
+        </div>
+    );
+}
+
 // ─── Vista Semana / Día ───────────────────────────────────────────────────────
 
 function TimeGrid({ days, eventos, onSlotClick, onEventClick }) {
     const HOURS = Array.from({ length: 24 }, (_, i) => i);
+
+    // Separar eventos todo_el_dia de los con hora
+    const allDayEvs = eventos.filter(ev => ev.todo_el_dia);
+    const timedEvs  = eventos.filter(ev => !ev.todo_el_dia);
+
     return (
-        <div className="flex flex-1 min-h-0 overflow-auto">
-            <div className="w-14 shrink-0 border-r border-border/30">
-                <div className="h-10 border-b border-border/20" />
-                {HOURS.map(h => (
-                    <div key={h} className="h-14 border-b border-border/10 px-2 flex items-start pt-1">
-                        <span className="text-[9px] text-muted-foreground/60">{formatHour(h)}</span>
-                    </div>
-                ))}
-            </div>
-            <div className="flex flex-1 min-w-0">
-                {days.map((day, di) => {
-                    const dayEvs = eventos.filter(ev => eventOverlapsDay(ev, day));
-                    return (
-                        <div key={di} className="flex flex-col flex-1 border-r border-border/20 min-w-0">
-                            <div className={cn(
-                                "h-10 border-b border-border/30 flex flex-col items-center justify-center shrink-0",
-                                isToday(day) && "bg-indigo-500/10"
-                            )}>
-                                <span className="text-[9px] text-muted-foreground uppercase">{DIAS_CORTO[(day.getDay()+6)%7]}</span>
-                                <span className={cn("text-sm font-semibold", isToday(day) ? "text-indigo-400" : "text-foreground/80")}>
-                                    {day.getDate()}
-                                </span>
-                            </div>
-                            <div className="relative flex-1">
-                                {HOURS.map(h => (
-                                    <div key={h}
-                                        onClick={() => { const d = new Date(day); d.setHours(h,0,0,0); onSlotClick(d); }}
-                                        className="h-14 border-b border-border/10 hover:bg-foreground/3 cursor-pointer transition-colors"
-                                    />
-                                ))}
-                                {dayEvs.map(ev => {
-                                    const start = new Date(ev.fecha_inicio);
-                                    const end   = new Date(ev.fecha_fin);
-                                    const dayStart = new Date(day); dayStart.setHours(0,0,0,0);
-                                    const s = Math.max((start - dayStart) / 3600000, 0);
-                                    const e = Math.min((end   - dayStart) / 3600000, 24);
-                                    const C = COLOR_MAP[ev.color] || COLOR_MAP.blue;
-                                    return (
-                                        <button key={ev.id}
-                                            onClick={e2 => { e2.stopPropagation(); onEventClick(ev); }}
-                                            style={{ top: `${s*56}px`, height: `${Math.max((e-s)*56,20)}px` }}
-                                            className={cn(
-                                                "absolute left-1 right-1 rounded px-1.5 py-0.5 text-[10px] font-medium text-left border-l-2 overflow-hidden hover:opacity-80 transition-opacity",
-                                                C.bg, C.text, C.border
-                                            )}
-                                        >
-                                            {ev.titulo}
-                                        </button>
-                                    );
-                                })}
-                            </div>
+        <div className="flex flex-col flex-1 min-h-0">
+            <AllDayStrip days={days} allDayEvs={allDayEvs} onEventClick={onEventClick} />
+            <div className="flex flex-1 min-h-0 overflow-auto">
+                <div className="w-14 shrink-0 border-r border-border/30">
+                    <div className="h-10 border-b border-border/20" />
+                    {HOURS.map(h => (
+                        <div key={h} className="h-14 border-b border-border/10 px-2 flex items-start pt-1">
+                            <span className="text-[9px] text-muted-foreground/60">{formatHour(h)}</span>
                         </div>
-                    );
-                })}
+                    ))}
+                </div>
+                <div className="flex flex-1 min-w-0">
+                    {days.map((day, di) => {
+                        const dayTimedEvs = timedEvs.filter(ev => eventOverlapsDay(ev, day));
+                        return (
+                            <div key={di} className="flex flex-col flex-1 border-r border-border/20 min-w-0">
+                                <div className={cn(
+                                    "h-10 border-b border-border/30 flex flex-col items-center justify-center shrink-0",
+                                    isToday(day) && "bg-indigo-500/10"
+                                )}>
+                                    <span className="text-[9px] text-muted-foreground uppercase">{DIAS_CORTO[(day.getDay()+6)%7]}</span>
+                                    <span className={cn("text-sm font-semibold", isToday(day) ? "text-indigo-400" : "text-foreground/80")}>
+                                        {day.getDate()}
+                                    </span>
+                                </div>
+                                <div className="relative flex-1">
+                                    {HOURS.map(h => (
+                                        <div key={h}
+                                            onClick={() => { const d = new Date(day); d.setHours(h,0,0,0); onSlotClick(d); }}
+                                            className="h-14 border-b border-border/10 hover:bg-foreground/3 cursor-pointer transition-colors"
+                                        />
+                                    ))}
+                                    {dayTimedEvs.map(ev => {
+                                        const start = new Date(ev.fecha_inicio);
+                                        const end   = new Date(ev.fecha_fin);
+                                        const dayStart = new Date(day); dayStart.setHours(0,0,0,0);
+                                        const s = Math.max((start - dayStart) / 3600000, 0);
+                                        const e = Math.min((end   - dayStart) / 3600000, 24);
+                                        const C = COLOR_MAP[ev.color] || COLOR_MAP.blue;
+                                        return (
+                                            <button key={ev.id}
+                                                onClick={e2 => { e2.stopPropagation(); onEventClick(ev); }}
+                                                style={{ top: `${s*56}px`, height: `${Math.max((e-s)*56,20)}px` }}
+                                                className={cn(
+                                                    "absolute left-1 right-1 rounded px-1.5 py-0.5 text-[10px] font-medium text-left border-l-2 overflow-hidden hover:opacity-80 transition-opacity",
+                                                    C.bg, C.text, C.border
+                                                )}
+                                            >
+                                                {ev.titulo}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
             </div>
         </div>
     );
@@ -182,12 +286,16 @@ function TimeGrid({ days, eventos, onSlotClick, onEventClick }) {
 
 function ListView({ eventos, onEventClick }) {
     const grouped = {};
-    [...eventos].sort((a, b) => new Date(a.fecha_inicio) - new Date(b.fecha_inicio))
-        .forEach(ev => {
-            const key = new Date(ev.fecha_inicio).toDateString();
-            if (!grouped[key]) grouped[key] = { date: new Date(ev.fecha_inicio), items: [] };
-            grouped[key].items.push(ev);
-        });
+    [...eventos].sort((a, b) => {
+        const da = a.todo_el_dia ? parseDateLocal(a.fecha_inicio) : new Date(a.fecha_inicio);
+        const db = b.todo_el_dia ? parseDateLocal(b.fecha_inicio) : new Date(b.fecha_inicio);
+        return da - db;
+    }).forEach(ev => {
+        const d = ev.todo_el_dia ? parseDateLocal(ev.fecha_inicio) : new Date(ev.fecha_inicio);
+        const key = d.toDateString();
+        if (!grouped[key]) grouped[key] = { date: d, items: [] };
+        grouped[key].items.push(ev);
+    });
 
     if (!Object.keys(grouped).length) {
         return (
@@ -207,8 +315,8 @@ function ListView({ eventos, onEventClick }) {
                     <div className="space-y-2">
                         {items.map(ev => {
                             const C = COLOR_MAP[ev.color] || COLOR_MAP.blue;
-                            const start = new Date(ev.fecha_inicio);
-                            const end   = new Date(ev.fecha_fin);
+                            const start = ev.todo_el_dia ? parseDateLocal(ev.fecha_inicio) : new Date(ev.fecha_inicio);
+                            const end   = ev.todo_el_dia ? parseDateLocal(ev.fecha_fin)    : new Date(ev.fecha_fin);
                             const catLabel = CATEGORIAS.find(c => c.value === ev.categoria)?.label || ev.categoria;
                             return (
                                 <button key={ev.id} onClick={() => onEventClick(ev)}
@@ -297,17 +405,17 @@ function FilterDropdown({ label, options, value, onChange }) {
 // ─── Categorías sidebar config ────────────────────────────────────────────────
 
 const CAT_SIDEBAR = [
-    { value: 'reunion',     label: 'Reuniones',     dot: 'bg-blue-500'    },
-    { value: 'tarea',       label: 'Tareas',         dot: 'bg-violet-500'  },
-    { value: 'recordatorio',label: 'Recordatorios',  dot: 'bg-orange-500'  },
-    { value: 'personal',    label: 'Personal',       dot: 'bg-emerald-500' },
-    { value: 'vencimiento', label: 'Vencimientos',   dot: 'bg-red-500'     },
+    { value: 'reunion',      label: 'Reuniones',      dot: 'bg-blue-500'    },
+    { value: 'tarea',        label: 'Tareas',          dot: 'bg-violet-500'  },
+    { value: 'recordatorio', label: 'Recordatorios',   dot: 'bg-orange-500'  },
+    { value: 'personal',     label: 'Personal',        dot: 'bg-emerald-500' },
+    { value: 'vencimiento',  label: 'Vencimientos',    dot: 'bg-red-500'     },
 ];
 
 // ─── Vista principal ──────────────────────────────────────────────────────────
 
 const VIEWS = [
-    { id: 'month', label: 'Mes',    Icon: LayoutGrid  },
+    { id: 'month', label: 'Mes',    Icon: LayoutGrid   },
     { id: 'week',  label: 'Semana', Icon: CalendarDays },
     { id: 'day',   label: 'Día',    Icon: Clock        },
     { id: 'list',  label: 'Lista',  Icon: List         },
@@ -328,24 +436,41 @@ function navigate(view, anchor, dir) {
 }
 
 export default function CalendarioView() {
-    const [view,   setView]   = useState('month');
+    // Cargar prefs guardadas
+    const prefs = loadPrefs();
+
+    const [view,   setView]   = useState(prefs?.view   || 'month');
     const [anchor, setAnchor] = useState(new Date());
     const [eventos,  setEventos]  = useState([]);
     const [loading,  setLoading]  = useState(false);
     const [search,   setSearch]   = useState('');
     const [teams,    setTeams]    = useState([]);
 
-    // Categorías activas (toggle) — todas activas por defecto
     const [activeCats, setActiveCats] = useState(
-        () => new Set(CAT_SIDEBAR.map(c => c.value))
+        () => new Set(prefs?.activeCats || ALL_CATS)
     );
-    // Filtro por equipo/persona (null = todos)
-    const [filterTeam,  setFilterTeam]  = useState(null);
-    // Filtros adicionales
-    const [filterColor, setFilterColor] = useState(null);
-    const [filterTag,   setFilterTag]   = useState(null);
+    const [filterTeam,  setFilterTeam]  = useState(prefs?.filterTeam  || null);
+    const [filterColor, setFilterColor] = useState(prefs?.filterColor || null);
+    const [filterTag,   setFilterTag]   = useState(prefs?.filterTag   || null);
 
     const [modal, setModal] = useState(null);
+
+    // Persistir prefs cuando cambian
+    const prefsRef = useRef({});
+    useEffect(() => {
+        const p = {
+            view,
+            activeCats: [...activeCats],
+            filterTeam,
+            filterColor,
+            filterTag,
+        };
+        // Solo guardar si cambió algo
+        if (JSON.stringify(p) !== JSON.stringify(prefsRef.current)) {
+            prefsRef.current = p;
+            savePrefs(p);
+        }
+    }, [view, activeCats, filterTeam, filterColor, filterTag]);
 
     useEffect(() => {
         getTeams().then(d => setTeams(Array.isArray(d) ? d : [])).catch(() => {});
@@ -374,7 +499,7 @@ export default function CalendarioView() {
         });
     }
 
-    // Filtrado cliente: categorías activas + búsqueda + equipo
+    // Filtrado cliente
     const filteredEventos = eventos.filter(ev => {
         if (!activeCats.has(ev.categoria)) return false;
         if (search.trim() && !ev.titulo.toLowerCase().includes(search.toLowerCase())) return false;
@@ -422,7 +547,7 @@ export default function CalendarioView() {
                     onSelect={date => { setAnchor(date); if (view === 'list') setView('month'); }}
                 />
 
-                {/* Categorías con toggle checkbox */}
+                {/* Categorías toggle */}
                 <div>
                     <p className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider mb-2 px-1">Categorías</p>
                     <div className="space-y-0.5">
@@ -433,7 +558,6 @@ export default function CalendarioView() {
                                     onClick={() => toggleCat(cat.value)}
                                     className="flex items-center gap-2 w-full px-2 py-1.5 rounded-lg text-xs transition-colors hover:bg-foreground/5"
                                 >
-                                    {/* Checkbox visual */}
                                     <div className={cn(
                                         "w-3.5 h-3.5 rounded shrink-0 border flex items-center justify-center transition-all",
                                         active ? `${cat.dot} border-transparent` : "border-border/60 bg-transparent"
@@ -453,7 +577,7 @@ export default function CalendarioView() {
                     </div>
                 </div>
 
-                {/* Equipos / Personas */}
+                {/* Equipos */}
                 {teams.length > 0 && (
                     <div>
                         <p className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider mb-2 px-1">Equipos</p>
@@ -509,7 +633,6 @@ export default function CalendarioView() {
                         {loading && <span className="ml-2 text-[11px] text-muted-foreground font-normal">Cargando…</span>}
                     </h2>
 
-                    {/* Buscador */}
                     <div className="relative">
                         <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
                         <input value={search} onChange={e => setSearch(e.target.value)}
@@ -521,7 +644,6 @@ export default function CalendarioView() {
                     <FilterDropdown label="Colores" options={colorOpts} value={filterColor} onChange={setFilterColor} />
                     <FilterDropdown label="Tags"    options={tagOpts}   value={filterTag}   onChange={setFilterTag} />
 
-                    {/* Selector de vista */}
                     <div className="flex items-center gap-0.5 bg-foreground/5 rounded-lg p-0.5 border border-border/30">
                         {VIEWS.map(v => (
                             <button key={v.id} onClick={() => setView(v.id)}
