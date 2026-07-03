@@ -8,6 +8,7 @@ export const metadata = {
     description: 'Plataforma de control financiero para decisiones ejecutivas',
     icons: {
         icon: '/logosoloncf.png',
+        apple: '/apple-touch-icon.png',
     },
 };
 

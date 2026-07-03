@@ -1,3 +1,63 @@
+const CACHE_NAME = 'ncf-shell-v1';
+
+const SHELL_ASSETS = [
+    '/',
+    '/dashboard',
+    '/icon-192.png',
+    '/icon-512.png',
+    '/logosoloncf.png',
+    '/ncflogo.png',
+    '/ncfnegro.png',
+];
+
+// ── Instala y cachea el shell de la app ──────────────────────────────────────
+self.addEventListener('install', (event) => {
+    event.waitUntil(
+        caches.open(CACHE_NAME).then(cache => cache.addAll(SHELL_ASSETS))
+    );
+    self.skipWaiting();
+});
+
+// ── Limpia caches viejos al activar ─────────────────────────────────────────
+self.addEventListener('activate', (event) => {
+    event.waitUntil(
+        caches.keys().then(keys =>
+            Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+        )
+    );
+    self.clients.claim();
+});
+
+// ── Estrategia de fetch ──────────────────────────────────────────────────────
+self.addEventListener('fetch', (event) => {
+    const { request } = event;
+    const url = new URL(request.url);
+
+    // Llamadas a la API → siempre red (nunca cachear datos)
+    if (url.pathname.startsWith('/api/')) return;
+
+    // Assets estáticos (_next/static) → cache first
+    if (url.pathname.startsWith('/_next/static/')) {
+        event.respondWith(
+            caches.match(request).then(cached => cached || fetch(request).then(res => {
+                const clone = res.clone();
+                caches.open(CACHE_NAME).then(c => c.put(request, clone));
+                return res;
+            }))
+        );
+        return;
+    }
+
+    // Páginas → network first, fallback a cache
+    if (request.mode === 'navigate') {
+        event.respondWith(
+            fetch(request).catch(() => caches.match('/') )
+        );
+        return;
+    }
+});
+
+// ── Push notifications (código existente) ───────────────────────────────────
 self.addEventListener('push', (event) => {
     if (!event.data) return;
     let data = {};
