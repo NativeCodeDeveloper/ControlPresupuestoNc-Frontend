@@ -427,7 +427,9 @@ function WeekGrid({ days, eventos, onSlotClick, onEventClick, teamColorMap = {} 
 
 function DayView({ day, eventos, onSlotClick, onEventClick, onNewEvent, teamColorMap = {} }) {
     const HOURS = Array.from({ length: 24 }, (_, i) => i);
-    const timedEvs = eventos.filter(ev => !ev.todo_el_dia);
+    // Filtrar sólo los eventos que pertenecen a este día (igual que WeekGrid)
+    const dayEventos = eventos.filter(ev => eventFallsOnDay(ev, day));
+    const timedEvs   = eventos.filter(ev => !ev.todo_el_dia && eventOverlapsDay(ev, day));
     const gridRef  = useRef(null);
 
     // Scroll al inicio del horario laboral (07:00) al montar
@@ -442,7 +444,7 @@ function DayView({ day, eventos, onSlotClick, onEventClick, onNewEvent, teamColo
             {/* Panel izquierdo: lista del día */}
             <DaySidebar
                 day={day}
-                eventos={eventos}
+                eventos={dayEventos}
                 onEventClick={onEventClick}
                 onNewEvent={onNewEvent}
             />
