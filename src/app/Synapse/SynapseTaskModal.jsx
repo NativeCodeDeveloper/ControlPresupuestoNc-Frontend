@@ -187,8 +187,8 @@ export default function SynapseTaskModal({ tarea, estados, initialEstadoId, init
     const estadoActual = estados.find(e => String(e.id_estado) === String(form.id_estado));
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <div className="bg-card border border-border/50 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-sm">
+            <div className="bg-card border border-border/50 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] flex flex-col overflow-hidden">
 
                 {/* Header */}
                 <div className="flex items-center justify-between px-6 py-4 border-b border-border/50 bg-secondary/20 shrink-0">
@@ -220,10 +220,10 @@ export default function SynapseTaskModal({ tarea, estados, initialEstadoId, init
                 </div>
 
                 {/* Body */}
-                <div className="flex flex-1 min-h-0 overflow-hidden">
+                <div className="flex flex-col md:flex-row flex-1 min-h-0 overflow-hidden">
 
                     {/* Left: Title + Description + Comments */}
-                    <div className="flex-1 flex flex-col min-w-0 overflow-y-auto p-6 space-y-5">
+                    <div className="flex-1 flex flex-col min-w-0 overflow-y-auto p-4 sm:p-6 space-y-4">
 
                         {/* Título */}
                         <div>
@@ -243,8 +243,8 @@ export default function SynapseTaskModal({ tarea, estados, initialEstadoId, init
                                 value={form.descripcion}
                                 onChange={(e) => set('descripcion', e.target.value)}
                                 placeholder="Describe la tarea, contexto, pasos a seguir..."
-                                rows={9}
-                                className="w-full text-sm bg-background border border-border/60 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/50 text-foreground placeholder:text-muted-foreground/40 resize-none transition-colors"
+                                rows={5}
+                                className="w-full text-sm bg-background border border-border/60 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/50 text-foreground placeholder:text-muted-foreground/40 resize-none transition-colors md:min-h-[220px]"
                             />
                         </div>
 
@@ -300,7 +300,7 @@ export default function SynapseTaskModal({ tarea, estados, initialEstadoId, init
                     </div>
 
                     {/* Right: Metadata panel */}
-                    <div className="w-72 shrink-0 border-l border-border/40 bg-secondary/10 overflow-y-auto p-5 space-y-5">
+                    <div className="w-full md:w-72 shrink-0 border-t md:border-t-0 md:border-l border-border/40 bg-secondary/10 overflow-y-auto p-4 sm:p-5 space-y-4">
 
                         {/* Estado */}
                         <SelectField
