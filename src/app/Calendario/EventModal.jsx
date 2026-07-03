@@ -9,7 +9,7 @@ import {
 const EMPTY = {
     titulo: '', descripcion: '', fecha_inicio: '', fecha_fin: '',
     todo_el_dia: false, categoria: 'reunion', color: 'blue',
-    meet_link: '', tags: [], recordatorios: [],
+    meet_link: '', tags: [], recordatorios: [], participantes: [],
 };
 
 export default function EventModal({ event, teams = [], onClose, onSave, onDelete }) {
@@ -28,6 +28,7 @@ export default function EventModal({ event, teams = [], onClose, onSave, onDelet
                 color:        event.color     || 'blue',
                 meet_link:    event.meet_link  || '',
                 tags:         event.tags        || [],
+                participantes: event.participantes || [],
                 recordatorios: (event.recordatorios || []).map(r => ({
                     minutos_antes: r.minutos_antes,
                     tipo: r.tipo || 'email',
