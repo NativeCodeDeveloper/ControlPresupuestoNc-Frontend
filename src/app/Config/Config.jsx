@@ -341,29 +341,27 @@ export default function Config() {
     // === SYNAPSE: TEAMS ===
     const handleAddSynapseTeam = async () => {
         if (!newTeamForm.nombre.trim()) return;
-        setIsLoading(true);
+        const saved = { ...newTeamForm };
+        setNewTeamForm({ nombre: '', emoji: '👥', color_hex: '#8B5CF6' });
+        const tempId = `temp_${Date.now()}`;
+        setSynapseTeams(prev => [...prev, { id_team: tempId, ...saved }]);
         try {
-            await synapseService.createTeam(newTeamForm);
-            const fresh = await synapseService.getTeams();
-            if (Array.isArray(fresh)) setSynapseTeams(fresh);
-            setNewTeamForm({ nombre: '', emoji: '👥', color_hex: '#8B5CF6' });
+            const created = await synapseService.createTeam(saved);
+            setSynapseTeams(prev => prev.map(t => t.id_team === tempId ? created : t));
         } catch (e) {
             console.error('Error creando team Synapse:', e);
-        } finally {
-            setIsLoading(false);
+            setSynapseTeams(prev => prev.filter(t => t.id_team !== tempId));
         }
     };
 
     const handleDeleteSynapseTeam = async (id) => {
-        setIsLoading(true);
+        setSynapseTeams(prev => prev.filter(t => t.id_team !== id));
         try {
             await synapseService.deleteTeam(id);
-            const fresh = await synapseService.getTeams();
-            if (Array.isArray(fresh)) setSynapseTeams(fresh);
         } catch (e) {
             console.error('Error eliminando team Synapse:', e);
-        } finally {
-            setIsLoading(false);
+            const fresh = await synapseService.getTeams();
+            if (Array.isArray(fresh)) setSynapseTeams(fresh);
         }
     };
 

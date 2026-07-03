@@ -117,25 +117,34 @@ export default function SynapseTaskModal({ tarea, estados, initialEstadoId, init
 
     const handleSave = async () => {
         if (!form.titulo.trim()) { setError('El título es requerido.'); return; }
-        setSaving(true);
         setError('');
-        try {
-            const payload = {
-                ...form,
-                titulo: form.titulo.trim(),
-                descripcion: form.descripcion.trim() || null,
-                id_proyecto: form.id_proyecto || null,
-                id_asignado: form.id_asignado || null,
-                fecha_vencimiento: form.fecha_vencimiento || null,
-            };
-            const result = isNew
-                ? await synapseService.createTarea(payload)
-                : await synapseService.updateTarea(tarea.id_tarea, payload);
-            onSaved(result);
-        } catch (e) {
-            setError(e.message || 'Error al guardar');
-        } finally {
-            setSaving(false);
+
+        const payload = {
+            ...form,
+            titulo: form.titulo.trim(),
+            descripcion: form.descripcion.trim() || null,
+            id_proyecto: form.id_proyecto || null,
+            id_asignado: form.id_asignado || null,
+            fecha_vencimiento: form.fecha_vencimiento || null,
+        };
+
+        if (isNew) {
+            const tempId = `temp_${Date.now()}`;
+            onSaved({ ...payload, id_tarea: tempId, _temp: true });
+            try {
+                const result = await synapseService.createTarea(payload);
+                onSaved({ ...result, _replaceTempId: tempId });
+            } catch (e) {
+                onDeleted(tempId);
+            }
+        } else {
+            onSaved({ ...tarea, ...payload, id_tarea: tarea.id_tarea });
+            try {
+                const result = await synapseService.updateTarea(tarea.id_tarea, payload);
+                onSaved(result);
+            } catch (e) {
+                onSaved(tarea);
+            }
         }
     };
 

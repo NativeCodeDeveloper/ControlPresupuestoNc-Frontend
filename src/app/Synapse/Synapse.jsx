@@ -404,12 +404,19 @@ export default function Synapse({ teamId = null }) {
     };
 
     const handleSaved = (result) => {
-        if (modalTarea) {
-            setTareas(prev => prev.map(t => t.id_tarea === result.id_tarea ? result : t));
-        } else {
+        if (result._temp) {
+            // Nuevo ticket: agregar optimisticamente y cerrar modal al tiro
             setTareas(prev => [result, ...prev]);
+            setModalOpen(false);
+        } else if (result._replaceTempId) {
+            // Reemplazar item temporal con dato real del servidor
+            const { _replaceTempId, ...clean } = result;
+            setTareas(prev => prev.map(t => t.id_tarea === _replaceTempId ? clean : t));
+        } else {
+            // Update (optimistic ya aplicado, sync con servidor)
+            setTareas(prev => prev.map(t => t.id_tarea === result.id_tarea ? result : t));
+            setModalOpen(false);
         }
-        setModalOpen(false);
     };
 
     const handleDeleted = (id) => {

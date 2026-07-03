@@ -113,7 +113,7 @@ export default function MainLayout({ children }) {
 
     useEffect(() => {
         getTeams().then(data => setTeams(Array.isArray(data) ? data : [])).catch(() => {});
-    }, []);
+    }, [pathname]);
     const router   = useRouter();
     const { signOut } = useClerk();
 
