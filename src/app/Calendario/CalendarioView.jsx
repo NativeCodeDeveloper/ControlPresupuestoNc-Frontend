@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
     ChevronLeft, ChevronRight, Plus, Search,
     LayoutGrid, CalendarDays, Clock, List, Filter, ChevronDown, Video, Users, X, SlidersHorizontal
@@ -664,9 +664,9 @@ export default function CalendarioView() {
     }, []);
 
     // Mapa id_team → color_hex para bordes de equipo en chips
-    const teamColorMap = Object.fromEntries(
-        teams.filter(t => t.color_hex).map(t => [t.id_team, t.color_hex])
-    );
+    const teamColorMap = useMemo(() =>
+        Object.fromEntries(teams.filter(t => t.color_hex).map(t => [t.id_team, t.color_hex]))
+    , [teams]);
 
     const fetchEventos = useCallback(async () => {
         setLoading(true);

@@ -90,7 +90,7 @@ export default function AdjuntosPanel({ entidad, idEntidad, compact = false }) {
                 onDrop={handleDrop}
                 onDragOver={(e) => e.preventDefault()}
                 onClick={() => inputRef.current?.click()}
-                className="border border-dashed border-zinc-700 rounded-lg p-3 flex items-center gap-2 cursor-pointer hover:border-violet-500/60 hover:bg-violet-500/5 transition-colors text-zinc-500 text-xs"
+                className="border border-dashed border-border rounded-lg p-3 flex items-center gap-2 cursor-pointer hover:border-violet-500/60 hover:bg-violet-500/5 transition-colors text-muted-foreground text-xs"
             >
                 <Upload size={13} />
                 <span>

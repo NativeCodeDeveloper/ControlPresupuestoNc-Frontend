@@ -600,7 +600,7 @@ export default function Gastos() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Form Section */}
                 <div className="lg:col-span-1">
-                    <div className="bg-card border border-border rounded-xl p-6 shadow-sm sticky top-24">
+                    <div className="bg-card border border-border rounded-xl p-6 shadow-sm lg:sticky lg:top-24">
                         <h3 className="text-lg font-semibold text-foreground mb-6 flex items-center gap-2">
                             {activeTab === 'fixed' ? <Server size={18} /> : <Briefcase size={18} />}
                             {activeTab === 'fixed' ? 'Nuevo Costo Fijo' : 'Nuevo Costo Variable'}

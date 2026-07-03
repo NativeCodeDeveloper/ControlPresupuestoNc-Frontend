@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
     X, Save, Trash2, MessageSquare, Send, Calendar, Link2,
     User, Tag, AlertCircle, ChevronDown, Check, Loader2, ArrowLeft
@@ -104,7 +104,7 @@ export default function SynapseTaskModal({ tarea, estados, initialEstadoId, init
         comentariosEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [comentarios]);
 
-    const set = (key, val) => setForm(f => ({ ...f, [key]: val }));
+    const set = useCallback((key, val) => setForm(f => ({ ...f, [key]: val })), []);
 
     const toggleEtiqueta = (id) => {
         setForm(f => ({

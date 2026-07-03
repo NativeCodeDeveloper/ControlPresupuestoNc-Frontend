@@ -205,6 +205,8 @@ export default function WorkspaceDetail({ id }) {
         adjuntosRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
 
+    useEffect(() => () => clearTimeout(saveTimer.current), []);
+
     useEffect(() => {
         workspaceService.getIniciativa(id)
             .then(setData)
