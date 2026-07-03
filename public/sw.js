@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ncf-shell-v1';
+const CACHE_NAME = 'ncf-shell-v2';
 
 const SHELL_ASSETS = [
     '/',
@@ -66,8 +66,8 @@ self.addEventListener('push', (event) => {
     event.waitUntil(
         self.registration.showNotification(data.titulo || 'NativeCode Finance', {
             body:  data.body  || '',
-            icon:  data.icon  || '/logosoloncf.png',
-            badge: '/logosoloncf.png',
+            icon:  data.icon  || '/icon-192.png',
+            badge: '/icon-192.png',
             data:  { url: data.url || '/calendario' },
             vibrate: [200, 100, 200],
         })
