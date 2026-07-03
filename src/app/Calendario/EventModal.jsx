@@ -15,6 +15,7 @@ const EMPTY = {
 export default function EventModal({ event, teams = [], onClose, onSave, onDelete }) {
     const [form, setForm] = useState(EMPTY);
     const [saving, setSaving] = useState(false);
+    const [error,  setError]  = useState('');
 
     useEffect(() => {
         if (event) {
@@ -88,13 +89,16 @@ export default function EventModal({ event, teams = [], onClose, onSave, onDelet
         e.preventDefault();
         if (!form.titulo.trim()) return;
         setSaving(true);
+        setError('');
         try {
-            // Convertir datetime-local (sin zona) a ISO UTC para evitar desfase de -4h en Chile
+            // Convertir datetime-local (sin zona) a ISO UTC para que backend guarde en UTC
             await onSave({
                 ...form,
                 fecha_inicio: form.fecha_inicio ? new Date(form.fecha_inicio).toISOString() : form.fecha_inicio,
                 fecha_fin:    form.fecha_fin    ? new Date(form.fecha_fin).toISOString()    : form.fecha_fin,
             });
+        } catch (err) {
+            setError(err?.message || 'Error al guardar el evento');
         } finally {
             setSaving(false);
         }
@@ -298,6 +302,11 @@ export default function EventModal({ event, teams = [], onClose, onSave, onDelet
                                 ))}
                             </div>
                         </div>
+                    )}
+
+                    {/* Error */}
+                    {error && (
+                        <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{error}</p>
                     )}
 
                     {/* Acciones */}

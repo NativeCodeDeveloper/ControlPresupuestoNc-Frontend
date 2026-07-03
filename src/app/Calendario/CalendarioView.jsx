@@ -700,12 +700,10 @@ export default function CalendarioView() {
     function openEvent(ev)             { setModal({ event: ev, teams }); }
 
     async function handleSave(form) {
-        try {
-            if (modal.event?.id) await updateEvento(modal.event.id, form);
-            else                  await createEvento(form);
-            setModal(null);
-            fetchEventos();
-        } catch (e) { console.error('[CALENDARIO]', e); }
+        if (modal.event?.id) await updateEvento(modal.event.id, form);
+        else                  await createEvento(form);
+        setModal(null);
+        fetchEventos();
     }
 
     async function handleDelete(id) {
