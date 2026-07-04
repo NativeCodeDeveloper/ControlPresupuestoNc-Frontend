@@ -262,6 +262,8 @@ export default function Ingresos() {
             name: project.nombre || '',
             type: project.tipo_nombre || projectTypes[0] || 'Web',
             status: project.estado_nombre || 'Lead',
+            estadoId: project.estado_proyecto_id || null,
+            tipoId: project.tipo_proyecto_id || null,
             agreedAmount: project.monto_acordado || '',
             clientName: project.nombre_cliente || '',
             clientRut: project.rut_cliente || '',
@@ -289,8 +291,8 @@ export default function Ingresos() {
         try {
             const tipoFound = projectTypesData.find(t => t.nombre === editForm.type);
             const estadoFound = projectStatusesData.find(s => s.nombre === editForm.status);
-            const tipo_proyecto_id = tipoFound ? tipoFound.id : undefined;
-            const estado_proyecto_id = estadoFound ? estadoFound.id : undefined;
+            const tipo_proyecto_id = tipoFound?.id ?? editForm.tipoId;
+            const estado_proyecto_id = estadoFound?.id ?? editForm.estadoId;
 
             const updates = {
                 nombre: editForm.name,
@@ -305,10 +307,10 @@ export default function Ingresos() {
                 ciclo_facturacion: editForm.ciclo || 'Unico',
                 fecha_inicio_servicio: editForm.fechaInicioServicio || null,
                 fecha_proximo_pago: editForm.fechaProximoPago || null,
-                url_cobro_mercadopago: editForm.urlCobroMp || null
+                url_cobro_mercadopago: editForm.urlCobroMp || null,
+                tipo_proyecto_id: tipo_proyecto_id ?? null,
+                estado_proyecto_id: estado_proyecto_id ?? null,
             };
-            if (tipo_proyecto_id) updates.tipo_proyecto_id = tipo_proyecto_id;
-            if (estado_proyecto_id) updates.estado_proyecto_id = estado_proyecto_id;
 
             const result = await projectsService.updateProject(editProject.id, updates);
             if (result && (result.ok || result.id)) {
