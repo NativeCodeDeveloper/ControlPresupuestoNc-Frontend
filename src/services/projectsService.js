@@ -294,6 +294,19 @@ export const deleteProjectPayment = async (projectId, paymentId) => {
     }
 };
 
+export const updateProjectPayment = async (projectId, paymentId, data) => {
+    try {
+        const result = await apiClient.put(
+            `/api/proyectos/${projectId}/pagos/${paymentId}`,
+            data
+        );
+        return result;
+    } catch (error) {
+        console.error(`Error actualizando pago ${paymentId}:`, error);
+        throw error;
+    }
+};
+
 /**
  * Catálogos de proyectos
  * (tipos de proyecto, estados, etc)

@@ -73,6 +73,10 @@ export default function Ingresos() {
     const [editForm, setEditForm] = useState({});
     const [isEditLoading, setIsEditLoading] = useState(false);
 
+    const [editPayment, setEditPayment] = useState(null);
+    const [editPaymentForm, setEditPaymentForm] = useState({});
+    const [isPaymentEditLoading, setIsPaymentEditLoading] = useState(false);
+
     const fmtPreview = (val) => {
         const n = Math.round(parseFloat(val) || 0);
         if (!n) return null;
@@ -346,6 +350,48 @@ export default function Ingresos() {
             alert('Error al registrar el pago');
         } finally {
             setQuickPayLoadingId(null);
+        }
+    };
+
+    const handleEditPaymentOpen = (payment, project) => {
+        setEditPayment({ ...payment, projectId: project.id });
+        setEditPaymentForm({
+            concepto: payment.concepto || '',
+            monto: payment.monto || '',
+            fecha_pago: payment.fecha_pago ? String(payment.fecha_pago).slice(0, 10) : '',
+            numero_comprobante: payment.numero_comprobante || '',
+            notas: payment.notas || '',
+        });
+    };
+
+    const handleEditPaymentSubmit = async (e) => {
+        e.preventDefault();
+        if (!editPayment) return;
+        setIsPaymentEditLoading(true);
+        try {
+            await projectsService.updateProjectPayment(editPayment.projectId, editPayment.id_proyecto_pago, {
+                concepto: editPaymentForm.concepto,
+                monto: Math.round(parseFloat(editPaymentForm.monto || 0)),
+                fecha_pago: editPaymentForm.fecha_pago,
+                numero_comprobante: editPaymentForm.numero_comprobante || null,
+                notas: editPaymentForm.notas || null,
+            });
+            await reloadProjects();
+            setEditPayment(null);
+        } catch {
+            alert('Error al actualizar el pago');
+        } finally {
+            setIsPaymentEditLoading(false);
+        }
+    };
+
+    const handleDeletePayment = async (payment, project) => {
+        if (!window.confirm(`¿Eliminar el pago "${payment.concepto}" de ${Math.round(parseFloat(payment.monto || 0)).toLocaleString('es-CL')}?`)) return;
+        const ok = await projectsService.deleteProjectPayment(project.id, payment.id_proyecto_pago);
+        if (ok) {
+            await reloadProjects();
+        } else {
+            alert('Error al eliminar el pago');
         }
     };
 
@@ -830,16 +876,32 @@ export default function Ingresos() {
                                                 {expandedProject === project.id && (
                                                     <div className="mt-2 space-y-2 animate-in slide-in-from-top-2 duration-200">
                                                         {[...pagos].reverse().map((payment, idx) => (
-                                                            <div key={payment.id || idx} className="flex items-center justify-between p-2.5 bg-[hsl(var(--emerald-premium))]/5 border border-[hsl(var(--emerald-premium))]/10 rounded-lg">
+                                                            <div key={payment.id_proyecto_pago || idx} className="flex items-center justify-between p-2.5 bg-[hsl(var(--emerald-premium))]/5 border border-[hsl(var(--emerald-premium))]/10 rounded-lg gap-2">
                                                                 <div className="flex-1 min-w-0">
                                                                     <p className="text-xs font-medium text-foreground truncate">{payment.concepto || 'Pago'}</p>
                                                                     <p className="text-[10px] text-muted-foreground mt-0.5">
                                                                         {payment.fecha_pago ? fmtDate(payment.fecha_pago) : 'Sin fecha'}
                                                                     </p>
                                                                 </div>
-                                                                <span className="text-sm font-bold text-[hsl(var(--emerald-premium))] ml-2">
+                                                                <span className="text-sm font-bold text-[hsl(var(--emerald-premium))] shrink-0">
                                                                     +{Math.round(parseFloat(payment.monto || 0)).toLocaleString('es-CL')}
                                                                 </span>
+                                                                <div className="flex gap-1 shrink-0">
+                                                                    <button
+                                                                        onClick={() => handleEditPaymentOpen(payment, project)}
+                                                                        className="p-1 text-muted-foreground hover:text-blue-400 hover:bg-blue-500/10 rounded transition-colors"
+                                                                        title="Editar pago"
+                                                                    >
+                                                                        <Pencil size={11} />
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => handleDeletePayment(payment, project)}
+                                                                        className="p-1 text-muted-foreground hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
+                                                                        title="Eliminar pago"
+                                                                    >
+                                                                        <Trash2 size={11} />
+                                                                    </button>
+                                                                </div>
                                                             </div>
                                                         ))}
                                                     </div>
@@ -951,6 +1013,52 @@ export default function Ingresos() {
                             <button type="submit" disabled={isEditLoading}
                                 className="flex-1 bg-primary text-primary-foreground font-medium py-2.5 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm">
                                 {isEditLoading ? 'Guardando...' : 'Guardar Cambios'}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        )}
+
+        {/* Modal editar pago */}
+        {editPayment && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+                onClick={(e) => e.target === e.currentTarget && setEditPayment(null)}>
+                <div className="bg-background border border-border rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
+                    <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+                        <h3 className="font-semibold text-foreground text-sm">Editar Pago</h3>
+                        <button onClick={() => setEditPayment(null)} className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-foreground/6 rounded-lg transition-colors">
+                            <X size={15} />
+                        </button>
+                    </div>
+                    <form onSubmit={handleEditPaymentSubmit} className="p-5 space-y-3">
+                        <Input label="Concepto" placeholder="Ej: Anticipo 50%, Cuota 1..."
+                            value={editPaymentForm.concepto}
+                            onChange={(e) => setEditPaymentForm({ ...editPaymentForm, concepto: e.target.value })}
+                            required />
+                        <Input label="Monto" type="number" placeholder="0" min="0" step="1"
+                            onKeyDown={(e) => ["e", "E", "+", "-"].includes(e.key) && e.preventDefault()}
+                            value={editPaymentForm.monto}
+                            onChange={(e) => setEditPaymentForm({ ...editPaymentForm, monto: e.target.value })}
+                            required />
+                        <Input label="Fecha de Pago" type="date"
+                            value={editPaymentForm.fecha_pago}
+                            onChange={(e) => setEditPaymentForm({ ...editPaymentForm, fecha_pago: e.target.value })}
+                            required />
+                        <Input label="N° Comprobante (opcional)" placeholder="Ej: 00123"
+                            value={editPaymentForm.numero_comprobante}
+                            onChange={(e) => setEditPaymentForm({ ...editPaymentForm, numero_comprobante: e.target.value })} />
+                        <Input label="Notas (opcional)" placeholder="Notas adicionales"
+                            value={editPaymentForm.notas}
+                            onChange={(e) => setEditPaymentForm({ ...editPaymentForm, notas: e.target.value })} />
+                        <div className="flex gap-2 pt-2">
+                            <button type="button" onClick={() => setEditPayment(null)}
+                                className="flex-1 border border-border text-muted-foreground font-medium py-2.5 rounded-lg hover:bg-foreground/5 transition-colors text-sm">
+                                Cancelar
+                            </button>
+                            <button type="submit" disabled={isPaymentEditLoading}
+                                className="flex-1 bg-primary text-primary-foreground font-medium py-2.5 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm">
+                                {isPaymentEditLoading ? 'Guardando...' : 'Guardar'}
                             </button>
                         </div>
                     </form>
