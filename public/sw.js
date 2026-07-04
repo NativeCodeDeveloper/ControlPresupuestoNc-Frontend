@@ -5,7 +5,7 @@ const SHELL_ASSETS = [
     '/dashboard',
     '/icon-192.png',
     '/icon-512.png',
-    '/logosoloncf.png',
+    '/logonuevoblanco.png',
     '/ncflogo.png',
     '/ncfnegro.png',
 ];
@@ -66,8 +66,8 @@ self.addEventListener('push', (event) => {
     event.waitUntil(
         self.registration.showNotification(data.titulo || 'NativeCode Finance', {
             body:  data.body  || '',
-            icon:  data.icon  || '/icon-192.png',
-            badge: '/icon-192.png',
+            icon:  data.icon  || '/logonuevoblanco.png',
+            badge: '/logonuevoblanco.png',
             data:  { url: data.url || '/calendario' },
             vibrate: [200, 100, 200],
         })
