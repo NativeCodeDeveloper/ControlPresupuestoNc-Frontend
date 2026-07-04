@@ -34,7 +34,7 @@ export default function Landing() {
                 <section className="my-auto w-full text-center">
                     <div className="mx-auto mb-10 flex h-20 w-20 items-center justify-center rounded-2xl border border-white/18 bg-transparent-100 backdrop-blur-md sm:h-24 sm:w-24">
                         <img
-                            src="/logosoloncf.png"
+                            src="/logonuevoblanco.png"
                             alt="NativeCode"
                             className="h-16 w-16 object-contain drop-shadow-[0_0_14px_rgba(255,255,255,0.2)] sm:h-26 sm:w-26"
                         />

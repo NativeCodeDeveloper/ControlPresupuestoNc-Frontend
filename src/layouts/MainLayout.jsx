@@ -144,7 +144,8 @@ export default function MainLayout({ children }) {
             >
                 {/* Logo pequeño */}
                 <div className="flex items-center justify-center w-full mb-3">
-                    <img src="/logosoloncf.png" alt="NC" className="h-8 w-8 object-contain" />
+                    <img src="/logonuevoblanco.png" alt="NC" className="h-8 w-8 object-contain hidden dark:block" />
+                    <img src="/nuevologofinance1.JPG" alt="NC" className="h-8 w-8 object-contain block dark:hidden" />
                 </div>
 
                 {/* Íconos de módulos */}
@@ -227,12 +228,12 @@ export default function MainLayout({ children }) {
                     {/* Cabecera del módulo */}
                     <div className="flex items-center justify-between px-3 pt-4 pb-3 shrink-0">
                         <img
-                            src="/ncflogo.png"
+                            src="/logonuevoblanco.png"
                             alt="NativeCode"
                             className="h-8 object-contain hidden dark:block"
                         />
                         <img
-                            src="/ncfnegro.png"
+                            src="/nuevologofinance1.JPG"
                             alt="NativeCode"
                             className="h-8 object-contain block dark:hidden"
                         />
@@ -284,7 +285,8 @@ export default function MainLayout({ children }) {
                     {/* Footer */}
                     <div className="px-3 py-4 border-t border-border/30 shrink-0">
                         <div className="flex items-center gap-2 px-1">
-                            <img src="/logosoloncf.png" alt="NC" className="h-5 w-5 object-contain shrink-0" />
+                            <img src="/logonuevoblanco.png" alt="NC" className="h-5 w-5 object-contain shrink-0 hidden dark:block" />
+                            <img src="/nuevologofinance1.JPG" alt="NC" className="h-5 w-5 object-contain shrink-0 block dark:hidden" />
                             <p className="text-[9px] text-muted-foreground leading-tight">
                                 © 2026 NativeCode.<br />
                                 Todos los derechos<br />

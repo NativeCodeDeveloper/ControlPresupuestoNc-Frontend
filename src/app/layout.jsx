@@ -7,7 +7,7 @@ export const metadata = {
     title: 'NativeCode Finance',
     description: 'Plataforma de control financiero para decisiones ejecutivas',
     icons: {
-        icon: '/logosoloncf.png',
+        icon: '/logonuevoblanco.png',
         apple: '/apple-touch-icon.png',
     },
 };
