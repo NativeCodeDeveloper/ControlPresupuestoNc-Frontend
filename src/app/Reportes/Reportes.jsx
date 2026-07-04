@@ -1,6 +1,7 @@
 'use client';
 
 import { createElement, useState, useEffect } from 'react';
+import { useRealtime } from '../../hooks/useRealtime';
 import * as financeService from '../../services/financeService';
 import {
     BarChart3,
@@ -126,6 +127,8 @@ export default function Reportes() {
                 setIsLoading(false);
             }
         };
+
+    useRealtime(loadData);
 
         loadData();
     }, [selectedMonth, selectedYear]);

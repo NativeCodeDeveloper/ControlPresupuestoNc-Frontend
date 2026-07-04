@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useRealtime } from '../../hooks/useRealtime';
 import { usePersistedState } from '../../hooks/usePersistedState';
 import {
     Gauge, RefreshCw, Loader2, Search, ChevronDown, ChevronUp,
@@ -404,6 +405,8 @@ export default function ProductionCockpit() {
             setLoading(false);
         }
     }, [mes, anio, vistaGeneral]);
+
+    useRealtime(loadData);
 
     useEffect(() => { loadData(); }, [loadData]);
 

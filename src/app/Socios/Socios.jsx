@@ -1,6 +1,7 @@
 'use client';
 
 import { createElement, useState, useEffect } from 'react';
+import { useRealtime } from '../../hooks/useRealtime';
 import * as partnersService from '../../services/partnersService';
 import * as financeService from '../../services/financeService';
 import {
@@ -111,6 +112,8 @@ export default function Socios() {
             setStats(financialStats);
         }
     };
+
+    useRealtime(loadAllData);
 
     useEffect(() => {
         let cancelled = false;

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRealtime } from '../../hooks/useRealtime';
 import { getFinancialSummary, getFlujoCaja } from '../../services/financeService';
 import {
     BookOpen,
@@ -114,6 +115,8 @@ export default function Contabilidad() {
             setLoading(false);
         }
     }, [month, year]);
+
+    useRealtime(load);
 
     useEffect(() => { load(); }, [load]);
 

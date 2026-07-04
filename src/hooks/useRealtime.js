@@ -30,7 +30,7 @@ function getSocket() {
  * @param {Function} onUpdate - función a llamar cuando hay datos nuevos
  * @param {string[]} events - eventos socket a escuchar (default: ['proyectos:updated'])
  */
-export function useRealtime(onUpdate, events = ['proyectos:updated']) {
+export function useRealtime(onUpdate, events = ['ncf:update']) {
     const onUpdateRef = useRef(onUpdate);
     onUpdateRef.current = onUpdate;
 

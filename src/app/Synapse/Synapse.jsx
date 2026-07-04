@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useRealtime } from '../../hooks/useRealtime';
 import {
     Brain, Plus, Search, RefreshCw, Loader2, LayoutGrid, List,
     Flag, Folder, User, Clock, ChevronDown, Filter, X, Check
@@ -366,6 +367,8 @@ export default function Synapse({ teamId = null }) {
             setLoading(false);
         }
     }, [numTeamId]);
+
+    useRealtime(loadAll);
 
     useEffect(() => { loadAll(); }, [loadAll]);
 

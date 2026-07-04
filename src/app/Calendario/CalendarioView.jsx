@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useRealtime } from '../../hooks/useRealtime';
 import {
     ChevronLeft, ChevronRight, Plus, Search,
     LayoutGrid, CalendarDays, Clock, List, Filter, ChevronDown, Video, Users, X, SlidersHorizontal
@@ -680,6 +681,8 @@ export default function CalendarioView() {
         } catch {}
         finally { setLoading(false); }
     }, [view, anchor, filterColor, filterTag]);
+
+    useRealtime(fetchEventos);
 
     useEffect(() => { fetchEventos(); }, [fetchEventos]);
 

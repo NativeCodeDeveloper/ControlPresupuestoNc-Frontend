@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRealtime } from '../../hooks/useRealtime';
 import * as financeService from '../../services/financeService';
 import * as investmentsService from '../../services/investmentsService';
 import { Input, Select } from '../../components/ui/FormElements';
@@ -39,6 +40,8 @@ export default function Inversiones() {
         setSummary(summaryData);
         setInvestments(Array.isArray(invData) ? invData : []);
     };
+
+    useRealtime(loadData);
 
     useEffect(() => {
         const init = async () => {

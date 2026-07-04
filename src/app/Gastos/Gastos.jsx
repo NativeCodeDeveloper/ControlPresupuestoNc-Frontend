@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRealtime } from '../../hooks/useRealtime';
 import { usePersistedState } from '../../hooks/usePersistedState';
 import * as costsService from '../../services/costsService';
 import * as projectsService from '../../services/projectsService';
@@ -97,6 +98,8 @@ export default function Gastos() {
                 console.error('Error cargando datos de gastos:', error);
             }
         };
+
+    useRealtime(loadData);
         loadData();
     }, []);
 

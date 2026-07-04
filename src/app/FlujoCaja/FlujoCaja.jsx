@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRealtime } from '../../hooks/useRealtime';
 import { usePersistedState } from '../../hooks/usePersistedState';
 import { getFlujoCaja } from '../../services/financeService';
 import {
@@ -101,6 +102,8 @@ export default function FlujoCaja() {
             setLoading(false);
         }
     }, [year]);
+
+    useRealtime(load);
 
     useEffect(() => { load(); }, [load]);
 
