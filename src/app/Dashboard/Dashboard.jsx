@@ -1,7 +1,8 @@
 'use client';
 
-import { createElement, useState, useEffect } from 'react';
+import { createElement, useState, useEffect, useCallback } from 'react';
 import * as financeService from '../../services/financeService';
+import { useRealtime } from '../../hooks/useRealtime';
 import { formatCLP } from '../../lib/utils';
 import {
     DollarSign,
@@ -169,6 +170,14 @@ export default function Dashboard() {
 
         loadData();
     }, [selectedMonth, selectedYear]);
+
+    useRealtime(useCallback(() => {
+        const currentMonth = parseInt(selectedMonth, 10);
+        const currentYear  = parseInt(selectedYear, 10);
+        financeService.getFinancialSummary(currentMonth, currentYear)
+            .then(s => { if (s) setStats(mapSummaryToStats(s)); })
+            .catch(() => {});
+    }, [selectedMonth, selectedYear]));
 
     const months = [
         'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',

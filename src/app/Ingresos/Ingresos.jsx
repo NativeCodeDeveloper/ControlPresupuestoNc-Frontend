@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { usePersistedState } from '../../hooks/usePersistedState';
+import { useRealtime } from '../../hooks/useRealtime';
 import * as projectsService from '../../services/projectsService';
 import * as configService from '../../services/configService';
 import {
@@ -136,6 +137,8 @@ export default function Ingresos() {
             setProjectPayments(paymentsMap);
         }
     };
+
+    useRealtime(reloadProjects);
 
     const handleProjectSubmit = async (e) => {
         e.preventDefault();
