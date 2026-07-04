@@ -728,7 +728,7 @@ export default function Ingresos() {
                                                     {project.telefono_cliente && <span className="text-xs text-muted-foreground">Tel: {project.telefono_cliente}</span>}
                                                     {project.url_cobro_mercadopago && (
                                                         <a
-                                                            href={project.url_cobro_mercadopago}
+                                                            href={project.url_cobro_mercadopago.startsWith('http') ? project.url_cobro_mercadopago : `https://${project.url_cobro_mercadopago}`}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
                                                             className="text-xs text-[hsl(var(--emerald-premium))] flex items-center gap-1 hover:underline"

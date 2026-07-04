@@ -901,7 +901,7 @@ export default function ProductionCockpit() {
                                                         />
                                                         {p.url_front && (
                                                             <a
-                                                                href={p.url_front}
+                                                                href={p.url_front.startsWith('http') ? p.url_front : `https://${p.url_front}`}
                                                                 target="_blank"
                                                                 rel="noopener noreferrer"
                                                                 className="text-muted-foreground hover:text-violet-400 transition-colors shrink-0"
