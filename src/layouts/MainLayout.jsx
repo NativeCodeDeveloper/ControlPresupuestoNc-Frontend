@@ -227,16 +227,19 @@ export default function MainLayout({ children }) {
 
                     {/* Cabecera del módulo */}
                     <div className="flex items-center justify-between px-3 pt-4 pb-3 shrink-0">
-                        <img
-                            src="/logonuevoblanco.png"
-                            alt="NativeCode"
-                            className="h-8 object-contain hidden dark:block"
-                        />
-                        <img
-                            src="/nuevologofinance1.JPG"
-                            alt="NativeCode"
-                            className="h-8 object-contain block dark:hidden"
-                        />
+                        <div className="flex items-center gap-2">
+                            <img
+                                src="/logonuevoblanco.png"
+                                alt="NativeCode"
+                                className="h-8 object-contain hidden dark:block"
+                            />
+                            <img
+                                src="/nuevologofinance1.JPG"
+                                alt="NativeCode"
+                                className="h-8 object-contain block dark:hidden"
+                            />
+                            <span className="text-sm font-semibold tracking-widest text-foreground">FINANCE</span>
+                        </div>
                         <button
                             onClick={() => setIsPanelOpen(false)}
                             className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-foreground/6 rounded-lg transition-colors"
