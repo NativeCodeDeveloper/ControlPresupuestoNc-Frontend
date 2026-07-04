@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ncf-shell-v2';
+const CACHE_NAME = 'ncf-shell-v3';
 
 const SHELL_ASSETS = [
     '/',
