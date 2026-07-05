@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { usePersistedState } from '../../hooks/usePersistedState';
 import {
     Users2, Search, RefreshCw, Loader2, ChevronDown, ChevronUp,
@@ -228,6 +229,7 @@ export default function CRM() {
     const [loading, setLoading]     = useState(true);
     const [selected, setSelected]   = useState(null);
     const [search, setSearch]       = usePersistedState('crm:search', '');
+    const searchParams               = useSearchParams();
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -242,6 +244,12 @@ export default function CRM() {
     }, []);
 
     useEffect(() => { load(); }, [load]);
+
+    // Cuando viene de Bóveda con ?cliente=NombreCliente, abre el detalle directo
+    useEffect(() => {
+        const clienteParam = searchParams.get('cliente');
+        if (clienteParam) setSelected(decodeURIComponent(clienteParam));
+    }, [searchParams]);
 
     const filtrados = useMemo(() => {
         const q = search.toLowerCase().trim();

@@ -2,12 +2,13 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { usePersistedState } from '../../hooks/usePersistedState';
 import {
     Shield, Plus, Loader2, RefreshCw, Server, Globe, GitBranch,
     Key, FileCode2, AlertTriangle, Eye, EyeOff, Copy, Check,
     ChevronDown, Trash2, Save, X, Database, Wifi, Lock,
-    ChevronRight, FolderCode, Terminal, Layers, Search
+    ChevronRight, FolderCode, Terminal, Layers, Search, Users2
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import * as svc from '../../services/clientesService';
@@ -628,6 +629,16 @@ export default function Boveda() {
                                     <h2 className="font-semibold text-[16px]">{entrada.nombre_cliente}</h2>
                                     <span className="text-[11px] font-mono text-amber-400/80">{entrada.codigo_interno}</span>
                                     {saving && <Loader2 size={12} className="animate-spin text-amber-400" />}
+                                    {entrada.nombre_cliente && (
+                                        <Link
+                                            href={`/clientes?cliente=${encodeURIComponent(entrada.nombre_cliente)}`}
+                                            className="flex items-center gap-1 px-2 py-0.5 rounded-lg border border-amber-500/25 text-[10px] text-amber-400/80 hover:bg-amber-500/10 hover:text-amber-400 hover:border-amber-500/40 transition-colors"
+                                            title="Ver cliente en CRM"
+                                        >
+                                            <Users2 size={10} />
+                                            CRM
+                                        </Link>
+                                    )}
                                 </div>
                                 <p className="text-[12px] text-muted-foreground mt-0.5">{entrada.proyecto_nombre}</p>
                             </div>
