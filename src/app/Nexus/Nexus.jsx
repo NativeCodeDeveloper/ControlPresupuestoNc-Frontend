@@ -564,6 +564,92 @@ function TicketDetalle({ ticket, estados, socios, onClose, onUpdated }) {
     );
 }
 
+// ─── Vista kanban por columnas ────────────────────────────────────────────────
+
+function TicketKanbanCard({ ticket, onSelect, isSelected }) {
+    const p = PRIORIDAD[ticket.prioridad] ?? PRIORIDAD.media;
+    return (
+        <div
+            onClick={() => onSelect(ticket)}
+            className={`p-3 rounded-xl border cursor-pointer transition-all group ${
+                isSelected
+                    ? 'border-sky-500/60 bg-sky-500/8 shadow-md'
+                    : 'bg-card border-border/60 hover:border-sky-500/40 hover:shadow-md hover:bg-secondary/20'
+            }`}
+        >
+            <div className="flex items-center justify-between gap-2 mb-2">
+                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${p.bg} ${p.color} ${p.border}`}>
+                    {p.label}
+                </span>
+                <span className="text-[10px] font-mono text-sky-400/70">{ticket.numero_ticket}</span>
+            </div>
+            <p className="text-[13px] font-medium text-foreground leading-snug mb-2 line-clamp-2">{ticket.asunto}</p>
+            {(ticket.proyecto_nombre || ticket.nombre_cliente) && (
+                <div className="flex flex-wrap gap-1 mb-2">
+                    {ticket.proyecto_nombre && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/20">
+                            {ticket.proyecto_nombre}
+                        </span>
+                    )}
+                    {!ticket.proyecto_nombre && ticket.nombre_cliente && (
+                        <span className="text-[10px] text-muted-foreground">{ticket.nombre_cliente}</span>
+                    )}
+                </div>
+            )}
+            <div className="flex items-center justify-between gap-2 mt-1">
+                {ticket.sla_vence_en ? (
+                    <span className="flex items-center gap-1 text-[10px] text-amber-400">
+                        <Clock size={9} /> {fmt(ticket.sla_vence_en)}
+                    </span>
+                ) : <span />}
+                {ticket.responsable_nombre && (
+                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                        <User size={9} /> {ticket.responsable_nombre}
+                    </span>
+                )}
+            </div>
+        </div>
+    );
+}
+
+function TicketKanbanView({ tickets, estados, onSelect, selected }) {
+    return (
+        <div className="flex gap-4 p-4 h-full overflow-x-auto items-start">
+            {estados.map(estado => {
+                const cols = tickets.filter(t => t.id_estado === estado.id_estado);
+                return (
+                    <div key={estado.id_estado} className="flex-none w-[270px] flex flex-col">
+                        {/* Cabecera columna */}
+                        <div className="flex items-center gap-2 mb-3 px-1">
+                            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: estado.color_hex }} />
+                            <span className="text-[12px] font-semibold text-foreground flex-1 truncate">{estado.nombre}</span>
+                            <span className="text-[11px] text-muted-foreground bg-secondary/60 px-1.5 py-0.5 rounded-md font-medium">
+                                {cols.length}
+                            </span>
+                        </div>
+                        {/* Cards */}
+                        <div className="space-y-2.5">
+                            {cols.map(ticket => (
+                                <TicketKanbanCard
+                                    key={ticket.id_ticket}
+                                    ticket={ticket}
+                                    onSelect={onSelect}
+                                    isSelected={selected?.id_ticket === ticket.id_ticket}
+                                />
+                            ))}
+                            {cols.length === 0 && (
+                                <div className="border-2 border-dashed border-border/25 rounded-xl h-16 flex items-center justify-center">
+                                    <span className="text-[11px] text-muted-foreground/50">Sin tickets</span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                );
+            })}
+        </div>
+    );
+}
+
 // ─── Vista lista (estilo Synapse) ─────────────────────────────────────────────
 
 function TicketListView({ tickets, estados, onSelect, selected }) {
@@ -777,7 +863,7 @@ export default function Nexus() {
                 </div>
 
                 {/* Tickets */}
-                <div className="flex-1 overflow-y-auto">
+                <div className={`flex-1 min-h-0 ${view === 'cards' ? 'overflow-x-auto overflow-y-hidden' : 'overflow-y-auto'}`}>
                     {loading && (
                         <div className="p-4 space-y-2">
                             {[...Array(4)].map((_, i) => (
@@ -792,6 +878,16 @@ export default function Nexus() {
                         </div>
                     )}
 
+                    {/* Vista kanban por columnas */}
+                    {!loading && view === 'cards' && (
+                        <TicketKanbanView
+                            tickets={ticketsFiltrados}
+                            estados={estados}
+                            selected={selected}
+                            onSelect={setSelected}
+                        />
+                    )}
+
                     {/* Vista lista agrupada por estado */}
                     {!loading && view === 'list' && ticketsFiltrados.length > 0 && (
                         <TicketListView
@@ -800,49 +896,6 @@ export default function Nexus() {
                             selected={selected}
                             onSelect={setSelected}
                         />
-                    )}
-
-                    {/* Vista tarjetas */}
-                    {!loading && view === 'cards' && ticketsFiltrados.length > 0 && (
-                    <div className="p-4 space-y-2">
-                    {ticketsFiltrados.map(ticket => (
-                        <button
-                            key={ticket.id_ticket}
-                            onClick={() => setSelected(ticket)}
-                            className={`w-full text-left rounded-xl border px-4 py-3 transition-all ${
-                                selected?.id_ticket === ticket.id_ticket
-                                    ? 'border-sky-500/50 bg-sky-500/8'
-                                    : 'border-border bg-card hover:border-sky-500/30'
-                            }`}
-                        >
-                            <div className="flex items-start justify-between gap-3">
-                                <div className="min-w-0">
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <span className="text-[10px] font-mono text-sky-400">{ticket.numero_ticket}</span>
-                                        <PrioridadBadge prioridad={ticket.prioridad} />
-                                        {ticket.estado_nombre && (
-                                            <EstadoBadge nombre={ticket.estado_nombre} color={ticket.estado_color} />
-                                        )}
-                                    </div>
-                                    <p className="text-sm font-medium text-foreground truncate">{ticket.asunto}</p>
-                                    <p className="text-[11px] text-muted-foreground truncate">
-                                        {ticket.nombre_cliente}
-                                        {ticket.proyecto_nombre && <span className="text-sky-400/70"> · {ticket.proyecto_nombre}</span>}
-                                        {ticket.responsable_nombre && ` · ${ticket.responsable_nombre}`}
-                                    </p>
-                                </div>
-                                <div className="text-right shrink-0">
-                                    <p className="text-[10px] text-muted-foreground">{fmt(ticket.creado_en)}</p>
-                                    {ticket.sla_vence_en && (
-                                        <p className="text-[10px] text-amber-400 flex items-center gap-1 mt-0.5 justify-end">
-                                            <Clock size={9} /> SLA {fmt(ticket.sla_vence_en)}
-                                        </p>
-                                    )}
-                                </div>
-                            </div>
-                        </button>
-                    ))}
-                    </div>
                     )}
                 </div>
             </div>
