@@ -635,12 +635,12 @@ export default function Boveda() {
                             {entrada.srv_ruta_backend && (
                                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-violet-500/20 bg-violet-500/5 text-[11px]">
                                     <Server size={11} className="text-violet-400 shrink-0" />
-                                    <span className="text-muted-foreground">Synapse:</span>
-                                    <span className="font-mono text-violet-300 truncate max-w-[160px]">
+                                    <span className="text-muted-foreground shrink-0">Synapse:</span>
+                                    <span className="font-mono text-violet-300">
                                         {entrada.srv_ruta_backend.replace(/^https?:\/\//, '')}
                                     </span>
                                     {entrada.srv_version && (
-                                        <span className="text-violet-400/60">v{entrada.srv_version}</span>
+                                        <span className="text-violet-400/60 shrink-0">v{entrada.srv_version}</span>
                                     )}
                                 </div>
                             )}
