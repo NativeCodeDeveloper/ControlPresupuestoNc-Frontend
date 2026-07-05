@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRealtime } from '../../hooks/useRealtime';
-import { getFinancialSummary, getFlujoCaja } from '../../services/financeService';
+import { getFinancialSummary, getFlujoCaja, getF29 } from '../../services/financeService';
 import {
     BookOpen,
     Scale,
@@ -10,7 +10,8 @@ import {
     TrendingDown,
     RefreshCw,
     Info,
-    ArrowRight
+    ArrowRight,
+    Receipt
 } from 'lucide-react';
 import {
     LineChart,
@@ -96,6 +97,7 @@ export default function Contabilidad() {
     const [year, setYear] = useState(now.getFullYear());
     const [summary, setSummary] = useState(null);
     const [flujoCaja, setFlujoCaja] = useState(null);
+    const [f29Data, setF29Data] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -103,12 +105,14 @@ export default function Contabilidad() {
         setLoading(true);
         setError(null);
         try {
-            const [sum, flujo] = await Promise.all([
+            const [sum, flujo, f29] = await Promise.all([
                 getFinancialSummary(month, year),
-                getFlujoCaja(year)
+                getFlujoCaja(year),
+                getF29(month, year).catch(() => null)
             ]);
             setSummary(sum);
             setFlujoCaja(flujo);
+            setF29Data(f29);
         } catch (e) {
             setError(e.message || 'Error al cargar datos contables');
         } finally {
@@ -329,6 +333,64 @@ export default function Contabilidad() {
                             </div>
                         </div>
                     )}
+
+                    {/* IVA / Obligación Tributaria F29 */}
+                    <div className="bg-card border border-border rounded-xl p-5 shadow-sm">
+                        <div className="flex items-center justify-between mb-4">
+                            <div>
+                                <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                                    <Receipt size={15} className="text-[hsl(var(--purple-premium))]" />
+                                    Obligación Tributaria — F29 SII
+                                </h2>
+                                <p className="text-[11px] text-muted-foreground mt-0.5">
+                                    IVA débito, crédito fiscal y PPM de {MESES_FULL[month]} {year}
+                                </p>
+                            </div>
+                            {f29Data?.vencimiento && (
+                                <span className="text-[11px] px-2.5 py-1 rounded-full bg-[hsl(var(--purple-premium))]/10 border border-[hsl(var(--purple-premium))]/25 text-[hsl(var(--purple-premium))] font-medium">
+                                    Vence {new Date(f29Data.vencimiento + 'T12:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'long' })}
+                                </span>
+                            )}
+                        </div>
+
+                        {!f29Data ? (
+                            <p className="text-sm text-muted-foreground text-center py-4">Sin datos tributarios para este período.</p>
+                        ) : (
+                            <>
+                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+                                    <div className="rounded-xl border border-border bg-secondary/30 p-4">
+                                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Débito Fiscal</p>
+                                        <p className="text-lg font-bold text-foreground">{fmt(f29Data.debito_fiscal)}</p>
+                                        <p className="text-[10px] text-muted-foreground mt-1">IVA ventas (19%)</p>
+                                    </div>
+                                    <div className="rounded-xl border border-border bg-secondary/30 p-4">
+                                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Crédito Fiscal</p>
+                                        <p className="text-lg font-bold text-[hsl(var(--emerald-premium))]">{fmt(f29Data.credito_fiscal)}</p>
+                                        <p className="text-[10px] text-muted-foreground mt-1">IVA compras con factura</p>
+                                    </div>
+                                    <div className="rounded-xl border border-border bg-secondary/30 p-4">
+                                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">PPM ({f29Data.tasa_ppm ?? 1}%)</p>
+                                        <p className="text-lg font-bold text-[hsl(var(--corporate-blue))]">{fmt(f29Data.ppm)}</p>
+                                        <p className="text-[10px] text-muted-foreground mt-1">Base: {fmt(f29Data.base_ppm)}</p>
+                                    </div>
+                                    <div className="rounded-xl border border-[hsl(var(--purple-premium))]/30 bg-[hsl(var(--purple-premium))]/8 p-4">
+                                        <p className="text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--purple-premium))]/70 mb-1">Total F29</p>
+                                        <p className="text-lg font-bold text-[hsl(var(--purple-premium))]">{fmt(f29Data.total_f29)}</p>
+                                        <p className="text-[10px] text-[hsl(var(--purple-premium))]/60 mt-1">IVA neto + PPM</p>
+                                    </div>
+                                </div>
+
+                                {/* Fila resumen IVA neto */}
+                                <div className="rounded-lg bg-secondary/20 border border-border/40 px-4 py-2.5 flex items-center justify-between text-[12px]">
+                                    <span className="text-muted-foreground">IVA Neto (Débito − Crédito)</span>
+                                    <span className={`font-semibold ${f29Data.iva_neto >= 0 ? 'text-foreground' : 'text-[hsl(var(--emerald-premium))]'}`}>
+                                        {fmt(f29Data.iva_neto)}
+                                        {f29Data.iva_neto < 0 && <span className="ml-1.5 text-[10px] font-normal text-muted-foreground">remanente a favor</span>}
+                                    </span>
+                                </div>
+                            </>
+                        )}
+                    </div>
 
                     {/* Nota conceptual */}
                     <div className="bg-[hsl(var(--corporate-blue))]/6 border border-[hsl(var(--corporate-blue))]/20 rounded-xl p-4 flex gap-3">
