@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import {
-    LifeBuoy, Plus, RefreshCw, X, ChevronRight,
+    Hammer, Plus, RefreshCw, X, ChevronRight,
     Clock, User, AlertTriangle, CheckCircle2, MessageSquare,
     Mail, Send, ChevronDown, Circle
 } from 'lucide-react';
@@ -182,7 +182,7 @@ function TicketModal({ estados, socios, onClose, onCreated }) {
             <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
                 <div className="flex items-center justify-between px-5 py-4 border-b border-border sticky top-0 bg-card">
                     <h3 className="font-semibold text-foreground flex items-center gap-2">
-                        <LifeBuoy size={15} className="text-sky-400" />
+                        <Hammer size={15} className="text-sky-400" />
                         Nuevo Ticket de Soporte
                     </h3>
                     <button onClick={onClose}><X size={16} className="text-muted-foreground hover:text-foreground" /></button>
@@ -583,7 +583,7 @@ export default function Nexus() {
                 <div className="px-5 py-4 border-b border-border flex flex-col sm:flex-row sm:items-center gap-3">
                     <div>
                         <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
-                            <LifeBuoy size={20} className="text-sky-400" />
+                            <Hammer size={20} className="text-sky-400" />
                             Nexus — Soporte
                         </h1>
                         <p className="text-xs text-muted-foreground mt-0.5">Gestión de tickets de soporte técnico</p>
@@ -624,7 +624,7 @@ export default function Nexus() {
                     )}
                     {!loading && ticketsFiltrados.length === 0 && (
                         <div className="text-center py-16 text-muted-foreground">
-                            <LifeBuoy size={32} className="mx-auto mb-3 opacity-30" />
+                            <Hammer size={32} className="mx-auto mb-3 opacity-30" />
                             <p className="text-sm">No hay tickets {busqueda || filtroEstado || filtroPrioridad ? 'con ese filtro' : 'registrados'}.</p>
                         </div>
                     )}

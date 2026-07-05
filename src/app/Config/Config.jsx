@@ -24,7 +24,7 @@ import {
     CheckCircle2,
     Circle,
     Receipt,
-    LifeBuoy
+    Hammer
 } from 'lucide-react';
 
 const Section = ({ title, icon, children }) => (
@@ -971,7 +971,7 @@ export default function Config() {
                 </Section>
 
                 {/* ── Nexus: Estados de Soporte ── */}
-                <Section title="Nexus — Estados de Tickets" icon={LifeBuoy}>
+                <Section title="Nexus — Estados de Tickets" icon={Hammer}>
                     <p className="text-sm text-muted-foreground mb-5">
                         Gestiona los estados del flujo de soporte. Los estados marcados como <strong>Cierre</strong> registran la fecha de cierre del ticket al moverlo.
                     </p>

@@ -7,7 +7,7 @@ import {
     House, LayoutDashboard, TrendingUp, TrendingDown, PieChart,
     Settings, Menu, Users, PiggyBank, Waves, BookOpen, LogOut,
     Brain, ChevronLeft, DollarSign, LayoutGrid, Gauge, Server, Terminal, CalendarDays,
-    LifeBuoy
+    Hammer
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { getTeams } from '../services/synapseService';
