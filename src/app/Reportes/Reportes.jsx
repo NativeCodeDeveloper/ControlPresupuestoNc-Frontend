@@ -16,7 +16,6 @@ import {
     PiggyBank
 } from 'lucide-react';
 import { Select } from '../../components/ui/FormElements';
-import { generateFinancialReport } from '../../lib/pdfGenerator';
 
 export default function Reportes() {
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
@@ -145,6 +144,7 @@ export default function Reportes() {
         setViewMode('pdf');
         setIsExporting(true);
         try {
+            const { generateFinancialReport } = await import('../../lib/pdfGenerator');
             await generateFinancialReport(stats, months[parseInt(selectedMonth, 10)], selectedYear);
         } catch (error) {
             console.error('Error generating PDF:', error);
