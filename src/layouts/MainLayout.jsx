@@ -61,12 +61,12 @@ const MODULES = [
     },
     {
         id: 'nexus',
-        Icon: LifeBuoy,
+        Icon: Hammer,
         label: 'Nexus',
         accent: 'text-sky-400',
         accentBg: 'bg-sky-500/12',
         items: [
-            { icon: LifeBuoy, label: 'Tickets de Soporte', path: '/nexus', tone: 'text-sky-400', activeBg: 'bg-sky-500/14' },
+            { icon: Hammer, label: 'Tickets de Soporte', path: '/nexus', tone: 'text-sky-400', activeBg: 'bg-sky-500/14' },
         ],
     },
 ];
