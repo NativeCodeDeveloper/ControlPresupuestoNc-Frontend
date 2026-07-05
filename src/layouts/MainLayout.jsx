@@ -7,7 +7,7 @@ import {
     House, LayoutDashboard, TrendingUp, TrendingDown, PieChart,
     Settings, Menu, Users, PiggyBank, Waves, BookOpen, LogOut,
     Brain, ChevronLeft, DollarSign, LayoutGrid, Gauge, Server, Terminal, CalendarDays,
-    Hammer, Rss
+    Hammer, Rss, Building2, Shield
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { getTeams } from '../services/synapseService';
@@ -33,6 +33,17 @@ const MODULES = [
             { icon: Waves,           label: 'Flujo de Caja',      path: '/flujo-caja',    tone: 'text-[hsl(var(--turquoise-premium))]', activeBg: 'bg-[hsl(var(--turquoise-premium))]/14'},
             { icon: BookOpen,        label: 'Contabilidad',       path: '/contabilidad',  tone: 'text-[hsl(var(--corporate-blue))]',    activeBg: 'bg-[hsl(var(--corporate-blue))]/12'   },
             { icon: PieChart,        label: 'Reportes',           path: '/reportes',      tone: 'text-[hsl(var(--corporate-blue))]',    activeBg: 'bg-[hsl(var(--corporate-blue))]/12'   },
+        ],
+    },
+    {
+        id: 'clientes',
+        Icon: Building2,
+        label: 'Clientes',
+        accent: 'text-amber-400',
+        accentBg: 'bg-amber-500/12',
+        items: [
+            { icon: Users,   label: 'CRM — Clientes', path: '/clientes',        tone: 'text-amber-400', activeBg: 'bg-amber-500/14' },
+            { icon: Shield,  label: 'Bóveda',         path: '/clientes/boveda', tone: 'text-amber-400', activeBg: 'bg-amber-500/14' },
         ],
     },
     {
@@ -74,6 +85,7 @@ const MODULES = [
 
 function getActiveModule(pathname) {
     if (pathname.startsWith('/synapse'))    return 'synapse';
+    if (pathname.startsWith('/clientes'))  return 'clientes';
     if (pathname.startsWith('/calendario')) return 'calendario';
     if (pathname.startsWith('/nexus'))      return 'nexus';
     return 'finance';

@@ -1,10 +1,12 @@
-const CACHE_NAME = 'ncf-shell-v4';
+const CACHE_NAME = 'ncf-shell-v5';
 
 const SHELL_ASSETS = [
     '/',
     '/dashboard',
     '/nexus',
     '/nexus/actualizaciones',
+    '/clientes',
+    '/clientes/boveda',
     '/icon-192.png',
     '/icon-512.png',
     '/logonuevoblanco.png',
