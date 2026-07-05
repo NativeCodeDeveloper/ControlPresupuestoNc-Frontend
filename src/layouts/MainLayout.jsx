@@ -365,7 +365,7 @@ export default function MainLayout({ children }) {
                 </header>
 
                 {/* Área de contenido — full-height sin padding para páginas tipo terminal */}
-                {(pathname?.startsWith('/synapse/monitor') || pathname?.startsWith('/calendario')) ? (
+                {(pathname?.startsWith('/synapse/monitor') || pathname?.startsWith('/calendario') || pathname?.startsWith('/nexus')) ? (
                     <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
                         {children}
                     </div>

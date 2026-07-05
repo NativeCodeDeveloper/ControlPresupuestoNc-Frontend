@@ -203,7 +203,7 @@ function TicketModal({ estados, socios, onClose, onCreated }) {
                         </select>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                             <label className="text-[11px] text-muted-foreground mb-1 block">Cliente *</label>
                             <input required value={form.nombre_cliente} onChange={e => set('nombre_cliente', e.target.value)}
@@ -501,25 +501,26 @@ function TicketDetalle({ ticket, estados, socios, onClose, onUpdated }) {
                             )}
                             {actividad.map(a => {
                                 const esResolucion = a.tipo === 'resolucion';
-                                // Contenido con detalle real (nuevo formato) o fallback con campos del ticket
-                                const contenidoDetallado = (a.contenido && a.contenido !== 'Resolución registrada')
+                                // Detalle desde contenido (nuevo formato) → fallback a campos actuales del ticket
+                                const desdeContenido = a.contenido && a.contenido !== 'Resolución registrada';
+                                const contenidoPopup = desdeContenido
                                     ? a.contenido
                                     : [
                                         ticket.resolucion_causa         && `Causa: ${ticket.resolucion_causa}`,
                                         ticket.resolucion_accion        && `Acción: ${ticket.resolucion_accion}`,
                                         ticket.resolucion_resultado     && `Resultado: ${ticket.resolucion_resultado}`,
                                         ticket.resolucion_observaciones && `Obs: ${ticket.resolucion_observaciones}`,
-                                      ].filter(Boolean).join('\n');
-                                const tieneDetalle = esResolucion && contenidoDetallado;
+                                      ].filter(Boolean).join('\n') || '__sin_datos__';
                                 return (
                                     <div key={a.id_actividad} className="flex gap-2 text-[11px]">
                                         {TIPO_ACTIVIDAD_ICON[a.tipo] ?? <Circle size={10} className="mt-0.5 shrink-0 text-slate-500" />}
                                         <div className="min-w-0 flex-1">
                                             <div className="flex items-baseline gap-2 flex-wrap">
                                                 <p className="text-foreground">{esResolucion ? 'Resolución registrada' : a.contenido}</p>
-                                                {tieneDetalle && (
+                                                {/* Resoluciones siempre muestran el botón para ver qué se registró */}
+                                                {esResolucion && (
                                                     <button
-                                                        onClick={() => setResPopup(contenidoDetallado)}
+                                                        onClick={() => setResPopup(contenidoPopup)}
                                                         className="shrink-0 text-[10px] text-emerald-400 hover:text-emerald-300 underline underline-offset-2 transition-colors"
                                                     >
                                                         Ver detalle
@@ -574,20 +575,28 @@ function TicketDetalle({ ticket, estados, socios, onClose, onUpdated }) {
                             </button>
                         </div>
                         <div className="p-5">
-                            <div className="bg-emerald-500/8 border border-emerald-500/20 rounded-xl p-4 space-y-3">
-                                {resPopup.split('\n').filter(Boolean).map((linea, i) => {
-                                    const [etiqueta, ...resto] = linea.split(':');
-                                    const valor = resto.join(':').trim();
-                                    return valor ? (
-                                        <div key={i}>
-                                            <p className="text-[10px] text-emerald-400 font-semibold uppercase tracking-wide mb-0.5">{etiqueta.trim()}</p>
-                                            <p className="text-[12px] text-foreground whitespace-pre-wrap">{valor}</p>
-                                        </div>
-                                    ) : (
-                                        <p key={i} className="text-[12px] text-foreground">{linea}</p>
-                                    );
-                                })}
-                            </div>
+                            {resPopup === '__sin_datos__' ? (
+                                <div className="bg-amber-500/8 border border-amber-500/25 rounded-xl p-4 text-center">
+                                    <p className="text-[12px] text-amber-400 font-medium mb-1">Sin datos disponibles</p>
+                                    <p className="text-[11px] text-muted-foreground">Esta resolución fue registrada antes de la actualización del sistema. Vuelve a guardar la resolución para registrar el detalle.</p>
+                                </div>
+                            ) : (
+                                <div className="bg-emerald-500/8 border border-emerald-500/20 rounded-xl p-4 space-y-3">
+                                    {resPopup.split('\n').filter(Boolean).map((linea, i) => {
+                                        const colonIdx = linea.indexOf(':');
+                                        const etiqueta = colonIdx > -1 ? linea.slice(0, colonIdx).trim() : null;
+                                        const valor = colonIdx > -1 ? linea.slice(colonIdx + 1).trim() : linea;
+                                        return etiqueta ? (
+                                            <div key={i}>
+                                                <p className="text-[10px] text-emerald-400 font-semibold uppercase tracking-wide mb-0.5">{etiqueta}</p>
+                                                <p className="text-[12px] text-foreground whitespace-pre-wrap">{valor}</p>
+                                            </div>
+                                        ) : (
+                                            <p key={i} className="text-[12px] text-foreground">{linea}</p>
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -881,7 +890,7 @@ export default function Nexus() {
     const selectCls = "h-8 px-2 text-[12px] bg-card border border-border rounded-lg text-foreground focus:outline-none focus:ring-1 focus:ring-sky-500";
 
     return (
-        <div className="flex h-[calc(100vh-64px)] overflow-hidden">
+        <div className="flex h-full overflow-hidden">
             {/* Panel izquierdo */}
             <div className={`flex flex-col ${selected ? 'hidden md:flex md:flex-1' : 'flex-1'} min-w-0`}>
 
@@ -907,18 +916,18 @@ export default function Nexus() {
                     <input
                         value={busqueda}
                         onChange={e => setBusqueda(e.target.value)}
-                        placeholder="Buscar ticket, cliente..."
-                        className="h-8 px-3 text-[12px] bg-card border border-border rounded-lg text-foreground w-40 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                        placeholder="Buscar..."
+                        className="h-8 px-3 text-[12px] bg-card border border-border rounded-lg text-foreground min-w-0 w-32 sm:w-40 focus:outline-none focus:ring-1 focus:ring-sky-500"
                     />
-                    <select value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)} className={selectCls}>
-                        <option value="">Todos los estados</option>
+                    <select value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)} className={`${selectCls} min-w-0 max-w-[130px] sm:max-w-none`}>
+                        <option value="">Estado</option>
                         {estados.map(e => <option key={e.id_estado} value={e.id_estado}>{e.nombre}</option>)}
                     </select>
-                    <select value={filtroPrioridad} onChange={e => setFiltroPrioridad(e.target.value)} className={selectCls}>
-                        <option value="">Toda prioridad</option>
+                    <select value={filtroPrioridad} onChange={e => setFiltroPrioridad(e.target.value)} className={`${selectCls} min-w-0 max-w-[110px] sm:max-w-none`}>
+                        <option value="">Prioridad</option>
                         {Object.entries(PRIORIDAD).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
                     </select>
-                    <div className="flex items-center rounded-lg border border-border overflow-hidden ml-auto">
+                    <div className="flex items-center rounded-lg border border-border overflow-hidden ml-auto shrink-0">
                         <button onClick={() => setView('cards')} className={`h-8 w-8 flex items-center justify-center transition-colors ${view === 'cards' ? 'bg-sky-500/15 text-sky-400' : 'bg-card text-muted-foreground hover:text-foreground'}`}>
                             <LayoutGrid size={13} />
                         </button>
@@ -926,7 +935,7 @@ export default function Nexus() {
                             <List size={13} />
                         </button>
                     </div>
-                    <button onClick={load} className="h-8 w-8 flex items-center justify-center rounded-lg border border-border bg-card hover:bg-foreground/5">
+                    <button onClick={load} className="h-8 w-8 shrink-0 flex items-center justify-center rounded-lg border border-border bg-card hover:bg-foreground/5">
                         <RefreshCw size={13} className={loading ? 'animate-spin text-muted-foreground' : 'text-foreground'} />
                     </button>
                 </div>
@@ -940,7 +949,7 @@ export default function Nexus() {
                             ))}
                         </div>
                     )}
-                    {!loading && ticketsFiltrados.length === 0 && (
+                    {!loading && view === 'list' && ticketsFiltrados.length === 0 && (
                         <div className="text-center py-16 text-muted-foreground">
                             <Hammer size={32} className="mx-auto mb-3 opacity-30" />
                             <p className="text-sm">No hay tickets {busqueda || filtroEstado || filtroPrioridad ? 'con ese filtro' : 'registrados'}.</p>
@@ -972,7 +981,7 @@ export default function Nexus() {
 
             {/* Panel detalle */}
             {selected && (
-                <div className={`${selected ? 'flex-1 md:flex-none md:w-[420px]' : 'hidden'} border-l border-border overflow-y-auto`}>
+                <div className="flex-1 md:flex-none md:w-[420px] min-w-0 border-l border-border overflow-y-auto">
                     <TicketDetalle
                         key={selected.id_ticket}
                         ticket={selected}
