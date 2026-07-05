@@ -283,6 +283,43 @@ function TicketModal({ estados, socios, onClose, onCreated }) {
     );
 }
 
+// ─── Acordeón resolución guardada ────────────────────────────────────────────
+
+function ResolucionAcordeon({ ticket }) {
+    const [open, setOpen] = useState(false);
+    const campos = [
+        { label: 'Causa',         valor: ticket.resolucion_causa },
+        { label: 'Acción',        valor: ticket.resolucion_accion },
+        { label: 'Resultado',     valor: ticket.resolucion_resultado },
+        { label: 'Observaciones', valor: ticket.resolucion_observaciones },
+    ].filter(c => c.valor);
+
+    return (
+        <div className="border border-emerald-500/25 rounded-xl overflow-hidden">
+            <button
+                onClick={() => setOpen(o => !o)}
+                className="w-full flex items-center justify-between px-3 py-2 bg-emerald-500/8 hover:bg-emerald-500/12 transition-colors"
+            >
+                <div className="flex items-center gap-1.5">
+                    <CheckCircle2 size={11} className="text-emerald-400 shrink-0" />
+                    <span className="text-[11px] font-semibold text-emerald-400">Detalle registrado</span>
+                </div>
+                <ChevronDown size={12} className={`text-emerald-400/70 transition-transform ${open ? 'rotate-180' : ''}`} />
+            </button>
+            {open && (
+                <div className="px-3 py-2.5 space-y-2 bg-emerald-500/5">
+                    {campos.map(c => (
+                        <div key={c.label}>
+                            <p className="text-[10px] text-emerald-400 font-semibold mb-0.5">{c.label}</p>
+                            <p className="text-[12px] text-foreground whitespace-pre-wrap">{c.valor}</p>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
 // ─── Panel de detalle ─────────────────────────────────────────────────────────
 
 function TicketDetalle({ ticket, estados, socios, onClose, onUpdated }) {
@@ -361,6 +398,7 @@ function TicketDetalle({ ticket, estados, socios, onClose, onUpdated }) {
             });
             onUpdated(updated);
             await loadActividad();
+            setResolucion({ causa: '', accion: '', resultado: '', observaciones: '' });
             setResSaved(true);
             setTimeout(() => setResSaved(false), 3000);
         } finally { setSavingRes(false); }
@@ -422,37 +460,12 @@ function TicketDetalle({ ticket, estados, socios, onClose, onUpdated }) {
                     <div className="space-y-2">
                         <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Resolución</p>
 
-                        {/* Resolución guardada (solo lectura) */}
-                        {ticket.resolucion_causa || ticket.resolucion_accion || ticket.resolucion_resultado ? (
-                            <div className="bg-emerald-500/8 border border-emerald-500/25 rounded-xl p-3 space-y-2">
-                                {ticket.resolucion_causa && (
-                                    <div>
-                                        <p className="text-[10px] text-emerald-400 font-semibold mb-0.5">Causa</p>
-                                        <p className="text-[12px] text-foreground whitespace-pre-wrap">{ticket.resolucion_causa}</p>
-                                    </div>
-                                )}
-                                {ticket.resolucion_accion && (
-                                    <div>
-                                        <p className="text-[10px] text-emerald-400 font-semibold mb-0.5">Acción realizada</p>
-                                        <p className="text-[12px] text-foreground whitespace-pre-wrap">{ticket.resolucion_accion}</p>
-                                    </div>
-                                )}
-                                {ticket.resolucion_resultado && (
-                                    <div>
-                                        <p className="text-[10px] text-emerald-400 font-semibold mb-0.5">Resultado</p>
-                                        <p className="text-[12px] text-foreground whitespace-pre-wrap">{ticket.resolucion_resultado}</p>
-                                    </div>
-                                )}
-                                {ticket.resolucion_observaciones && (
-                                    <div>
-                                        <p className="text-[10px] text-emerald-400 font-semibold mb-0.5">Observaciones</p>
-                                        <p className="text-[12px] text-foreground whitespace-pre-wrap">{ticket.resolucion_observaciones}</p>
-                                    </div>
-                                )}
-                            </div>
-                        ) : null}
+                        {/* Resolución guardada — acordeón colapsable */}
+                        {(ticket.resolucion_causa || ticket.resolucion_accion || ticket.resolucion_resultado) && (
+                            <ResolucionAcordeon ticket={ticket} />
+                        )}
 
-                        {/* Formulario edición */}
+                        {/* Formulario */}
                         {[
                             { key: 'causa',         label: 'Causa del problema' },
                             { key: 'accion',        label: 'Acción realizada' },
