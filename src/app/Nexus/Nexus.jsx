@@ -290,8 +290,9 @@ function TicketDetalle({ ticket, estados, socios, onClose, onUpdated }) {
     const [comentario, setComentario] = useState('');
     const [emailModal, setEmailModal] = useState(null); // 'apertura'|'actualizacion'|'cierre'
     const [saving, setSaving]         = useState(false);
-    const [savingRes, setSavingRes]   = useState(false); // estado separado para resolución
-    const [resSaved, setResSaved]     = useState(false); // feedback "Guardado ✓"
+    const [savingRes, setSavingRes]   = useState(false);
+    const [resSaved, setResSaved]     = useState(false);
+    const [resPopup, setResPopup]     = useState(null); // actividad.contenido a mostrar en popup
     const [resolucion, setResolucion] = useState({
         causa: ticket.resolucion_causa ?? '',
         accion: ticket.resolucion_accion ?? '',
@@ -499,34 +500,23 @@ function TicketDetalle({ ticket, estados, socios, onClose, onUpdated }) {
                                 <p className="text-[11px] text-muted-foreground text-center py-2">Sin actividad registrada.</p>
                             )}
                             {actividad.map(a => {
-                                // Para entradas de resolución mostramos el detalle del ticket
                                 const esResolucion = a.tipo === 'resolucion';
-                                const detalleViejo = esResolucion && (
-                                    a.contenido === 'Resolución registrada' || !a.contenido?.includes(':')
-                                );
-                                const camposResolucion = [
-                                    { label: 'Causa',      valor: ticket.resolucion_causa },
-                                    { label: 'Acción',     valor: ticket.resolucion_accion },
-                                    { label: 'Resultado',  valor: ticket.resolucion_resultado },
-                                    { label: 'Obs.',       valor: ticket.resolucion_observaciones },
-                                ].filter(c => c.valor);
-
+                                const tieneDetalle = esResolucion && a.contenido && a.contenido !== 'Resolución registrada';
                                 return (
                                     <div key={a.id_actividad} className="flex gap-2 text-[11px]">
                                         {TIPO_ACTIVIDAD_ICON[a.tipo] ?? <Circle size={10} className="mt-0.5 shrink-0 text-slate-500" />}
                                         <div className="min-w-0 flex-1">
-                                            <p className="text-foreground whitespace-pre-wrap">{a.contenido}</p>
-                                            {/* Si es resolución, expande el detalle guardado en el ticket */}
-                                            {esResolucion && camposResolucion.length > 0 && (
-                                                <div className="mt-1.5 bg-emerald-500/8 border border-emerald-500/20 rounded-lg px-2.5 py-2 space-y-1">
-                                                    {camposResolucion.map(c => (
-                                                        <div key={c.label}>
-                                                            <span className="text-emerald-400 font-semibold">{c.label}: </span>
-                                                            <span className="text-foreground/80 whitespace-pre-wrap">{c.valor}</span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
+                                            <div className="flex items-baseline gap-2">
+                                                <p className="text-foreground">{esResolucion ? 'Resolución registrada' : a.contenido}</p>
+                                                {tieneDetalle && (
+                                                    <button
+                                                        onClick={() => setResPopup(a.contenido)}
+                                                        className="shrink-0 text-[10px] text-emerald-400 hover:text-emerald-300 underline underline-offset-2 transition-colors"
+                                                    >
+                                                        Ver detalle
+                                                    </button>
+                                                )}
+                                            </div>
                                             <p className="text-muted-foreground mt-0.5">{fmt(a.creado_en)}{a.socio_nombre ? ` · ${a.socio_nombre}` : ''}</p>
                                         </div>
                                     </div>
@@ -560,6 +550,39 @@ function TicketDetalle({ ticket, estados, socios, onClose, onUpdated }) {
                     onClose={() => { setEmailModal(null); loadActividad(); }}
                 />
             )}
+
+            {/* Popup detalle resolución */}
+            {resPopup && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setResPopup(null)}>
+                    <div className="bg-card border border-emerald-500/30 rounded-2xl w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-between px-5 py-3 border-b border-border">
+                            <div className="flex items-center gap-2">
+                                <CheckCircle2 size={14} className="text-emerald-400" />
+                                <span className="text-sm font-semibold text-foreground">Detalle de resolución</span>
+                            </div>
+                            <button onClick={() => setResPopup(null)} className="text-muted-foreground hover:text-foreground transition-colors">
+                                <X size={14} />
+                            </button>
+                        </div>
+                        <div className="p-5">
+                            <div className="bg-emerald-500/8 border border-emerald-500/20 rounded-xl p-4 space-y-3">
+                                {resPopup.split('\n').filter(Boolean).map((linea, i) => {
+                                    const [etiqueta, ...resto] = linea.split(':');
+                                    const valor = resto.join(':').trim();
+                                    return valor ? (
+                                        <div key={i}>
+                                            <p className="text-[10px] text-emerald-400 font-semibold uppercase tracking-wide mb-0.5">{etiqueta.trim()}</p>
+                                            <p className="text-[12px] text-foreground whitespace-pre-wrap">{valor}</p>
+                                        </div>
+                                    ) : (
+                                        <p key={i} className="text-[12px] text-foreground">{linea}</p>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     );
 }
@@ -570,8 +593,13 @@ function TicketKanbanCard({ ticket, onSelect, isSelected }) {
     const p = PRIORIDAD[ticket.prioridad] ?? PRIORIDAD.media;
     return (
         <div
+            draggable
+            onDragStart={e => {
+                e.dataTransfer.setData('id_ticket', String(ticket.id_ticket));
+                e.dataTransfer.effectAllowed = 'move';
+            }}
             onClick={() => onSelect(ticket)}
-            className={`p-3 rounded-xl border cursor-pointer transition-all group ${
+            className={`p-3 rounded-xl border cursor-grab active:cursor-grabbing transition-all group ${
                 isSelected
                     ? 'border-sky-500/60 bg-sky-500/8 shadow-md'
                     : 'bg-card border-border/60 hover:border-sky-500/40 hover:shadow-md hover:bg-secondary/20'
@@ -612,13 +640,26 @@ function TicketKanbanCard({ ticket, onSelect, isSelected }) {
     );
 }
 
-function TicketKanbanView({ tickets, estados, onSelect, selected }) {
+function TicketKanbanView({ tickets, estados, onSelect, selected, onMoveTicket }) {
+    const [dragOver, setDragOver] = useState(null);
     return (
         <div className="flex gap-4 p-4 h-full overflow-x-auto items-start">
             {estados.map(estado => {
                 const cols = tickets.filter(t => t.id_estado === estado.id_estado);
+                const isOver = dragOver === estado.id_estado;
                 return (
-                    <div key={estado.id_estado} className="flex-none w-[270px] flex flex-col">
+                    <div
+                        key={estado.id_estado}
+                        onDragOver={e => { e.preventDefault(); setDragOver(estado.id_estado); }}
+                        onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget)) setDragOver(null); }}
+                        onDrop={e => {
+                            e.preventDefault();
+                            const id = parseInt(e.dataTransfer.getData('id_ticket'), 10);
+                            if (id) onMoveTicket(id, estado.id_estado);
+                            setDragOver(null);
+                        }}
+                        className={`flex-none w-[270px] flex flex-col rounded-xl p-2 -m-2 transition-colors ${isOver ? 'bg-sky-500/6 ring-1 ring-inset ring-sky-500/30' : ''}`}
+                    >
                         {/* Cabecera columna */}
                         <div className="flex items-center gap-2 mb-3 px-1">
                             <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: estado.color_hex }} />
@@ -628,7 +669,7 @@ function TicketKanbanView({ tickets, estados, onSelect, selected }) {
                             </span>
                         </div>
                         {/* Cards */}
-                        <div className="space-y-2.5">
+                        <div className="space-y-2.5 min-h-[64px]">
                             {cols.map(ticket => (
                                 <TicketKanbanCard
                                     key={ticket.id_ticket}
@@ -638,7 +679,7 @@ function TicketKanbanView({ tickets, estados, onSelect, selected }) {
                                 />
                             ))}
                             {cols.length === 0 && (
-                                <div className="border-2 border-dashed border-border/25 rounded-xl h-16 flex items-center justify-center">
+                                <div className={`border-2 border-dashed rounded-xl h-16 flex items-center justify-center transition-colors ${isOver ? 'border-sky-500/40' : 'border-border/25'}`}>
                                     <span className="text-[11px] text-muted-foreground/50">Sin tickets</span>
                                 </div>
                             )}
@@ -805,61 +846,69 @@ export default function Nexus() {
         setSelected(ticket);
     };
 
+    const handleMoveTicket = async (id_ticket, id_estado) => {
+        // Optimistic: mover la card de columna inmediatamente
+        setTickets(prev => prev.map(t => t.id_ticket === id_ticket ? { ...t, id_estado } : t));
+        if (selected?.id_ticket === id_ticket) setSelected(s => ({ ...s, id_estado }));
+        try {
+            await soporteService.updateTicket(id_ticket, { id_estado });
+            load(true); // refresca en background para obtener el estado_nombre actualizado
+        } catch {
+            load(true); // revierte si falla
+        }
+    };
+
     const selectCls = "h-8 px-2 text-[12px] bg-card border border-border rounded-lg text-foreground focus:outline-none focus:ring-1 focus:ring-sky-500";
 
     return (
         <div className="flex h-[calc(100vh-64px)] overflow-hidden">
-            {/* Lista */}
-            <div className={`flex flex-col ${selected ? 'hidden md:flex md:flex-1' : 'flex-1'}`}>
-                {/* Header */}
-                <div className="px-5 py-4 border-b border-border flex flex-col sm:flex-row sm:items-center gap-3">
-                    <div>
-                        <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
-                            <Hammer size={20} className="text-sky-400" />
-                            Nexus — Soporte
-                        </h1>
-                        <p className="text-xs text-muted-foreground mt-0.5">Gestión de tickets de soporte técnico</p>
-                    </div>
-                    <div className="sm:ml-auto flex items-center gap-2 flex-wrap">
-                        <input
-                            value={busqueda}
-                            onChange={e => setBusqueda(e.target.value)}
-                            placeholder="Buscar ticket, cliente..."
-                            className="h-8 px-3 text-[12px] bg-card border border-border rounded-lg text-foreground w-44 focus:outline-none focus:ring-1 focus:ring-sky-500"
-                        />
-                        <select value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)} className={selectCls}>
-                            <option value="">Todos los estados</option>
-                            {estados.map(e => <option key={e.id_estado} value={e.id_estado}>{e.nombre}</option>)}
-                        </select>
-                        <select value={filtroPrioridad} onChange={e => setFiltroPrioridad(e.target.value)} className={selectCls}>
-                            <option value="">Toda prioridad</option>
-                            {Object.entries(PRIORIDAD).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-                        </select>
-                        {/* Toggle vista */}
-                        <div className="flex items-center rounded-lg border border-border overflow-hidden">
-                            <button
-                                onClick={() => setView('cards')}
-                                className={`h-8 w-8 flex items-center justify-center transition-colors ${view === 'cards' ? 'bg-sky-500/15 text-sky-400' : 'bg-card text-muted-foreground hover:text-foreground'}`}
-                            >
-                                <LayoutGrid size={13} />
-                            </button>
-                            <button
-                                onClick={() => setView('list')}
-                                className={`h-8 w-8 flex items-center justify-center transition-colors ${view === 'list' ? 'bg-sky-500/15 text-sky-400' : 'bg-card text-muted-foreground hover:text-foreground'}`}
-                            >
-                                <List size={13} />
-                            </button>
+            {/* Panel izquierdo */}
+            <div className={`flex flex-col ${selected ? 'hidden md:flex md:flex-1' : 'flex-1'} min-w-0`}>
+
+                {/* Fila 1: Título + botón nuevo */}
+                <div className="px-5 py-3 border-b border-border flex items-center gap-3 shrink-0">
+                    <div className="flex items-center gap-2 min-w-0">
+                        <Hammer size={18} className="text-sky-400 shrink-0" />
+                        <div className="min-w-0">
+                            <h1 className="text-base font-bold text-foreground truncate">Nexus — Soporte</h1>
+                            <p className="text-[11px] text-muted-foreground">Gestión de tickets de soporte técnico</p>
                         </div>
-                        <button onClick={load} className="h-8 w-8 flex items-center justify-center rounded-lg border border-border bg-card hover:bg-foreground/5">
-                            <RefreshCw size={13} className={loading ? 'animate-spin text-muted-foreground' : 'text-foreground'} />
+                    </div>
+                    <button
+                        onClick={() => setShowModal(true)}
+                        className="ml-auto shrink-0 h-8 px-3 text-[12px] rounded-lg bg-sky-500 hover:bg-sky-400 text-white font-medium flex items-center gap-1.5 transition-colors">
+                        <Plus size={13} />
+                        Nuevo ticket
+                    </button>
+                </div>
+
+                {/* Fila 2: Filtros + toggles + refresh */}
+                <div className="px-4 py-2 border-b border-border flex items-center gap-2 flex-wrap shrink-0">
+                    <input
+                        value={busqueda}
+                        onChange={e => setBusqueda(e.target.value)}
+                        placeholder="Buscar ticket, cliente..."
+                        className="h-8 px-3 text-[12px] bg-card border border-border rounded-lg text-foreground w-40 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                    />
+                    <select value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)} className={selectCls}>
+                        <option value="">Todos los estados</option>
+                        {estados.map(e => <option key={e.id_estado} value={e.id_estado}>{e.nombre}</option>)}
+                    </select>
+                    <select value={filtroPrioridad} onChange={e => setFiltroPrioridad(e.target.value)} className={selectCls}>
+                        <option value="">Toda prioridad</option>
+                        {Object.entries(PRIORIDAD).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                    </select>
+                    <div className="flex items-center rounded-lg border border-border overflow-hidden ml-auto">
+                        <button onClick={() => setView('cards')} className={`h-8 w-8 flex items-center justify-center transition-colors ${view === 'cards' ? 'bg-sky-500/15 text-sky-400' : 'bg-card text-muted-foreground hover:text-foreground'}`}>
+                            <LayoutGrid size={13} />
                         </button>
-                        <button
-                            onClick={() => setShowModal(true)}
-                            className="h-8 px-3 text-[12px] rounded-lg bg-sky-500 hover:bg-sky-400 text-white font-medium flex items-center gap-1.5 transition-colors">
-                            <Plus size={13} />
-                            Nuevo ticket
+                        <button onClick={() => setView('list')} className={`h-8 w-8 flex items-center justify-center transition-colors ${view === 'list' ? 'bg-sky-500/15 text-sky-400' : 'bg-card text-muted-foreground hover:text-foreground'}`}>
+                            <List size={13} />
                         </button>
                     </div>
+                    <button onClick={load} className="h-8 w-8 flex items-center justify-center rounded-lg border border-border bg-card hover:bg-foreground/5">
+                        <RefreshCw size={13} className={loading ? 'animate-spin text-muted-foreground' : 'text-foreground'} />
+                    </button>
                 </div>
 
                 {/* Tickets */}
@@ -885,6 +934,7 @@ export default function Nexus() {
                             estados={estados}
                             selected={selected}
                             onSelect={setSelected}
+                            onMoveTicket={handleMoveTicket}
                         />
                     )}
 
