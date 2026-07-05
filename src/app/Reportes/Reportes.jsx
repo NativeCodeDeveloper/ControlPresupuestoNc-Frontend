@@ -13,7 +13,9 @@ import {
     Users,
     FileDown,
     Loader2,
-    PiggyBank
+    PiggyBank,
+    AlertTriangle,
+    Receipt
 } from 'lucide-react';
 import { Select } from '../../components/ui/FormElements';
 
@@ -23,6 +25,7 @@ export default function Reportes() {
     const [isExporting, setIsExporting] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [viewMode, setViewMode] = useState('screen');
+    const [f29, setF29] = useState(null);
 
     const [stats, setStats] = useState({
         income: 0,
@@ -56,7 +59,11 @@ export default function Reportes() {
         try {
             const month = parseInt(selectedMonth, 10);
             const year = parseInt(selectedYear, 10);
-            const summary = await financeService.getFinancialSummary(month, year);
+            const [summary, f29Data] = await Promise.all([
+                financeService.getFinancialSummary(month, year),
+                financeService.getF29(month, year),
+            ]);
+            setF29(f29Data);
             const fixedCosts = Number(summary?.fixedCosts || 0);
             const fixedCostsCommitted = Number(summary?.fixedCostsCommitted ?? fixedCosts);
             const variableCosts = Number(summary?.variableCosts || 0);
@@ -145,7 +152,7 @@ export default function Reportes() {
         setIsExporting(true);
         try {
             const { generateFinancialReport } = await import('../../lib/pdfGenerator');
-            await generateFinancialReport(stats, months[parseInt(selectedMonth, 10)], selectedYear);
+            await generateFinancialReport(stats, months[parseInt(selectedMonth, 10)], selectedYear, f29);
         } catch (error) {
             console.error('Error generating PDF:', error);
             alert('Error al generar el PDF. Por favor intente nuevamente.');
@@ -165,6 +172,17 @@ export default function Reportes() {
         currency: 'CLP',
         maximumFractionDigits: 0
     }).format(Number(val || 0));
+
+    // Alerta F29: vencimiento dentro de los próximos 10 días
+    const f29Alert = (() => {
+        if (!f29?.vencimiento || !f29?.total_f29) return null;
+        const venc = new Date(f29.vencimiento + 'T00:00:00');
+        const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0);
+        const dias = Math.ceil((venc - hoy) / (1000 * 60 * 60 * 24));
+        if (dias < 0 || dias > 10) return null;
+        return { dias, vencimiento: f29.vencimiento };
+    })();
 
     const totalAutomaticDeductions = stats.emergencyFundDeduction + stats.reinvestmentDeduction;
     const companyAvailableTotal = stats.fundReinvestAvailable + stats.fundEmergencyAvailable;
@@ -256,6 +274,12 @@ export default function Reportes() {
                             ))}
                         </Select>
                     </div>
+                    {f29Alert && (
+                        <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-amber-500/40 bg-amber-500/8 text-amber-400 text-[12px] font-medium">
+                            <AlertTriangle size={14} className="shrink-0" />
+                            F29 vence en {f29Alert.dias === 0 ? 'hoy' : `${f29Alert.dias} día${f29Alert.dias !== 1 ? 's' : ''}`} · {f29Alert.vencimiento}
+                        </div>
+                    )}
                     <div className="flex items-center gap-2">
                         <button
                             type="button"
@@ -377,6 +401,87 @@ export default function Reportes() {
                             </table>
                         </div>
                     </div>
+
+                    {/* ── Sección IVA / F29 ── */}
+                    {f29 && (
+                        <div className="bg-card glass-card border border-border/50 rounded-2xl p-6 shadow-sm">
+                            <div className="flex items-center justify-between mb-1 flex-wrap gap-2">
+                                <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                                    <Receipt size={16} className="text-amber-400" />
+                                    Obligación Tributaria — F29
+                                </h3>
+                                <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                                    <span>Vencimiento declaración:</span>
+                                    <span className={`font-semibold ${f29Alert ? 'text-amber-400' : 'text-foreground'}`}>
+                                        {f29.vencimiento
+                                            ? new Date(f29.vencimiento + 'T00:00:00').toLocaleDateString('es-CL', { day: '2-digit', month: 'long', year: 'numeric' })
+                                            : '—'}
+                                    </span>
+                                    {f29Alert && <AlertTriangle size={12} className="text-amber-400" />}
+                                </div>
+                            </div>
+                            <p className="text-xs text-muted-foreground mb-5">
+                                IVA {((f29.iva_tasa || 0.19) * 100).toFixed(0)}% · PPM {f29.ppm?.tasa ?? 1}% · Período {months[parseInt(selectedMonth, 10)]} {selectedYear}
+                            </p>
+
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="bg-amber-500/80 text-white">
+                                            <th className="px-4 py-3 text-left font-semibold rounded-tl-lg">Concepto</th>
+                                            <th className="px-4 py-3 text-right font-semibold">Base</th>
+                                            <th className="px-4 py-3 text-right font-semibold rounded-tr-lg">IVA / Monto</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr className="border-b border-border/50">
+                                            <td className="px-4 py-3 font-medium">Débito Fiscal (ingresos afectos a IVA)</td>
+                                            <td className="px-4 py-3 text-right text-muted-foreground">{formatCurrency(f29.debito_fiscal?.base)}</td>
+                                            <td className="px-4 py-3 text-right font-bold text-emerald-400">{formatCurrency(f29.debito_fiscal?.iva)}</td>
+                                        </tr>
+                                        <tr className="border-b border-border/50">
+                                            <td className="px-4 py-3 font-medium text-muted-foreground pl-7">↳ Crédito Fiscal — Costos Fijos</td>
+                                            <td className="px-4 py-3 text-right text-muted-foreground">{formatCurrency(f29.credito_fiscal?.fijos?.base)}</td>
+                                            <td className="px-4 py-3 text-right text-red-400">{formatCurrency(f29.credito_fiscal?.fijos?.iva)}</td>
+                                        </tr>
+                                        <tr className="border-b border-border/50">
+                                            <td className="px-4 py-3 font-medium text-muted-foreground pl-7">↳ Crédito Fiscal — Costos Variables (con factura)</td>
+                                            <td className="px-4 py-3 text-right text-muted-foreground">{formatCurrency(f29.credito_fiscal?.variables?.base)}</td>
+                                            <td className="px-4 py-3 text-right text-red-400">{formatCurrency(f29.credito_fiscal?.variables?.iva)}</td>
+                                        </tr>
+                                        <tr className="border-b border-border/50 bg-secondary/20">
+                                            <td className="px-4 py-3 font-semibold">Total Crédito Fiscal</td>
+                                            <td className="px-4 py-3 text-right">—</td>
+                                            <td className="px-4 py-3 text-right font-bold text-red-400">{formatCurrency(f29.credito_fiscal?.total)}</td>
+                                        </tr>
+                                        {f29.remanente > 0 ? (
+                                            <tr className="border-b border-border/50">
+                                                <td className="px-4 py-3 font-medium text-sky-400">Remanente Crédito Fiscal (a favor)</td>
+                                                <td className="px-4 py-3 text-right">—</td>
+                                                <td className="px-4 py-3 text-right font-bold text-sky-400">{formatCurrency(f29.remanente)}</td>
+                                            </tr>
+                                        ) : (
+                                            <tr className="border-b border-border/50">
+                                                <td className="px-4 py-3 font-semibold">IVA Neto a Pagar</td>
+                                                <td className="px-4 py-3 text-right">—</td>
+                                                <td className="px-4 py-3 text-right font-bold text-amber-400">{formatCurrency(f29.iva_neto)}</td>
+                                            </tr>
+                                        )}
+                                        <tr className="border-b border-border/50">
+                                            <td className="px-4 py-3 font-medium">PPM ({f29.ppm?.tasa ?? 1}% sobre ingresos afectos)</td>
+                                            <td className="px-4 py-3 text-right text-muted-foreground">{formatCurrency(f29.debito_fiscal?.base)}</td>
+                                            <td className="px-4 py-3 text-right font-bold text-amber-400">{formatCurrency(f29.ppm?.monto)}</td>
+                                        </tr>
+                                        <tr className="bg-amber-500/10">
+                                            <td className="px-4 py-3 font-bold text-amber-400 text-[13px]">TOTAL F29 A DECLARAR</td>
+                                            <td className="px-4 py-3 text-right">—</td>
+                                            <td className="px-4 py-3 text-right font-bold text-amber-400 text-[14px]">{formatCurrency(f29.total_f29)}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
 
                     <div className="grid grid-cols-1 xl:grid-cols-5 gap-8">
                         <div className="xl:col-span-3 bg-card glass-card border border-border/50 rounded-2xl p-6 shadow-sm">

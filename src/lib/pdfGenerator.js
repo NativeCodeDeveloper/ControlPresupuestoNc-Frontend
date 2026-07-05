@@ -6,9 +6,10 @@ const safeNumber = (value) => {
     return Number.isFinite(parsed) ? parsed : 0;
 };
 
-const formatCurrency = (value) => new Intl.NumberFormat('en-US', {
+const formatCurrency = (value) => new Intl.NumberFormat('es-CL', {
     style: 'currency',
-    currency: 'USD'
+    currency: 'CLP',
+    maximumFractionDigits: 0
 }).format(safeNumber(value));
 
 const drawMetricCard = (doc, {
@@ -59,7 +60,7 @@ const addSectionTitle = (doc, pageWidth, y, title, accentColor) => {
  * @param {string} monthName - Month label
  * @param {string} year - Year label
  */
-export const generateFinancialReport = async (stats, monthName, year) => {
+export const generateFinancialReport = async (stats, monthName, year, f29 = null) => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
@@ -356,6 +357,77 @@ export const generateFinancialReport = async (stats, monthName, year) => {
         },
         margin: { left: 14, right: 14 }
     });
+
+    // IVA / F29 section
+    if (f29) {
+        nextY = (doc.lastAutoTable?.finalY || 250) + 8;
+        if (nextY > pageHeight - 90) { doc.addPage(); nextY = 20; }
+
+        const amberColor  = [180, 120, 0];
+        const amberFill   = [255, 251, 235];
+        const amberHeader = [217, 119, 6];
+        const redText     = [185, 28, 28];
+        const greenText   = [5, 150, 105];
+        const skyText     = [3, 105, 161];
+
+        addSectionTitle(doc, pageWidth, nextY, 'Obligación Tributaria — F29', amberColor);
+
+        const ivaTasa = ((f29.iva_tasa || 0.19) * 100).toFixed(0);
+        const ppmTasa = f29.ppm?.tasa ?? 1;
+        const vencLabel = f29.vencimiento
+            ? new Date(f29.vencimiento + 'T00:00:00').toLocaleDateString('es-CL', { day: '2-digit', month: 'long', year: 'numeric' })
+            : '—';
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8.5);
+        doc.setTextColor(100, 116, 139);
+        doc.text(`IVA ${ivaTasa}% · PPM ${ppmTasa}% · Vencimiento declaración: ${vencLabel}`, 14, nextY + 6);
+
+        const ivaRows = [
+            ['Débito Fiscal (ingresos afectos)',         formatCurrency(f29.debito_fiscal?.base),           formatCurrency(f29.debito_fiscal?.iva)],
+            ['  Crédito Fiscal — Costos Fijos',          formatCurrency(f29.credito_fiscal?.fijos?.base),    formatCurrency(f29.credito_fiscal?.fijos?.iva)],
+            ['  Crédito Fiscal — Costos Variables',      formatCurrency(f29.credito_fiscal?.variables?.base),formatCurrency(f29.credito_fiscal?.variables?.iva)],
+            ['Total Crédito Fiscal',                     '—',                                                formatCurrency(f29.credito_fiscal?.total)],
+            [f29.remanente > 0 ? 'Remanente (a favor)' : 'IVA Neto a Pagar', '—',
+                formatCurrency(f29.remanente > 0 ? f29.remanente : f29.iva_neto)],
+            [`PPM (${ppmTasa}% sobre ingresos afectos)`, formatCurrency(f29.debito_fiscal?.base),            formatCurrency(f29.ppm?.monto)],
+            ['TOTAL F29 A DECLARAR',                    '—',                                                formatCurrency(f29.total_f29)],
+        ];
+
+        autoTable(doc, {
+            startY: nextY + 9,
+            head: [['Concepto', 'Base', 'IVA / Monto']],
+            body: ivaRows,
+            theme: 'striped',
+            headStyles: { fillColor: amberHeader, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9 },
+            bodyStyles: { textColor: [15, 23, 42], fontSize: 9 },
+            alternateRowStyles: { fillColor: [248, 250, 252] },
+            columnStyles: {
+                0: { cellWidth: 110 },
+                1: { cellWidth: 31, halign: 'right' },
+                2: { cellWidth: 40, halign: 'right', fontStyle: 'bold' },
+            },
+            didParseCell: (data) => {
+                if (data.section !== 'body') return;
+                const label = Array.isArray(data.row.raw) ? data.row.raw[0] : '';
+                if (label === 'TOTAL F29 A DECLARAR') {
+                    data.cell.styles.fillColor = amberFill;
+                    data.cell.styles.textColor = amberColor;
+                    data.cell.styles.fontStyle = 'bold';
+                }
+                if (label.includes('Crédito') || label === 'Total Crédito Fiscal') {
+                    if (data.column.index === 2) data.cell.styles.textColor = redText;
+                }
+                if (label === 'Débito Fiscal (ingresos afectos)') {
+                    if (data.column.index === 2) data.cell.styles.textColor = greenText;
+                }
+                if (label.includes('Remanente')) {
+                    if (data.column.index === 2) data.cell.styles.textColor = skyText;
+                }
+            },
+            margin: { left: 14, right: 14 },
+        });
+    }
 
     // Closing block
     nextY = (doc.lastAutoTable?.finalY || 250) + 8;
