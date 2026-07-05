@@ -153,32 +153,51 @@ function ActListView({ actualizaciones, estados, onSelect, selected }) {
 // ─── Detail panel ─────────────────────────────────────────────────────────────
 
 function ActDetalle({ act, estados, proyectos, onClose, onUpdated, onDeleted }) {
-    const [idEstado,    setIdEstado]    = useState(String(act.id_estado ?? ''));
+    const [form, setForm] = useState({
+        titulo:    act.titulo    ?? '',
+        mensaje:   act.mensaje   ?? '',
+        prioridad: act.prioridad ?? 'media',
+        id_estado: String(act.id_estado ?? ''),
+    });
+    const [dirty,       setDirty]       = useState(false);
+    const [saving,      setSaving]      = useState(false);
     const [notifResult, setNotifResult] = useState(null);
     const [sending,     setSending]     = useState(false);
     const [deleting,    setDeleting]    = useState(false);
-    const [savingState, setSavingState] = useState(false);
+    const [savedOk,     setSavedOk]     = useState(false);
 
     const dests = parseDests(act.destinatarios);
-    const p = PRIORIDAD[act.prioridad] ?? PRIORIDAD.media;
 
-    const handleEstado = async (val) => {
-        if (val === String(act.id_estado)) return;
-        setSavingState(true);
+    const setField = (k, v) => { setForm(f => ({ ...f, [k]: v })); setDirty(true); setSavedOk(false); };
+
+    const handleGuardar = async () => {
+        setSaving(true);
         try {
-            const { actualizacion } = await svc.updateActualizacion(act.id_actualizacion, { id_estado: Number(val) });
-            setIdEstado(val);
+            const { actualizacion } = await svc.updateActualizacion(act.id_actualizacion, {
+                titulo:    form.titulo,
+                mensaje:   form.mensaje,
+                prioridad: form.prioridad,
+                id_estado: form.id_estado ? Number(form.id_estado) : null,
+            });
             onUpdated(actualizacion);
-        } finally { setSavingState(false); }
+            setDirty(false);
+            setSavedOk(true);
+            setTimeout(() => setSavedOk(false), 2500);
+        } finally { setSaving(false); }
     };
 
     const handleNotificar = async () => {
+        if (dirty) {
+            const ok = window.confirm('Hay cambios sin guardar. ¿Guardar y notificar?');
+            if (!ok) return;
+            await handleGuardar();
+        }
         setSending(true);
         setNotifResult(null);
         try {
             const res = await svc.notificar(act.id_actualizacion);
             setNotifResult(res);
-            onUpdated({ ...act, total_enviados: res.enviados, total_errores: res.errores });
+            onUpdated({ ...act, ...form, total_enviados: res.enviados, total_errores: res.errores });
         } catch (e) {
             setNotifResult({ error: e.message || 'Error al notificar' });
         } finally { setSending(false); }
@@ -187,12 +206,17 @@ function ActDetalle({ act, estados, proyectos, onClose, onUpdated, onDeleted }) 
     const handleFinalizar = async () => {
         const estadoFinal = estados[estados.length - 1];
         if (!estadoFinal) return;
-        setSavingState(true);
+        if (dirty) {
+            const ok = window.confirm('Hay cambios sin guardar. ¿Guardar y finalizar?');
+            if (!ok) return;
+            await handleGuardar();
+        }
+        setSaving(true);
         try {
             const { actualizacion } = await svc.updateActualizacion(act.id_actualizacion, { id_estado: estadoFinal.id_estado });
-            setIdEstado(String(estadoFinal.id_estado));
+            setForm(f => ({ ...f, id_estado: String(estadoFinal.id_estado) }));
             onUpdated(actualizacion);
-        } finally { setSavingState(false); }
+        } finally { setSaving(false); }
     };
 
     const handleDelete = async () => {
@@ -202,29 +226,40 @@ function ActDetalle({ act, estados, proyectos, onClose, onUpdated, onDeleted }) 
         finally { setDeleting(false); }
     };
 
+    const inputCls  = "w-full bg-secondary/40 border border-border rounded-lg px-3 py-1.5 text-[12px] text-foreground focus:outline-none focus:ring-1 focus:ring-sky-500";
+
     return (
         <div className="w-[300px] shrink-0 border-l border-border flex flex-col overflow-hidden bg-card">
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
-                <span className="text-sm font-semibold text-foreground truncate pr-2">{act.titulo}</span>
+                <span className="text-[12px] font-semibold text-foreground truncate pr-2">Detalle</span>
                 <button onClick={onClose}><X size={14} className="text-muted-foreground hover:text-foreground" /></button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {/* Estado */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                {/* Título */}
                 <div>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Estado</p>
-                    <select value={idEstado} onChange={e => handleEstado(e.target.value)}
-                            disabled={savingState}
-                            className="w-full bg-secondary/40 border border-border rounded-lg px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:opacity-60">
-                        {estados.map(e => <option key={e.id_estado} value={e.id_estado}>{e.nombre}</option>)}
-                    </select>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Título</p>
+                    <input value={form.titulo} onChange={e => setField('titulo', e.target.value)}
+                           className={inputCls} placeholder="Título de la actualización" />
                 </div>
 
-                {/* Prioridad */}
-                <div className="flex items-center gap-2">
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Prioridad</p>
-                    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${p.cls}`}>{p.label}</span>
+                {/* Estado + Prioridad */}
+                <div className="grid grid-cols-2 gap-2">
+                    <div>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Estado</p>
+                        <select value={form.id_estado} onChange={e => setField('id_estado', e.target.value)}
+                                className={`${inputCls} cursor-pointer`}>
+                            {estados.map(e => <option key={e.id_estado} value={e.id_estado}>{e.nombre}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Prioridad</p>
+                        <select value={form.prioridad} onChange={e => setField('prioridad', e.target.value)}
+                                className={`${inputCls} cursor-pointer`}>
+                            {Object.entries(PRIORIDAD).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                        </select>
+                    </div>
                 </div>
 
                 {/* Fecha */}
@@ -233,20 +268,41 @@ function ActDetalle({ act, estados, proyectos, onClose, onUpdated, onDeleted }) 
                     <p className="text-[12px] text-foreground">{fmt(act.enviado_en)}</p>
                 </div>
 
-                {/* Mensaje */}
+                {/* Mensaje editable */}
                 <div>
                     <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Mensaje</p>
-                    <div className="bg-secondary/30 border border-border/50 rounded-xl px-3 py-2.5 text-[12px] text-foreground whitespace-pre-wrap max-h-36 overflow-y-auto">
-                        {act.mensaje}
-                    </div>
+                    <textarea
+                        value={form.mensaje}
+                        onChange={e => setField('mensaje', e.target.value)}
+                        rows={7}
+                        className={`${inputCls} resize-none font-mono leading-relaxed`}
+                        placeholder="Escribe el mensaje que recibirá el cliente..."
+                    />
                 </div>
+
+                {/* Guardar cambios */}
+                {(dirty || savedOk) && (
+                    <button onClick={handleGuardar} disabled={saving || !dirty}
+                            className={`w-full flex items-center justify-center gap-2 py-2 rounded-lg border text-[12px] font-semibold transition-colors ${
+                                savedOk
+                                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                                    : 'bg-sky-500/10 border-sky-500/30 text-sky-400 hover:bg-sky-500/20'
+                            } disabled:opacity-50`}>
+                        {saving
+                            ? <><RefreshCw size={12} className="animate-spin" /> Guardando...</>
+                            : savedOk
+                                ? <><CheckCircle2 size={12} /> Guardado</>
+                                : <><CheckCircle2 size={12} /> Guardar cambios</>
+                        }
+                    </button>
+                )}
 
                 {/* Destinatarios */}
                 <div>
                     <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1.5">
                         Destinatarios ({dests.length})
                     </p>
-                    <div className="space-y-1.5 max-h-32 overflow-y-auto">
+                    <div className="space-y-1.5 max-h-28 overflow-y-auto">
                         {dests.map((d, i) => (
                             <div key={i} className="flex items-center gap-2 text-[11px]">
                                 <div className="w-5 h-5 rounded-full bg-sky-500/20 flex items-center justify-center shrink-0">
@@ -288,7 +344,7 @@ function ActDetalle({ act, estados, proyectos, onClose, onUpdated, onDeleted }) 
                     {sending ? <RefreshCw size={12} className="animate-spin" /> : <Bell size={12} />}
                     {sending ? 'Enviando...' : 'Notificar cliente'}
                 </button>
-                <button onClick={handleFinalizar} disabled={savingState}
+                <button onClick={handleFinalizar} disabled={saving}
                         className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[12px] font-semibold hover:bg-emerald-500/25 disabled:opacity-40 transition-colors">
                     <CheckCircle2 size={12} /> Finalizar actualización
                 </button>
