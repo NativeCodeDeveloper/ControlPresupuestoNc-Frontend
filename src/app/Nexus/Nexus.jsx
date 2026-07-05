@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
     Hammer, Plus, RefreshCw, X, ChevronRight,
     Clock, User, AlertTriangle, CheckCircle2, MessageSquare,
-    Mail, Send, ChevronDown, Circle
+    Mail, Send, ChevronDown, Circle, LayoutGrid, List, Folder
 } from 'lucide-react';
 import * as soporteService from '../../services/soporteService';
 import { getPartners } from '../../services/partnersService';
@@ -146,12 +146,17 @@ function TicketModal({ estados, socios, onClose, onCreated }) {
 
     const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
-    // Al seleccionar proyecto, pre-rellenar nombre_cliente si aún está vacío
+    // Al seleccionar proyecto, pre-rellenar datos del cliente
     const handleProyecto = (val) => {
         set('id_proyecto', val);
         if (val) {
             const p = proyectos.find(x => String(x.id_proyecto) === val);
-            if (p && !form.nombre_cliente) set('nombre_cliente', p.nombre_cliente || p.nombre);
+            if (p) {
+                if (!form.nombre_cliente) set('nombre_cliente', p.nombre_cliente || p.nombre);
+                if (!form.email_cliente  && p.email_cliente) set('email_cliente', p.email_cliente);
+            }
+        } else {
+            // Al limpiar el proyecto, no borramos lo que ya escribió el usuario
         }
     };
 
@@ -285,6 +290,8 @@ function TicketDetalle({ ticket, estados, socios, onClose, onUpdated }) {
     const [comentario, setComentario] = useState('');
     const [emailModal, setEmailModal] = useState(null); // 'apertura'|'actualizacion'|'cierre'
     const [saving, setSaving]         = useState(false);
+    const [savingRes, setSavingRes]   = useState(false); // estado separado para resolución
+    const [resSaved, setResSaved]     = useState(false); // feedback "Guardado ✓"
     const [resolucion, setResolucion] = useState({
         causa: ticket.resolucion_causa ?? '',
         accion: ticket.resolucion_accion ?? '',
@@ -342,17 +349,20 @@ function TicketDetalle({ ticket, estados, socios, onClose, onUpdated }) {
     };
 
     const handleResolucion = async () => {
-        setSaving(true);
+        setSavingRes(true);
+        setResSaved(false);
         try {
             const { ticket: updated } = await soporteService.updateTicket(ticket.id_ticket, {
-                resolucion_causa: resolucion.causa,
-                resolucion_accion: resolucion.accion,
-                resolucion_resultado: resolucion.resultado,
+                resolucion_causa:         resolucion.causa,
+                resolucion_accion:        resolucion.accion,
+                resolucion_resultado:     resolucion.resultado,
                 resolucion_observaciones: resolucion.observaciones,
             });
             onUpdated(updated);
             await loadActividad();
-        } finally { setSaving(false); }
+            setResSaved(true);
+            setTimeout(() => setResSaved(false), 3000);
+        } finally { setSavingRes(false); }
     };
 
     const inputCls = "w-full bg-secondary/30 border border-border rounded-lg px-2 py-1.5 text-[12px] text-foreground focus:outline-none focus:ring-1 focus:ring-sky-500 resize-none";
@@ -410,6 +420,38 @@ function TicketDetalle({ ticket, estados, socios, onClose, onUpdated }) {
                     {/* Resolución */}
                     <div className="space-y-2">
                         <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Resolución</p>
+
+                        {/* Resolución guardada (solo lectura) */}
+                        {ticket.resolucion_causa || ticket.resolucion_accion || ticket.resolucion_resultado ? (
+                            <div className="bg-emerald-500/8 border border-emerald-500/25 rounded-xl p-3 space-y-2">
+                                {ticket.resolucion_causa && (
+                                    <div>
+                                        <p className="text-[10px] text-emerald-400 font-semibold mb-0.5">Causa</p>
+                                        <p className="text-[12px] text-foreground whitespace-pre-wrap">{ticket.resolucion_causa}</p>
+                                    </div>
+                                )}
+                                {ticket.resolucion_accion && (
+                                    <div>
+                                        <p className="text-[10px] text-emerald-400 font-semibold mb-0.5">Acción realizada</p>
+                                        <p className="text-[12px] text-foreground whitespace-pre-wrap">{ticket.resolucion_accion}</p>
+                                    </div>
+                                )}
+                                {ticket.resolucion_resultado && (
+                                    <div>
+                                        <p className="text-[10px] text-emerald-400 font-semibold mb-0.5">Resultado</p>
+                                        <p className="text-[12px] text-foreground whitespace-pre-wrap">{ticket.resolucion_resultado}</p>
+                                    </div>
+                                )}
+                                {ticket.resolucion_observaciones && (
+                                    <div>
+                                        <p className="text-[10px] text-emerald-400 font-semibold mb-0.5">Observaciones</p>
+                                        <p className="text-[12px] text-foreground whitespace-pre-wrap">{ticket.resolucion_observaciones}</p>
+                                    </div>
+                                )}
+                            </div>
+                        ) : null}
+
+                        {/* Formulario edición */}
                         {[
                             { key: 'causa',         label: 'Causa del problema' },
                             { key: 'accion',        label: 'Acción realizada' },
@@ -422,9 +464,13 @@ function TicketDetalle({ ticket, estados, socios, onClose, onUpdated }) {
                                           placeholder={label} className={inputCls} />
                             </div>
                         ))}
-                        <button onClick={handleResolucion} disabled={saving}
-                                className="w-full py-1.5 text-[12px] rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25 transition-colors">
-                            Guardar resolución
+                        <button onClick={handleResolucion} disabled={savingRes}
+                                className={`w-full py-1.5 text-[12px] rounded-lg border transition-colors ${
+                                    resSaved
+                                        ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400'
+                                        : 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25'
+                                } disabled:opacity-50`}>
+                            {savingRes ? 'Guardando...' : resSaved ? '✓ Guardada' : 'Guardar resolución'}
                         </button>
                     </div>
 
@@ -455,8 +501,8 @@ function TicketDetalle({ ticket, estados, socios, onClose, onUpdated }) {
                             {actividad.map(a => (
                                 <div key={a.id_actividad} className="flex gap-2 text-[11px]">
                                     {TIPO_ACTIVIDAD_ICON[a.tipo] ?? <Circle size={10} className="mt-0.5 shrink-0 text-slate-500" />}
-                                    <div className="min-w-0">
-                                        <p className="text-foreground">{a.contenido}</p>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-foreground whitespace-pre-wrap">{a.contenido}</p>
                                         <p className="text-muted-foreground">{fmt(a.creado_en)}{a.socio_nombre ? ` · ${a.socio_nombre}` : ''}</p>
                                     </div>
                                 </div>
@@ -493,6 +539,80 @@ function TicketDetalle({ ticket, estados, socios, onClose, onUpdated }) {
     );
 }
 
+// ─── Vista lista (estilo Synapse) ─────────────────────────────────────────────
+
+function TicketListView({ tickets, estados, onSelect, selected }) {
+    const grupos = estados
+        .map(e => ({ estado: e, items: tickets.filter(t => t.id_estado === e.id_estado) }))
+        .filter(g => g.items.length > 0);
+
+    if (!tickets.length) {
+        return (
+            <div className="text-center py-16 text-muted-foreground text-sm">
+                No hay tickets que coincidan con los filtros.
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-5 p-4">
+            {grupos.map(({ estado, items }) => (
+                <div key={estado.id_estado}>
+                    <div className="flex items-center gap-2 mb-2 px-1">
+                        <span className="w-2 h-2 rounded-full shrink-0" style={{ background: estado.color_hex }} />
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                            {estado.nombre}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground/50 ml-1">{items.length}</span>
+                    </div>
+
+                    <div className="space-y-1">
+                        {items.map(t => {
+                            const p = PRIORIDAD[t.prioridad] ?? PRIORIDAD.media;
+                            const isSelected = selected?.id_ticket === t.id_ticket;
+                            return (
+                                <div
+                                    key={t.id_ticket}
+                                    onClick={() => onSelect(t)}
+                                    className={`flex items-center gap-3 border rounded-xl px-4 py-2.5 cursor-pointer transition-all ${
+                                        isSelected
+                                            ? 'border-sky-500/50 bg-sky-500/8'
+                                            : 'bg-card border-border/40 hover:border-sky-500/30 hover:bg-secondary/20'
+                                    }`}
+                                >
+                                    <span className="text-[10px] font-mono text-sky-400 shrink-0 w-24">{t.numero_ticket}</span>
+                                    <span className={`text-[10px] font-semibold shrink-0 ${p.color}`}>{p.label}</span>
+                                    <span className="flex-1 text-sm font-medium text-foreground truncate">{t.asunto}</span>
+                                    {t.proyecto_nombre && (
+                                        <span className="hidden md:flex items-center gap-1 text-[11px] text-muted-foreground shrink-0">
+                                            <Folder size={10} /> {t.proyecto_nombre}
+                                        </span>
+                                    )}
+                                    {t.nombre_cliente && (
+                                        <span className="hidden lg:flex items-center gap-1 text-[11px] text-muted-foreground shrink-0">
+                                            <User size={10} /> {t.nombre_cliente}
+                                        </span>
+                                    )}
+                                    {t.responsable_nombre && (
+                                        <span className="hidden xl:flex items-center gap-1 text-[11px] text-muted-foreground shrink-0">
+                                            <User size={10} /> {t.responsable_nombre}
+                                        </span>
+                                    )}
+                                    {t.sla_vence_en && (
+                                        <span className="hidden md:flex items-center gap-1 text-[11px] text-amber-400 shrink-0">
+                                            <Clock size={10} /> {fmt(t.sla_vence_en)}
+                                        </span>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+}
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 const NEXUS_CACHE_KEY = 'ncf:nexus:v1';
@@ -511,6 +631,7 @@ export default function Nexus() {
     const [loading,  setLoading]  = useState(true);
     const [selected, setSelected] = useState(null);
     const [showModal, setShowModal] = useState(false);
+    const [view,     setView]     = useState('cards'); // 'cards' | 'list'
 
     const [filtroEstado,    setFiltroEstado]    = useState('');
     const [filtroPrioridad, setFiltroPrioridad] = useState('');
@@ -603,6 +724,21 @@ export default function Nexus() {
                             <option value="">Toda prioridad</option>
                             {Object.entries(PRIORIDAD).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
                         </select>
+                        {/* Toggle vista */}
+                        <div className="flex items-center rounded-lg border border-border overflow-hidden">
+                            <button
+                                onClick={() => setView('cards')}
+                                className={`h-8 w-8 flex items-center justify-center transition-colors ${view === 'cards' ? 'bg-sky-500/15 text-sky-400' : 'bg-card text-muted-foreground hover:text-foreground'}`}
+                            >
+                                <LayoutGrid size={13} />
+                            </button>
+                            <button
+                                onClick={() => setView('list')}
+                                className={`h-8 w-8 flex items-center justify-center transition-colors ${view === 'list' ? 'bg-sky-500/15 text-sky-400' : 'bg-card text-muted-foreground hover:text-foreground'}`}
+                            >
+                                <List size={13} />
+                            </button>
+                        </div>
                         <button onClick={load} className="h-8 w-8 flex items-center justify-center rounded-lg border border-border bg-card hover:bg-foreground/5">
                             <RefreshCw size={13} className={loading ? 'animate-spin text-muted-foreground' : 'text-foreground'} />
                         </button>
@@ -616,11 +752,13 @@ export default function Nexus() {
                 </div>
 
                 {/* Tickets */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                <div className="flex-1 overflow-y-auto">
                     {loading && (
-                        [...Array(4)].map((_, i) => (
-                            <div key={i} className="h-20 bg-card border border-border rounded-xl animate-pulse" />
-                        ))
+                        <div className="p-4 space-y-2">
+                            {[...Array(4)].map((_, i) => (
+                                <div key={i} className="h-20 bg-card border border-border rounded-xl animate-pulse" />
+                            ))}
+                        </div>
                     )}
                     {!loading && ticketsFiltrados.length === 0 && (
                         <div className="text-center py-16 text-muted-foreground">
@@ -628,6 +766,20 @@ export default function Nexus() {
                             <p className="text-sm">No hay tickets {busqueda || filtroEstado || filtroPrioridad ? 'con ese filtro' : 'registrados'}.</p>
                         </div>
                     )}
+
+                    {/* Vista lista agrupada por estado */}
+                    {!loading && view === 'list' && ticketsFiltrados.length > 0 && (
+                        <TicketListView
+                            tickets={ticketsFiltrados}
+                            estados={estados}
+                            selected={selected}
+                            onSelect={setSelected}
+                        />
+                    )}
+
+                    {/* Vista tarjetas */}
+                    {!loading && view === 'cards' && ticketsFiltrados.length > 0 && (
+                    <div className="p-4 space-y-2">
                     {ticketsFiltrados.map(ticket => (
                         <button
                             key={ticket.id_ticket}
@@ -665,6 +817,8 @@ export default function Nexus() {
                             </div>
                         </button>
                     ))}
+                    </div>
+                    )}
                 </div>
             </div>
 
