@@ -596,6 +596,19 @@ export default function Boveda() {
                                 </div>
                                 <p className="text-[12px] text-muted-foreground mt-0.5">{entrada.proyecto_nombre}</p>
                             </div>
+                            {/* Sync desde Synapse */}
+                            {entrada.srv_ruta_backend && (
+                                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-violet-500/20 bg-violet-500/5 text-[11px]">
+                                    <Server size={11} className="text-violet-400 shrink-0" />
+                                    <span className="text-muted-foreground">Synapse:</span>
+                                    <span className="font-mono text-violet-300 truncate max-w-[160px]">
+                                        {entrada.srv_ruta_backend.replace(/^https?:\/\//, '')}
+                                    </span>
+                                    {entrada.srv_version && (
+                                        <span className="text-violet-400/60">v{entrada.srv_version}</span>
+                                    )}
+                                </div>
+                            )}
                         </div>
 
                         {/* Infraestructura */}
