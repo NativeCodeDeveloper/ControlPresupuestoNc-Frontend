@@ -320,7 +320,7 @@ function TicketDetalle({ ticket, estados, socios, onClose, onUpdated }) {
     useEffect(() => { loadActividad(); }, [loadActividad]);
 
     const handleEstado = async (id_estado) => {
-        if (id_estado === ticket.id_estado) return;
+        if (Number(id_estado) === Number(ticket.id_estado)) return;
         setSaving(true);
         try {
             const { ticket: updated } = await soporteService.updateTicket(ticket.id_ticket, { id_estado: Number(id_estado) });
@@ -501,16 +501,25 @@ function TicketDetalle({ ticket, estados, socios, onClose, onUpdated }) {
                             )}
                             {actividad.map(a => {
                                 const esResolucion = a.tipo === 'resolucion';
-                                const tieneDetalle = esResolucion && a.contenido && a.contenido !== 'Resolución registrada';
+                                // Contenido con detalle real (nuevo formato) o fallback con campos del ticket
+                                const contenidoDetallado = (a.contenido && a.contenido !== 'Resolución registrada')
+                                    ? a.contenido
+                                    : [
+                                        ticket.resolucion_causa         && `Causa: ${ticket.resolucion_causa}`,
+                                        ticket.resolucion_accion        && `Acción: ${ticket.resolucion_accion}`,
+                                        ticket.resolucion_resultado     && `Resultado: ${ticket.resolucion_resultado}`,
+                                        ticket.resolucion_observaciones && `Obs: ${ticket.resolucion_observaciones}`,
+                                      ].filter(Boolean).join('\n');
+                                const tieneDetalle = esResolucion && contenidoDetallado;
                                 return (
                                     <div key={a.id_actividad} className="flex gap-2 text-[11px]">
                                         {TIPO_ACTIVIDAD_ICON[a.tipo] ?? <Circle size={10} className="mt-0.5 shrink-0 text-slate-500" />}
                                         <div className="min-w-0 flex-1">
-                                            <div className="flex items-baseline gap-2">
+                                            <div className="flex items-baseline gap-2 flex-wrap">
                                                 <p className="text-foreground">{esResolucion ? 'Resolución registrada' : a.contenido}</p>
                                                 {tieneDetalle && (
                                                     <button
-                                                        onClick={() => setResPopup(a.contenido)}
+                                                        onClick={() => setResPopup(contenidoDetallado)}
                                                         className="shrink-0 text-[10px] text-emerald-400 hover:text-emerald-300 underline underline-offset-2 transition-colors"
                                                     >
                                                         Ver detalle
@@ -643,7 +652,7 @@ function TicketKanbanCard({ ticket, onSelect, isSelected }) {
 function TicketKanbanView({ tickets, estados, onSelect, selected, onMoveTicket }) {
     const [dragOver, setDragOver] = useState(null);
     return (
-        <div className="flex gap-4 p-4 h-full overflow-x-auto items-start">
+        <div className="flex gap-4 px-4 pt-4 pb-2 h-full overflow-x-auto">
             {estados.map(estado => {
                 const cols = tickets.filter(t => t.id_estado === estado.id_estado);
                 const isOver = dragOver === estado.id_estado;
@@ -658,18 +667,18 @@ function TicketKanbanView({ tickets, estados, onSelect, selected, onMoveTicket }
                             if (id) onMoveTicket(id, estado.id_estado);
                             setDragOver(null);
                         }}
-                        className={`flex-none w-[270px] flex flex-col rounded-xl p-2 -m-2 transition-colors ${isOver ? 'bg-sky-500/6 ring-1 ring-inset ring-sky-500/30' : ''}`}
+                        className={`flex-none w-[270px] flex flex-col rounded-xl transition-colors ${isOver ? 'bg-sky-500/6 ring-1 ring-inset ring-sky-500/30' : ''}`}
                     >
                         {/* Cabecera columna */}
-                        <div className="flex items-center gap-2 mb-3 px-1">
+                        <div className="flex items-center gap-2 mb-3 px-1 shrink-0">
                             <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: estado.color_hex }} />
                             <span className="text-[12px] font-semibold text-foreground flex-1 truncate">{estado.nombre}</span>
                             <span className="text-[11px] text-muted-foreground bg-secondary/60 px-1.5 py-0.5 rounded-md font-medium">
                                 {cols.length}
                             </span>
                         </div>
-                        {/* Cards */}
-                        <div className="space-y-2.5 min-h-[64px]">
+                        {/* Cards — scroll vertical independiente por columna */}
+                        <div className="flex-1 overflow-y-auto space-y-2.5 min-h-[64px] pr-0.5">
                             {cols.map(ticket => (
                                 <TicketKanbanCard
                                     key={ticket.id_ticket}
@@ -815,6 +824,11 @@ export default function Nexus() {
             setEstados(estados);
             setSocios(socios);
             cacheSave({ tickets, estados, socios });
+            // Sincroniza el panel de detalle con datos frescos del servidor
+            setSelected(prev => {
+                if (!prev) return null;
+                return tickets.find(t => t.id_ticket === prev.id_ticket) ?? prev;
+            });
         } finally {
             setLoading(false);
         }
@@ -847,14 +861,20 @@ export default function Nexus() {
     };
 
     const handleMoveTicket = async (id_ticket, id_estado) => {
-        // Optimistic: mover la card de columna inmediatamente
-        setTickets(prev => prev.map(t => t.id_ticket === id_ticket ? { ...t, id_estado } : t));
-        if (selected?.id_ticket === id_ticket) setSelected(s => ({ ...s, id_estado }));
+        const estadoTarget = estados.find(e => e.id_estado === id_estado);
+        const patch = {
+            id_estado,
+            estado_nombre: estadoTarget?.nombre,
+            estado_color:  estadoTarget?.color_hex,
+        };
+        // Optimistic: mueve la card y actualiza badge de estado inmediatamente
+        setTickets(prev => prev.map(t => t.id_ticket === id_ticket ? { ...t, ...patch } : t));
+        if (selected?.id_ticket === id_ticket) setSelected(s => ({ ...s, ...patch }));
         try {
             await soporteService.updateTicket(id_ticket, { id_estado });
-            load(true); // refresca en background para obtener el estado_nombre actualizado
+            load(true);
         } catch {
-            load(true); // revierte si falla
+            load(true);
         }
     };
 
@@ -912,7 +932,7 @@ export default function Nexus() {
                 </div>
 
                 {/* Tickets */}
-                <div className={`flex-1 min-h-0 ${view === 'cards' ? 'overflow-x-auto overflow-y-hidden' : 'overflow-y-auto'}`}>
+                <div className={`flex-1 min-h-0 ${view === 'cards' ? 'overflow-hidden' : 'overflow-y-auto'}`}>
                     {loading && (
                         <div className="p-4 space-y-2">
                             {[...Array(4)].map((_, i) => (
