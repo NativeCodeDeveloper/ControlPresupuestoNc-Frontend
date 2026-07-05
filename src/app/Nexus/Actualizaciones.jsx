@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { usePersistedState } from '../../hooks/usePersistedState';
 import {
     Rss, Send, RefreshCw, CheckCircle2, AlertCircle, Clock,
     Users, User, Plus, X, LayoutGrid, List, Trash2, Bell, ChevronDown
@@ -483,11 +484,11 @@ export default function Actualizaciones() {
     const [estados,         setEstados]         = useState([]);
     const [proyectos,       setProyectos]       = useState([]);
     const [selected,        setSelected]        = useState(null);
-    const [view,            setView]            = useState('kanban'); // 'kanban' | 'list'
+    const [view,            setView]            = usePersistedState('nexus:act:view', 'kanban');
     const [showModal,       setShowModal]       = useState(false);
     const [loading,         setLoading]         = useState(true);
-    const [filtroEstado,    setFiltroEstado]    = useState('all');
-    const [busqueda,        setBusqueda]        = useState('');
+    const [filtroEstado,    setFiltroEstado]    = usePersistedState('nexus:act:filtroEstado', 'all');
+    const [busqueda,        setBusqueda]        = usePersistedState('nexus:act:busqueda', '');
 
     const load = useCallback(async (silent = false) => {
         if (!silent) {

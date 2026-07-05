@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { usePersistedState } from '../../hooks/usePersistedState';
 import {
     Hammer, Plus, RefreshCw, X, ChevronRight,
     Clock, User, AlertTriangle, CheckCircle2, MessageSquare,
@@ -840,11 +841,11 @@ export default function Nexus() {
     const [loading,  setLoading]  = useState(true);
     const [selected, setSelected] = useState(null);
     const [showModal, setShowModal] = useState(false);
-    const [view,     setView]     = useState('cards'); // 'cards' | 'list'
+    const [view,     setView]     = usePersistedState('nexus:soporte:view', 'cards');
 
-    const [filtroEstado,    setFiltroEstado]    = useState('');
-    const [filtroPrioridad, setFiltroPrioridad] = useState('');
-    const [busqueda,        setBusqueda]        = useState('');
+    const [filtroEstado,    setFiltroEstado]    = usePersistedState('nexus:soporte:filtroEstado', '');
+    const [filtroPrioridad, setFiltroPrioridad] = usePersistedState('nexus:soporte:filtroPrioridad', '');
+    const [busqueda,        setBusqueda]        = usePersistedState('nexus:soporte:busqueda', '');
 
     const load = useCallback(async (silent = false) => {
         if (!silent) {

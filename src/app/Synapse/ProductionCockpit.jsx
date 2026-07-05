@@ -499,7 +499,9 @@ export default function ProductionCockpit() {
 
     // ── Filtrado y ordenamiento ───────────────────────────────────────────────
 
-    const servidoresUnicos = [...new Set(proyectos.map(p => p.servidor).filter(Boolean))].sort();
+    const servidoresUnicos = [...new Set(
+        proyectos.map(p => p.servidor_backserver || p.servidor).filter(Boolean)
+    )].sort();
 
     const proyectosFiltrados = proyectos
         .filter(p => {
@@ -508,7 +510,7 @@ export default function ProductionCockpit() {
                 !p.nombre_cliente?.toLowerCase().includes(q) &&
                 !p.codigo_interno?.toLowerCase().includes(q)) return false;
             if (filterAlerta && p.estado_alerta_pago !== filterAlerta) return false;
-            if (filterServidor && p.servidor !== filterServidor) return false;
+            if (filterServidor && (p.servidor_backserver || p.servidor) !== filterServidor) return false;
             // En vista "Este mes": solo proyectos con al menos un pago en ese mes
             if (!vistaGeneral && Number(p.total_pagado_mes) === 0) return false;
             return true;
@@ -770,7 +772,11 @@ export default function ProductionCockpit() {
                                                 }
                                             </span>
                                         )}
-                                        {p.servidor && <span className="text-muted-foreground/60">{p.servidor}</span>}
+                                        {(p.servidor_backserver || p.servidor) && (
+                                            <span className="text-muted-foreground/60 font-mono text-[10px]">
+                                                {(p.servidor_backserver || p.servidor).replace(/^https?:\/\//, '')}
+                                            </span>
+                                        )}
                                     </div>
 
                                     <div className="flex items-center gap-2 flex-wrap">
@@ -882,14 +888,34 @@ export default function ProductionCockpit() {
                                             {/* Servidor */}
                                             {columnas.servidor.visible && (
                                                 <td className="px-2 py-2.5 overflow-hidden">
-                                                    <div className="flex items-center gap-1">
-                                                        {isSaving ? <Loader2 size={10} className="animate-spin text-muted-foreground" /> : null}
-                                                        <InlineEdit
-                                                            value={p.servidor}
-                                                            placeholder="Sin servidor"
-                                                            onSave={v => handleUpdateField(p.id_proyecto, 'servidor', v)}
-                                                        />
-                                                    </div>
+                                                    {p.servidor_backserver ? (
+                                                        <div className="flex flex-col gap-0.5">
+                                                            <div className="flex items-center gap-1">
+                                                                <Server size={9} className="text-violet-400 shrink-0" />
+                                                                <a
+                                                                    href={p.servidor_backserver.startsWith('http') ? p.servidor_backserver : `https://${p.servidor_backserver}`}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="text-[11px] font-mono text-violet-400 hover:text-violet-300 truncate transition-colors"
+                                                                    title={p.servidor_backserver}
+                                                                >
+                                                                    {p.servidor_backserver.replace(/^https?:\/\//, '')}
+                                                                </a>
+                                                            </div>
+                                                            {p.servidor_version && (
+                                                                <span className="text-[9px] text-muted-foreground font-mono ml-3.5">{p.servidor_version}</span>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex items-center gap-1">
+                                                            {isSaving ? <Loader2 size={10} className="animate-spin text-muted-foreground" /> : null}
+                                                            <InlineEdit
+                                                                value={p.servidor}
+                                                                placeholder="Sin servidor"
+                                                                onSave={v => handleUpdateField(p.id_proyecto, 'servidor', v)}
+                                                            />
+                                                        </div>
+                                                    )}
                                                 </td>
                                             )}
 
