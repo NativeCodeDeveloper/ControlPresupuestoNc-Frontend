@@ -126,7 +126,8 @@ export default function AdjuntosPanel({ entidad, idEntidad, compact = false, lab
         finally { setLoading(false); }
     }, [entidad, idEntidad]);
 
-    useEffect(() => { if (open) load(); }, [open, load]);
+    // Carga siempre al montar — el badge compact necesita el conteo aunque el panel esté cerrado.
+    useEffect(() => { load(); }, [load]);
 
     const handleFiles = async (files) => {
         setError(null);
