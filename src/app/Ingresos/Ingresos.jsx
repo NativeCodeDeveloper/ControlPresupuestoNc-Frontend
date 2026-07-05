@@ -55,7 +55,8 @@ export default function Ingresos() {
         ciclo: 'Unico',
         fechaInicioServicio: '',
         fechaProximoPago: '',
-        urlCobroMp: ''
+        urlCobroMp: '',
+        afectoIva: true
     });
 
     const [quickPayLoadingId, setQuickPayLoadingId] = useState(null);
@@ -167,7 +168,8 @@ export default function Ingresos() {
                 ciclo_facturacion: projectForm.ciclo || 'Unico',
                 fecha_inicio_servicio: projectForm.fechaInicioServicio || null,
                 fecha_proximo_pago: projectForm.fechaProximoPago || null,
-                url_cobro_mercadopago: projectForm.urlCobroMp || null
+                url_cobro_mercadopago: projectForm.urlCobroMp || null,
+                afecto_iva: projectForm.afectoIva ? 1 : 0
             });
 
             if (newProject && newProject.ok) {
@@ -192,7 +194,8 @@ export default function Ingresos() {
                 ciclo: 'Unico',
                 fechaInicioServicio: '',
                 fechaProximoPago: '',
-                urlCobroMp: ''
+                urlCobroMp: '',
+                afectoIva: true
             });
             setActiveTab('projects');
         } catch (error) {
@@ -282,7 +285,8 @@ export default function Ingresos() {
             ciclo: project.ciclo_facturacion || 'Unico',
             fechaInicioServicio: project.fecha_inicio_servicio ? project.fecha_inicio_servicio.split('T')[0] : '',
             fechaProximoPago: project.fecha_proximo_pago ? project.fecha_proximo_pago.split('T')[0] : '',
-            urlCobroMp: project.url_cobro_mercadopago || ''
+            urlCobroMp: project.url_cobro_mercadopago || '',
+            afectoIva: project.afecto_iva !== undefined ? Boolean(project.afecto_iva) : true
         });
     };
 
@@ -317,6 +321,7 @@ export default function Ingresos() {
                 url_cobro_mercadopago: editForm.urlCobroMp || null,
                 tipo_proyecto_id: tipo_proyecto_id ?? null,
                 estado_proyecto_id: estado_proyecto_id ?? null,
+                afecto_iva: editForm.afectoIva ? 1 : 0,
             };
 
             const result = await projectsService.updateProject(editProject.id, updates);
@@ -593,6 +598,18 @@ export default function Ingresos() {
                                                 onChange={(e) => setProjectForm({ ...projectForm, fechaProximoPago: e.target.value })} />
                                         </>)}
                                     </div>
+                                </div>
+
+                                <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-xl border border-border/40">
+                                    <div>
+                                        <p className="text-sm font-medium text-foreground">Afecto a IVA</p>
+                                        <p className="text-xs text-muted-foreground">Genera débito fiscal en F29 (19%)</p>
+                                    </div>
+                                    <button type="button"
+                                        onClick={() => setProjectForm({ ...projectForm, afectoIva: !projectForm.afectoIva })}
+                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${projectForm.afectoIva ? 'bg-violet-500' : 'bg-border'}`}>
+                                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${projectForm.afectoIva ? 'translate-x-6' : 'translate-x-1'}`} />
+                                    </button>
                                 </div>
 
                                 <button type="submit" disabled={isLoading}
@@ -1006,6 +1023,18 @@ export default function Ingresos() {
                                         onChange={(e) => setEditForm({ ...editForm, fechaProximoPago: e.target.value })} />
                                 </>)}
                             </div>
+                        </div>
+
+                        <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-xl border border-border/40">
+                            <div>
+                                <p className="text-sm font-medium text-foreground">Afecto a IVA</p>
+                                <p className="text-xs text-muted-foreground">Genera débito fiscal en F29 (19%)</p>
+                            </div>
+                            <button type="button"
+                                onClick={() => setEditForm({ ...editForm, afectoIva: !editForm.afectoIva })}
+                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${editForm.afectoIva ? 'bg-violet-500' : 'bg-border'}`}>
+                                <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${editForm.afectoIva ? 'translate-x-6' : 'translate-x-1'}`} />
+                            </button>
                         </div>
 
                         <div className="flex gap-3 pt-2">

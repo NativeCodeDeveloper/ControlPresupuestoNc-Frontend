@@ -21,7 +21,8 @@ import {
     Plus,
     GripVertical,
     CheckCircle2,
-    Circle
+    Circle,
+    Receipt
 } from 'lucide-react';
 
 const Section = ({ title, icon, children }) => (
@@ -50,7 +51,8 @@ export default function Config() {
     const [partnersData, setPartnersData] = useState([]);
     const [financialConfig, setFinancialConfig] = useState({
         emergencyFundPercentage: 0,
-        reinvestmentPercentage: 0
+        reinvestmentPercentage: 0,
+        tasaPpm: 1
     });
 
     // Synapse
@@ -94,7 +96,8 @@ export default function Config() {
                 if (config && config.porcentaje_fondo_emergencia !== undefined) {
                     setFinancialConfig({
                         emergencyFundPercentage: parseFloat(config.porcentaje_fondo_emergencia || 0),
-                        reinvestmentPercentage: parseFloat(config.porcentaje_reinversion || 0)
+                        reinvestmentPercentage: parseFloat(config.porcentaje_reinversion || 0),
+                        tasaPpm: parseFloat(config.tasa_ppm || 1)
                     });
                 }
                 if (partners && Array.isArray(partners)) setPartnersData(partners.map(normalizePartner));
@@ -123,15 +126,18 @@ export default function Config() {
 
         setIsSavingFinancialConfig(true);
         try {
+            const ppm = parseFloat(financialConfig.tasaPpm || 1);
             const result = await configService.updateFinancialConfig({
                 porcentaje_fondo_emergencia: emergency,
-                porcentaje_reinversion: reinversion
+                porcentaje_reinversion: reinversion,
+                tasa_ppm: ppm
             });
 
             if (result?.ok && result?.data) {
                 setFinancialConfig({
                     emergencyFundPercentage: parseFloat(result.data.porcentaje_fondo_emergencia || 0),
-                    reinvestmentPercentage: parseFloat(result.data.porcentaje_reinversion || 0)
+                    reinvestmentPercentage: parseFloat(result.data.porcentaje_reinversion || 0),
+                    tasaPpm: parseFloat(result.data.tasa_ppm || 1)
                 });
                 return;
             }
@@ -140,7 +146,8 @@ export default function Config() {
             if (freshConfig && freshConfig.porcentaje_fondo_emergencia !== undefined) {
                 setFinancialConfig({
                     emergencyFundPercentage: parseFloat(freshConfig.porcentaje_fondo_emergencia || 0),
-                    reinvestmentPercentage: parseFloat(freshConfig.porcentaje_reinversion || 0)
+                    reinvestmentPercentage: parseFloat(freshConfig.porcentaje_reinversion || 0),
+                    tasaPpm: parseFloat(freshConfig.tasa_ppm || 1)
                 });
             }
         } catch (error) {
@@ -440,7 +447,7 @@ export default function Config() {
                     <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
                         Configura los porcentajes que se descontarán automáticamente de las utilidades operativas antes de la distribución a socios.
                     </p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="bg-card border border-[hsl(var(--emerald-premium))]/20 p-5 rounded-xl shadow-sm hover:shadow-md transition-all bg-gradient-to-br from-[hsl(var(--emerald-premium))]/5 to-transparent">
                             <div className="flex items-center gap-3 mb-4">
                                 <div className="p-2 bg-[hsl(var(--emerald-premium))]/20 rounded-lg text-[hsl(var(--emerald-premium))]">
@@ -487,6 +494,31 @@ export default function Config() {
                                 <span className="text-muted-foreground font-medium">%</span>
                             </div>
                             <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium">Crecimiento / Marketing</p>
+                        </div>
+
+                        <div className="bg-card border border-violet-500/20 p-5 rounded-xl shadow-sm hover:shadow-md transition-all bg-gradient-to-br from-violet-500/5 to-transparent">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="p-2 bg-violet-500/20 rounded-lg text-violet-500">
+                                    <Receipt size={20} />
+                                </div>
+                                <h4 className="font-semibold text-foreground text-sm">Tasa PPM (F29)</h4>
+                            </div>
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="relative flex-1">
+                                    <input
+                                        type="number"
+                                        value={financialConfig.tasaPpm}
+                                        onChange={(e) => handleFinancialConfigChange('tasaPpm', e.target.value)}
+                                        onBlur={handleFinancialConfigSave}
+                                        className="w-full bg-violet-500/10 border border-violet-500/30 rounded-lg px-3 py-2 text-center font-bold text-lg focus:outline-none focus:ring-2 focus:ring-violet-500/30 text-violet-500"
+                                        min="0"
+                                        max="10"
+                                        step="0.1"
+                                    />
+                                </div>
+                                <span className="text-muted-foreground font-medium">%</span>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium">Pago provisional mensual SII</p>
                         </div>
                     </div>
                     {financialConfigError && (
