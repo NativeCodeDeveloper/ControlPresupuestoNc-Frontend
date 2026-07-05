@@ -5,6 +5,7 @@ import * as configService from '../../services/configService';
 import * as partnersService from '../../services/partnersService';
 import * as costsService from '../../services/costsService';
 import * as synapseService from '../../services/synapseService';
+import * as soporteService from '../../services/soporteService';
 import apiClient from '../../services/apiClient';
 import {
     Settings,
@@ -22,7 +23,8 @@ import {
     GripVertical,
     CheckCircle2,
     Circle,
-    Receipt
+    Receipt,
+    LifeBuoy
 } from 'lucide-react';
 
 const Section = ({ title, icon, children }) => (
@@ -63,6 +65,10 @@ export default function Config() {
     const [newEtiquetaForm, setNewEtiquetaForm] = useState({ nombre: '', color_hex: '#8B5CF6' });
     const [newTeamForm, setNewTeamForm] = useState({ nombre: '', emoji: '👥', color_hex: '#8B5CF6' });
 
+    // Nexus — estados de soporte
+    const [soporteEstados, setSoporteEstados] = useState([]);
+    const [newSoporteEstadoForm, setNewSoporteEstadoForm] = useState({ nombre: '', color_hex: '#38bdf8', es_cierre: false });
+
     // Normalizar socio del backend
     const normalizePartner = (p) => ({
         ...p,
@@ -74,7 +80,7 @@ export default function Config() {
     useEffect(() => {
         const loadData = async () => {
             try {
-                const [types, statuses, services, costTypes, config, partners, synEstados, synEtiquetas, synTeams] = await Promise.all([
+                const [types, statuses, services, costTypes, config, partners, synEstados, synEtiquetas, synTeams, srtEstados] = await Promise.all([
                     configService.getProjectTypes(),
                     configService.getProjectStatuses(),
                     costsService.getServices(),
@@ -84,10 +90,12 @@ export default function Config() {
                     synapseService.getEstados(),
                     synapseService.getEtiquetas(),
                     synapseService.getTeams(),
+                    soporteService.getEstados().catch(() => []),
                 ]);
                 if (synEstados && Array.isArray(synEstados)) setSynapseEstados(synEstados);
                 if (synEtiquetas && Array.isArray(synEtiquetas)) setSynapseEtiquetas(synEtiquetas);
                 if (synTeams && Array.isArray(synTeams)) setSynapseTeams(synTeams);
+                if (srtEstados && Array.isArray(srtEstados)) setSoporteEstados(srtEstados);
 
                 if (types && Array.isArray(types)) setProjectTypesData(types);
                 if (statuses && Array.isArray(statuses)) setProjectStatusesData(statuses);
@@ -396,6 +404,33 @@ export default function Config() {
             if (Array.isArray(fresh)) setSynapseEstados(fresh);
         } catch (e) {
             alert(e.message || 'No se pudo eliminar el estado.');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // === NEXUS: ESTADOS DE SOPORTE ===
+    const handleAddSoporteEstado = async () => {
+        if (!newSoporteEstadoForm.nombre.trim()) return;
+        setIsLoading(true);
+        try {
+            const { estados } = await soporteService.createEstado(newSoporteEstadoForm);
+            if (Array.isArray(estados)) setSoporteEstados(estados);
+            setNewSoporteEstadoForm({ nombre: '', color_hex: '#38bdf8', es_cierre: false });
+        } catch (e) {
+            console.error('Error creando estado Nexus:', e);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleDeleteSoporteEstado = async (id) => {
+        setIsLoading(true);
+        try {
+            const { estados } = await soporteService.deleteEstado(id);
+            if (Array.isArray(estados)) setSoporteEstados(estados);
+        } catch (e) {
+            console.error('Error eliminando estado Nexus:', e);
         } finally {
             setIsLoading(false);
         }
@@ -929,6 +964,77 @@ export default function Config() {
                             onClick={handleAddSynapseEstado}
                             disabled={isLoading || !newEstadoForm.nombre.trim()}
                             className="flex items-center gap-1.5 bg-violet-500 hover:bg-violet-600 disabled:opacity-40 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                        >
+                            <Plus size={14} /> Agregar
+                        </button>
+                    </div>
+                </Section>
+
+                {/* ── Nexus: Estados de Soporte ── */}
+                <Section title="Nexus — Estados de Tickets" icon={LifeBuoy}>
+                    <p className="text-sm text-muted-foreground mb-5">
+                        Gestiona los estados del flujo de soporte. Los estados marcados como <strong>Cierre</strong> registran la fecha de cierre del ticket al moverlo.
+                    </p>
+
+                    <div className="space-y-2 mb-5">
+                        {soporteEstados.map(est => (
+                            <div key={est.id_estado} className="flex items-center gap-3 bg-secondary/40 border border-border/40 rounded-xl px-4 py-3">
+                                <span className="w-3 h-3 rounded-full shrink-0" style={{ background: est.color_hex }} />
+                                <span className="text-sm font-medium text-foreground flex-1">{est.nombre}</span>
+                                {est.es_cierre ? (
+                                    <span className="flex items-center gap-1 text-[11px] text-sky-400 font-medium">
+                                        <CheckCircle2 size={11} /> Cierre
+                                    </span>
+                                ) : (
+                                    <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                                        <Circle size={11} /> Activo
+                                    </span>
+                                )}
+                                <button
+                                    onClick={() => handleDeleteSoporteEstado(est.id_estado)}
+                                    disabled={isLoading}
+                                    className="text-muted-foreground hover:text-red-400 transition-colors p-1.5 rounded-lg hover:bg-red-500/8 disabled:opacity-40"
+                                >
+                                    <Trash2 size={14} />
+                                </button>
+                            </div>
+                        ))}
+                        {!soporteEstados.length && (
+                            <p className="text-sm text-muted-foreground text-center py-4">No hay estados configurados aún.</p>
+                        )}
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 items-end">
+                        <input
+                            type="text"
+                            placeholder="Nombre del estado..."
+                            value={newSoporteEstadoForm.nombre}
+                            onChange={(e) => setNewSoporteEstadoForm(f => ({ ...f, nombre: e.target.value }))}
+                            onKeyDown={(e) => { if (e.key === 'Enter') handleAddSoporteEstado(); }}
+                            className="flex-1 min-w-36 bg-secondary/50 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/30 transition-all"
+                        />
+                        <div className="flex items-center gap-2">
+                            <label className="text-xs text-muted-foreground">Color</label>
+                            <input
+                                type="color"
+                                value={newSoporteEstadoForm.color_hex}
+                                onChange={(e) => setNewSoporteEstadoForm(f => ({ ...f, color_hex: e.target.value }))}
+                                className="w-8 h-8 rounded-lg border border-border cursor-pointer"
+                            />
+                        </div>
+                        <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
+                            <input
+                                type="checkbox"
+                                checked={newSoporteEstadoForm.es_cierre}
+                                onChange={(e) => setNewSoporteEstadoForm(f => ({ ...f, es_cierre: e.target.checked }))}
+                                className="rounded"
+                            />
+                            Es cierre
+                        </label>
+                        <button
+                            onClick={handleAddSoporteEstado}
+                            disabled={isLoading || !newSoporteEstadoForm.nombre.trim()}
+                            className="flex items-center gap-1.5 bg-sky-500 hover:bg-sky-600 disabled:opacity-40 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
                         >
                             <Plus size={14} /> Agregar
                         </button>

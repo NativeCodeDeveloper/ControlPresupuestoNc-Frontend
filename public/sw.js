@@ -1,8 +1,9 @@
-const CACHE_NAME = 'ncf-shell-v3';
+const CACHE_NAME = 'ncf-shell-v4';
 
 const SHELL_ASSETS = [
     '/',
     '/dashboard',
+    '/nexus',
     '/icon-192.png',
     '/icon-512.png',
     '/logonuevoblanco.png',

@@ -62,15 +62,10 @@ const toQueryString = (params = {}) => {
 export const getProjects = async (params = {}) => {
     try {
         const data = await apiClient.get(`/api/proyectos${toQueryString(params)}`);
-        
-        // ACTUALENTE: No hay backend, retorna null
-        // Componentes manejarán esto obteniendo datos de Context
-        
-        // FUTURO: Será array de proyectos desde MySQL
         return data || null;
     } catch (error) {
         console.error('Error obteniendo proyectos:', error);
-        return null; // Componente cae back a FinanceContext
+        return null;
     }
 };
 

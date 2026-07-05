@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import * as soporteService from '../../services/soporteService';
 import { getPartners } from '../../services/partnersService';
+import { getProjects } from '../../services/projectsService';
 
 // ─── Utilidades ───────────────────────────────────────────────────────────────
 
@@ -131,14 +132,28 @@ function EmailModal({ ticket, tipo, onClose, socios }) {
 
 function TicketModal({ estados, socios, onClose, onCreated }) {
     const [form, setForm] = useState({
-        nombre_cliente: '', email_cliente: '', asunto: '', descripcion: '',
+        id_proyecto: '', nombre_cliente: '', email_cliente: '', asunto: '', descripcion: '',
         prioridad: 'media', sla_horas: 24, id_estado: estados[0]?.id_estado ?? '',
         id_responsable: '', enviar_apertura: true
     });
+    const [proyectos, setProyectos] = useState([]);
     const [saving, setSaving] = useState(false);
     const [error, setError]   = useState('');
 
+    useEffect(() => {
+        getProjects().then(p => setProyectos(Array.isArray(p) ? p : [])).catch(() => {});
+    }, []);
+
     const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+    // Al seleccionar proyecto, pre-rellenar nombre_cliente si aún está vacío
+    const handleProyecto = (val) => {
+        set('id_proyecto', val);
+        if (val) {
+            const p = proyectos.find(x => String(x.id_proyecto) === val);
+            if (p && !form.nombre_cliente) set('nombre_cliente', p.nombre_cliente || p.nombre);
+        }
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -147,6 +162,7 @@ function TicketModal({ estados, socios, onClose, onCreated }) {
         try {
             const data = await soporteService.createTicket({
                 ...form,
+                id_proyecto:    form.id_proyecto ? Number(form.id_proyecto) : null,
                 id_estado:      Number(form.id_estado),
                 id_responsable: form.id_responsable ? Number(form.id_responsable) : null,
                 sla_horas:      Number(form.sla_horas),
@@ -173,6 +189,15 @@ function TicketModal({ estados, socios, onClose, onCreated }) {
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-5 space-y-4">
+                    {/* Proyecto */}
+                    <div>
+                        <label className="text-[11px] text-muted-foreground mb-1 block">Proyecto asociado</label>
+                        <select value={form.id_proyecto} onChange={e => handleProyecto(e.target.value)} className={inputCls}>
+                            <option value="">— Ticket interno (sin proyecto) —</option>
+                            {proyectos.map(p => <option key={p.id_proyecto} value={p.id_proyecto}>{p.nombre}</option>)}
+                        </select>
+                    </div>
+
                     <div className="grid grid-cols-2 gap-3">
                         <div>
                             <label className="text-[11px] text-muted-foreground mb-1 block">Cliente *</label>
@@ -266,6 +291,16 @@ function TicketDetalle({ ticket, estados, socios, onClose, onUpdated }) {
         resultado: ticket.resolucion_resultado ?? '',
         observaciones: ticket.resolucion_observaciones ?? '',
     });
+
+    // Sincronizar resolucion cuando el ticket se actualiza desde el padre
+    useEffect(() => {
+        setResolucion({
+            causa:         ticket.resolucion_causa         ?? '',
+            accion:        ticket.resolucion_accion        ?? '',
+            resultado:     ticket.resolucion_resultado     ?? '',
+            observaciones: ticket.resolucion_observaciones ?? '',
+        });
+    }, [ticket.resolucion_causa, ticket.resolucion_accion, ticket.resolucion_resultado, ticket.resolucion_observaciones]);
 
     const loadActividad = useCallback(async () => {
         try {
@@ -460,6 +495,15 @@ function TicketDetalle({ ticket, estados, socios, onClose, onUpdated }) {
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 
+const NEXUS_CACHE_KEY = 'ncf:nexus:v1';
+
+function cacheLoad() {
+    try { return JSON.parse(localStorage.getItem(NEXUS_CACHE_KEY) || 'null'); } catch { return null; }
+}
+function cacheSave(data) {
+    try { localStorage.setItem(NEXUS_CACHE_KEY, JSON.stringify(data)); } catch {}
+}
+
 export default function Nexus() {
     const [tickets,  setTickets]  = useState([]);
     const [estados,  setEstados]  = useState([]);
@@ -472,17 +516,32 @@ export default function Nexus() {
     const [filtroPrioridad, setFiltroPrioridad] = useState('');
     const [busqueda,        setBusqueda]        = useState('');
 
-    const load = useCallback(async () => {
-        setLoading(true);
+    const load = useCallback(async (silent = false) => {
+        if (!silent) {
+            // Carga stale desde localStorage para mostrar datos instantáneamente
+            const cached = cacheLoad();
+            if (cached) {
+                setTickets(cached.tickets ?? []);
+                setEstados(cached.estados ?? []);
+                setSocios(cached.socios   ?? []);
+                setLoading(false); // ya hay datos visibles
+            } else {
+                setLoading(true);
+            }
+        }
         try {
             const [t, e, s] = await Promise.all([
                 soporteService.getTickets(),
                 soporteService.getEstados(),
                 getPartners().catch(() => []),
             ]);
-            setTickets(Array.isArray(t) ? t : []);
-            setEstados(Array.isArray(e) ? e : []);
-            setSocios(Array.isArray(s) ? s : []);
+            const tickets = Array.isArray(t) ? t : [];
+            const estados = Array.isArray(e) ? e : [];
+            const socios  = Array.isArray(s) ? s : [];
+            setTickets(tickets);
+            setEstados(estados);
+            setSocios(socios);
+            cacheSave({ tickets, estados, socios });
         } finally {
             setLoading(false);
         }
@@ -504,7 +563,8 @@ export default function Nexus() {
 
     const handleCreated = (ticket) => {
         setShowModal(false);
-        load();
+        if (ticket) setTickets(prev => [ticket, ...prev]); // optimistic
+        load(true); // refresca sin spinner
         setSelected(ticket);
     };
 
@@ -590,7 +650,8 @@ export default function Nexus() {
                                     <p className="text-sm font-medium text-foreground truncate">{ticket.asunto}</p>
                                     <p className="text-[11px] text-muted-foreground truncate">
                                         {ticket.nombre_cliente}
-                                        {ticket.responsable_nombre && ` · Asignado: ${ticket.responsable_nombre}`}
+                                        {ticket.proyecto_nombre && <span className="text-sky-400/70"> · {ticket.proyecto_nombre}</span>}
+                                        {ticket.responsable_nombre && ` · ${ticket.responsable_nombre}`}
                                     </p>
                                 </div>
                                 <div className="text-right shrink-0">
@@ -611,6 +672,7 @@ export default function Nexus() {
             {selected && (
                 <div className={`${selected ? 'flex-1 md:flex-none md:w-[420px]' : 'hidden'} border-l border-border overflow-y-auto`}>
                     <TicketDetalle
+                        key={selected.id_ticket}
                         ticket={selected}
                         estados={estados}
                         socios={socios}
