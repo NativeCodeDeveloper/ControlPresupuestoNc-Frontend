@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { usePersistedState } from '../../hooks/usePersistedState';
 import {
     Shield, Plus, Loader2, RefreshCw, Server, Globe, GitBranch,
     Key, FileCode2, AlertTriangle, Eye, EyeOff, Copy, Check,
     ChevronDown, Trash2, Save, X, Database, Wifi, Lock,
-    ChevronRight, FolderCode, Terminal, Layers
+    ChevronRight, FolderCode, Terminal, Layers, Search
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import * as svc from '../../services/clientesService';
@@ -443,6 +443,7 @@ export default function Boveda() {
     const [selectedId, setSelectedId] = usePersistedState('boveda:selectedId', null);
     const [creating, setCreating]     = useState(false);
     const [newProy, setNewProy]       = useState('');
+    const [search, setSearch]         = usePersistedState('boveda:search', '');
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -499,6 +500,17 @@ export default function Boveda() {
     const proyectosConBoveda = new Set(bovedas.map(b => b.id_proyecto));
     const proyectosSinBoveda = proyectos.filter(p => !proyectosConBoveda.has(p.id_proyecto) && p.activo);
 
+    // Filtrado del sidebar
+    const bovedasFiltradas = useMemo(() => {
+        const q = search.toLowerCase().trim();
+        if (!q) return bovedas;
+        return bovedas.filter(b =>
+            b.nombre_cliente?.toLowerCase().includes(q) ||
+            b.proyecto_nombre?.toLowerCase().includes(q) ||
+            b.codigo_interno?.toLowerCase().includes(q)
+        );
+    }, [bovedas, search]);
+
     return (
         <div className="flex flex-col lg:flex-row gap-6 min-h-0">
 
@@ -508,7 +520,9 @@ export default function Boveda() {
                     <div className="flex items-center gap-2">
                         <Shield size={16} className="text-amber-400" strokeWidth={1.8} />
                         <h2 className="font-semibold text-[15px]">Bóveda</h2>
-                        <span className="text-[11px] text-muted-foreground bg-foreground/5 border border-border rounded-full px-2 py-0.5">{bovedas.length}</span>
+                        <span className="text-[11px] text-muted-foreground bg-foreground/5 border border-border rounded-full px-2 py-0.5">
+                            {bovedasFiltradas.length}{bovedasFiltradas.length !== bovedas.length && `/${bovedas.length}`}
+                        </span>
                     </div>
                     <div className="flex items-center gap-1.5">
                         <button onClick={load} disabled={loading} className="p-1.5 text-muted-foreground hover:text-foreground rounded-lg hover:bg-foreground/5 transition-colors">
@@ -518,6 +532,25 @@ export default function Boveda() {
                             <Plus size={13} /> Nueva
                         </button>
                     </div>
+                </div>
+
+                {/* Búsqueda */}
+                <div className="relative">
+                    <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                    <input
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        placeholder="Buscar cliente, proyecto o código…"
+                        className="w-full pl-7 pr-7 py-1.5 text-[12px] bg-card border border-border rounded-lg outline-none focus:border-amber-500/50 transition-colors"
+                    />
+                    {search && (
+                        <button
+                            onClick={() => setSearch('')}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        >
+                            <X size={11} />
+                        </button>
+                    )}
                 </div>
 
                 {/* Form nueva entrada */}
@@ -553,10 +586,12 @@ export default function Boveda() {
                         <div className="flex items-center gap-2 py-4 text-muted-foreground text-[12px]">
                             <Loader2 size={13} className="animate-spin" /> Cargando…
                         </div>
-                    ) : bovedas.length === 0 ? (
-                        <p className="text-[12px] text-muted-foreground/60 py-4">Sin entradas. Crea la primera.</p>
+                    ) : bovedasFiltradas.length === 0 ? (
+                        <p className="text-[12px] text-muted-foreground/60 py-4">
+                            {search ? 'Sin resultados para esa búsqueda.' : 'Sin entradas. Crea la primera.'}
+                        </p>
                     ) : (
-                        bovedas.map(b => (
+                        bovedasFiltradas.map(b => (
                             <button
                                 key={b.id_entrada}
                                 onClick={() => setSelectedId(selectedId === b.id_entrada ? null : b.id_entrada)}
