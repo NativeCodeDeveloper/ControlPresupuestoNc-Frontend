@@ -56,7 +56,8 @@ export default function Gastos() {
         amount: '',
         observations: '',
         date: new Date().toISOString().split('T')[0],
-        dueDate: ''
+        dueDate: '',
+        con_factura: true
     });
 
     const fmtPreview = (val) => {
@@ -161,7 +162,8 @@ export default function Gastos() {
                 monto: Math.round(parseFloat(variableForm.amount)),
                 observaciones: variableForm.observations,
                 fecha: variableForm.date,
-                fecha_vencimiento: variableForm.dueDate || null
+                fecha_vencimiento: variableForm.dueDate || null,
+                con_factura: variableForm.con_factura ? 1 : 0
             });
 
             if (result && result.ok) {
@@ -703,6 +705,17 @@ export default function Gastos() {
                                     onChange={(e) => setVariableForm({ ...variableForm, dueDate: e.target.value })} />
                                 <Input label="Observaciones" placeholder="Detalles adicionales..."
                                     value={variableForm.observations} onChange={(e) => setVariableForm({ ...variableForm, observations: e.target.value })} />
+                                <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-xl border border-border/40">
+                                    <div>
+                                        <p className="text-sm font-medium text-foreground">Con factura (IVA)</p>
+                                        <p className="text-xs text-muted-foreground">Genera crédito fiscal en F29</p>
+                                    </div>
+                                    <button type="button"
+                                        onClick={() => setVariableForm({ ...variableForm, con_factura: !variableForm.con_factura })}
+                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${variableForm.con_factura ? 'bg-violet-500' : 'bg-border'}`}>
+                                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${variableForm.con_factura ? 'translate-x-6' : 'translate-x-1'}`} />
+                                    </button>
+                                </div>
                                 <button type="submit" disabled={isLoading}
                                     className="w-full bg-[hsl(var(--copper))] text-white font-medium py-2.5 rounded-lg hover:bg-[hsl(var(--copper-light))] transition-colors mt-4 disabled:opacity-50 disabled:cursor-not-allowed">
                                     {isLoading ? 'Guardando...' : 'Guardar Costo Variable'}

@@ -39,3 +39,18 @@ export const getDueAlerts = async (days = 7) => {
         return { items: [] };
     }
 };
+
+export const getF29 = async (month = null, year = null) => {
+    try {
+        const params = new URLSearchParams();
+        if (month !== null && month !== undefined) params.append('mes', Number(month) + 1);
+        if (year !== null && year !== undefined) params.append('year', year);
+        const query = params.toString();
+        const url = query ? `/api/finanzas/f29?${query}` : '/api/finanzas/f29';
+        const data = await apiClient.get(url);
+        return data || null;
+    } catch (error) {
+        console.error('Error obteniendo F29:', error);
+        return null;
+    }
+};

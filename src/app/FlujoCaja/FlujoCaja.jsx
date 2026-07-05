@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRealtime } from '../../hooks/useRealtime';
 import { usePersistedState } from '../../hooks/usePersistedState';
-import { getFlujoCaja } from '../../services/financeService';
+import { getFlujoCaja, getF29 } from '../../services/financeService';
 import {
     ArrowDownRight,
     ArrowUpRight,
@@ -14,7 +14,9 @@ import {
     RefreshCw,
     ChevronUp,
     ChevronDown,
-    Minus
+    Minus,
+    Receipt,
+    AlertCircle
 } from 'lucide-react';
 import {
     BarChart,
@@ -84,10 +86,16 @@ const CustomTooltip = ({ active, payload, label }) => {
 
 export default function FlujoCaja() {
     const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().getMonth(); // 0-indexed
     const [year, setYear] = usePersistedState('flujocaja:year', currentYear);
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+
+    const [f29Month, setF29Month] = usePersistedState('flujocaja:f29month', currentMonth);
+    const [f29Year, setF29Year] = usePersistedState('flujocaja:f29year', currentYear);
+    const [f29Data, setF29Data] = useState(null);
+    const [f29Loading, setF29Loading] = useState(true);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -103,12 +111,22 @@ export default function FlujoCaja() {
         }
     }, [year]);
 
+    const loadF29 = useCallback(async () => {
+        setF29Loading(true);
+        try {
+            const result = await getF29(f29Month, f29Year);
+            setF29Data(result);
+        } catch { setF29Data(null); }
+        finally { setF29Loading(false); }
+    }, [f29Month, f29Year]);
+
     useRealtime(load);
 
     useEffect(() => { load(); }, [load]);
+    useEffect(() => { loadF29(); }, [loadF29]);
 
     const years = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i);
-    const currentMonthIndex = new Date().getMonth(); // 0-indexed
+    const currentMonthIndex = currentMonth;
 
     const meses = data?.meses || [];
     const totales = data?.totales || {};
@@ -309,6 +327,85 @@ export default function FlujoCaja() {
                             <span className="font-semibold text-[hsl(var(--copper))]">C. Fijos Efectivos:</span>{' '}
                             Pagos reales realizados en el mes (solo aparecen en el mes de vencimiento real).
                         </p>
+                    </div>
+
+                    {/* ─── Proyección F29 ─────────────────────────────────────── */}
+                    <div className="bg-card border border-border/60 rounded-2xl overflow-hidden">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-6 py-4 border-b border-border/40">
+                            <div className="flex items-center gap-2">
+                                <Receipt size={16} className="text-violet-500" />
+                                <h3 className="text-sm font-semibold text-foreground">Proyección Formulario 29</h3>
+                                <span className="text-[10px] bg-violet-500/10 text-violet-500 px-2 py-0.5 rounded-full font-medium">SII</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <select value={f29Month} onChange={(e) => setF29Month(Number(e.target.value))}
+                                    className="text-xs bg-secondary border border-border/60 rounded-lg px-2 py-1.5 text-foreground">
+                                    {['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'].map((m, i) => (
+                                        <option key={i} value={i}>{m}</option>
+                                    ))}
+                                </select>
+                                <select value={f29Year} onChange={(e) => setF29Year(Number(e.target.value))}
+                                    className="text-xs bg-secondary border border-border/60 rounded-lg px-2 py-1.5 text-foreground">
+                                    {years.map((y) => <option key={y} value={y}>{y}</option>)}
+                                </select>
+                            </div>
+                        </div>
+
+                        {f29Loading ? (
+                            <div className="px-6 py-8 text-center text-sm text-muted-foreground">Calculando...</div>
+                        ) : !f29Data ? (
+                            <div className="px-6 py-8 text-center text-sm text-muted-foreground">Sin datos para el período</div>
+                        ) : (
+                            <div className="p-6 space-y-4">
+                                {/* Alerta vencimiento */}
+                                {(() => {
+                                    const hoy = new Date();
+                                    const venc = new Date(f29Data.vencimiento);
+                                    const diffDias = Math.ceil((venc - hoy) / (1000 * 60 * 60 * 24));
+                                    if (diffDias <= 7 && diffDias >= 0) return (
+                                        <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3">
+                                            <AlertCircle size={14} className="text-amber-500 shrink-0" />
+                                            <p className="text-xs text-amber-600 font-medium">
+                                                F29 vence el 20/{String(f29Data.periodo.mes === 12 ? 1 : f29Data.periodo.mes + 1).padStart(2,'0')}/{f29Data.periodo.mes === 12 ? f29Data.periodo.año + 1 : f29Data.periodo.año} — faltan {diffDias} días
+                                            </p>
+                                        </div>
+                                    );
+                                    return null;
+                                })()}
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    {/* Débito Fiscal */}
+                                    <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-4">
+                                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Débito Fiscal (IVA ventas)</p>
+                                        <p className="text-lg font-bold text-red-500">{fmt(f29Data.debito_fiscal.iva)}</p>
+                                        <p className="text-[11px] text-muted-foreground mt-0.5">Base: {fmt(f29Data.debito_fiscal.base)}</p>
+                                    </div>
+                                    {/* Crédito Fiscal */}
+                                    <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4">
+                                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Crédito Fiscal (IVA compras)</p>
+                                        <p className="text-lg font-bold text-emerald-500">{fmt(f29Data.credito_fiscal.total)}</p>
+                                        <p className="text-[11px] text-muted-foreground mt-0.5">Fijos {fmt(f29Data.credito_fiscal.fijos.iva)} + Var. {fmt(f29Data.credito_fiscal.variables.iva)}</p>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    <div className="bg-secondary/50 rounded-xl p-4 text-center">
+                                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">IVA Neto</p>
+                                        <p className={`text-base font-bold ${f29Data.iva_neto > 0 ? 'text-red-500' : 'text-emerald-500'}`}>{fmt(f29Data.iva_neto)}</p>
+                                        {f29Data.remanente > 0 && <p className="text-[10px] text-emerald-500 mt-0.5">Remanente: {fmt(f29Data.remanente)}</p>}
+                                    </div>
+                                    <div className="bg-secondary/50 rounded-xl p-4 text-center">
+                                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">PPM ({f29Data.ppm.tasa}%)</p>
+                                        <p className="text-base font-bold text-amber-500">{fmt(f29Data.ppm.monto)}</p>
+                                    </div>
+                                    <div className="bg-violet-500/10 border border-violet-500/30 rounded-xl p-4 text-center">
+                                        <p className="text-[10px] font-semibold uppercase tracking-wider text-violet-500 mb-1">Total F29</p>
+                                        <p className="text-xl font-bold text-violet-500">{fmt(f29Data.total_f29)}</p>
+                                        <p className="text-[10px] text-muted-foreground mt-0.5">Vence el 20/{String(f29Data.periodo.mes === 12 ? 1 : f29Data.periodo.mes + 1).padStart(2,'0')}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </>
             )}
