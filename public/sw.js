@@ -4,6 +4,7 @@ const SHELL_ASSETS = [
     '/',
     '/dashboard',
     '/nexus',
+    '/nexus/actualizaciones',
     '/icon-192.png',
     '/icon-512.png',
     '/logonuevoblanco.png',
