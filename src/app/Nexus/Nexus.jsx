@@ -33,8 +33,11 @@ const TIPO_ACTIVIDAD_ICON = {
 
 function fmt(date) {
     if (!date) return '—';
-    // MySQL devuelve "YYYY-MM-DD HH:MM:SS" sin zona horaria — tratar como UTC
-    const d = typeof date === 'string' ? new Date(date.replace(' ', 'T') + 'Z') : new Date(date);
+    // "YYYY-MM-DD HH:MM:SS" → agregar Z para tratar como UTC; ISO strings ya tienen TZ
+    const d = typeof date === 'string' && !date.includes('T')
+        ? new Date(date.replace(' ', 'T') + 'Z')
+        : new Date(date);
+    if (isNaN(d)) return '—';
     return d.toLocaleString('es-CL', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'America/Santiago' });
 }
 

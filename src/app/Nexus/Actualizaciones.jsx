@@ -19,7 +19,10 @@ function cacheSave(d) { try { localStorage.setItem(CACHE_KEY, JSON.stringify(d))
 
 function fmt(date) {
     if (!date) return '—';
-    const d = typeof date === 'string' ? new Date(date.replace(' ', 'T') + 'Z') : new Date(date);
+    const d = typeof date === 'string' && !date.includes('T')
+        ? new Date(date.replace(' ', 'T') + 'Z')
+        : new Date(date);
+    if (isNaN(d)) return '—';
     return d.toLocaleString('es-CL', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'America/Santiago' });
 }
 
