@@ -314,8 +314,8 @@ export default function SynapseTaskModal({ tarea, estados, initialEstadoId, init
                     <p className="text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider mb-2">Descripción</p>
                     <textarea value={form.descripcion} onChange={(e) => set('descripcion', e.target.value)}
                         placeholder="Describe la tarea, contexto, pasos a seguir..."
-                        rows={5}
-                        className="w-full text-sm bg-secondary/30 border border-border/40 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-violet-500/30 text-foreground placeholder:text-muted-foreground/40 resize-none transition-colors" />
+                        rows={8}
+                        className="w-full text-sm bg-secondary/30 border border-border/40 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-violet-500/30 text-foreground placeholder:text-muted-foreground/40 resize-none transition-colors min-h-[200px]" />
                 </div>
 
                 {/* Comentarios */}
@@ -429,8 +429,8 @@ export default function SynapseTaskModal({ tarea, estados, initialEstadoId, init
                                 value={form.descripcion}
                                 onChange={(e) => set('descripcion', e.target.value)}
                                 placeholder="Describe la tarea, contexto, pasos a seguir..."
-                                rows={5}
-                                className="w-full text-sm bg-background border border-border/60 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/50 text-foreground placeholder:text-muted-foreground/40 resize-none transition-colors md:min-h-[220px]"
+                                rows={8}
+                                className="w-full text-sm bg-background border border-border/60 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/50 text-foreground placeholder:text-muted-foreground/40 resize-none transition-colors min-h-[220px]"
                             />
                         </div>
 
