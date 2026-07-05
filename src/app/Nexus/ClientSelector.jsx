@@ -1,5 +1,5 @@
 'use client';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { Search, X } from 'lucide-react';
 
 /**
@@ -11,6 +11,7 @@ import { Search, X } from 'lucide-react';
  */
 export default function ClientSelector({ proyectos = [], mode = 'multi', selected, onChange }) {
     const [search, setSearch] = useState('');
+    const checkAllRef = useRef(null);
 
     const filtered = useMemo(() => {
         const q = search.toLowerCase().trim();
@@ -50,6 +51,33 @@ export default function ClientSelector({ proyectos = [], mode = 'multi', selecte
         }
     };
 
+    // "Seleccionar todos" — solo aplica en modo multi y sobre los filtrados visibles
+    const selectedIds   = mode === 'multi' && Array.isArray(selected) ? new Set(selected.map(s => s.id_proyecto)) : new Set();
+    const filteredIds   = new Set(filtered.map(p => p.id_proyecto));
+    const allChecked    = filtered.length > 0 && filtered.every(p => selectedIds.has(p.id_proyecto));
+    const someChecked   = filtered.some(p => selectedIds.has(p.id_proyecto));
+
+    useEffect(() => {
+        if (checkAllRef.current && mode === 'multi') {
+            checkAllRef.current.indeterminate = someChecked && !allChecked;
+        }
+    }, [someChecked, allChecked, mode]);
+
+    const handleSelectAll = () => {
+        if (mode !== 'multi') return;
+        const arr = Array.isArray(selected) ? selected : [];
+        if (allChecked) {
+            // Deseleccionar los filtrados visibles, mantener el resto
+            onChange(arr.filter(s => !filteredIds.has(s.id_proyecto)));
+        } else {
+            // Agregar los filtrados que aún no están seleccionados
+            const nuevos = filtered
+                .filter(p => !selectedIds.has(p.id_proyecto))
+                .map(makeItem);
+            onChange([...arr, ...nuevos]);
+        }
+    };
+
     const handleField = (id_proyecto, field, value) => {
         if (mode === 'single') {
             if (selected?.id_proyecto === id_proyecto) onChange({ ...selected, [field]: value });
@@ -81,6 +109,30 @@ export default function ClientSelector({ proyectos = [], mode = 'multi', selecte
                     </button>
                 )}
             </div>
+
+            {/* Seleccionar todos — solo modo multi */}
+            {mode === 'multi' && filtered.length > 0 && (
+                <label className="flex items-center gap-2 px-1 cursor-pointer select-none">
+                    <input
+                        ref={checkAllRef}
+                        type="checkbox"
+                        checked={allChecked}
+                        onChange={handleSelectAll}
+                        className="shrink-0 accent-sky-500"
+                    />
+                    <span className="text-[12px] text-muted-foreground">
+                        {allChecked ? 'Deseleccionar todos' : 'Seleccionar todos'}
+                        {search && filtered.length < proyectos.length && (
+                            <span className="ml-1 opacity-60">({filtered.length} visibles)</span>
+                        )}
+                    </span>
+                    {someChecked && (
+                        <span className="ml-auto text-[10px] text-sky-400 font-medium">
+                            {selectedIds.size} seleccionado{selectedIds.size !== 1 ? 's' : ''}
+                        </span>
+                    )}
+                </label>
+            )}
 
             {/* Lista */}
             <div className="max-h-56 overflow-y-auto space-y-1.5 pr-0.5">
