@@ -6,7 +6,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
     House, LayoutDashboard, TrendingUp, TrendingDown, PieChart,
     Settings, Menu, Users, PiggyBank, Waves, BookOpen, LogOut,
-    Brain, ChevronLeft, DollarSign, LayoutGrid, Gauge, Server, Terminal, CalendarDays
+    Brain, ChevronLeft, DollarSign, LayoutGrid, Gauge, Server, Terminal, CalendarDays,
+    LifeBuoy
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { getTeams } from '../services/synapseService';
@@ -58,11 +59,22 @@ const MODULES = [
             { icon: Terminal,    label: 'Soma',                path: '/synapse/monitor',      tone: 'text-emerald-400', activeBg: 'bg-emerald-500/14' },
         ],
     },
+    {
+        id: 'nexus',
+        Icon: LifeBuoy,
+        label: 'Nexus',
+        accent: 'text-sky-400',
+        accentBg: 'bg-sky-500/12',
+        items: [
+            { icon: LifeBuoy, label: 'Tickets de Soporte', path: '/nexus', tone: 'text-sky-400', activeBg: 'bg-sky-500/14' },
+        ],
+    },
 ];
 
 function getActiveModule(pathname) {
     if (pathname.startsWith('/synapse'))    return 'synapse';
     if (pathname.startsWith('/calendario')) return 'calendario';
+    if (pathname.startsWith('/nexus'))      return 'nexus';
     return 'finance';
 }
 
