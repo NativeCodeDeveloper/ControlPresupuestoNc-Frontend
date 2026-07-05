@@ -19,7 +19,8 @@ function cacheSave(d) { try { localStorage.setItem(CACHE_KEY, JSON.stringify(d))
 
 function fmt(date) {
     if (!date) return '—';
-    return new Date(date).toLocaleString('es-CL', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const d = typeof date === 'string' ? new Date(date.replace(' ', 'T') + 'Z') : new Date(date);
+    return d.toLocaleString('es-CL', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'America/Santiago' });
 }
 
 export default function Actualizaciones() {

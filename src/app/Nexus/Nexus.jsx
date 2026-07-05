@@ -33,7 +33,9 @@ const TIPO_ACTIVIDAD_ICON = {
 
 function fmt(date) {
     if (!date) return '—';
-    return new Date(date).toLocaleString('es-CL', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+    // MySQL devuelve "YYYY-MM-DD HH:MM:SS" sin zona horaria — tratar como UTC
+    const d = typeof date === 'string' ? new Date(date.replace(' ', 'T') + 'Z') : new Date(date);
+    return d.toLocaleString('es-CL', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'America/Santiago' });
 }
 
 function PrioridadBadge({ prioridad }) {
