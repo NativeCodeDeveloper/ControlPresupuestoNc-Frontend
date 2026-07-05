@@ -482,7 +482,8 @@ export default function Gastos() {
             amount: cost.monto || '',
             date: cost.fecha ? cost.fecha.split('T')[0] : '',
             dueDate: cost.fecha_vencimiento ? cost.fecha_vencimiento.split('T')[0] : '',
-            observations: cost.observaciones || cost.concepto || ''
+            observations: cost.observaciones || cost.concepto || '',
+            con_factura: cost.con_factura !== undefined ? Boolean(cost.con_factura) : true
         });
     };
 
@@ -500,7 +501,8 @@ export default function Gastos() {
                 fecha: editVariableForm.date,
                 fecha_vencimiento: editVariableForm.dueDate || null,
                 observaciones: editVariableForm.observations || null,
-                concepto: editVariableForm.observations || null  // backend requiere concepto
+                concepto: editVariableForm.observations || null,
+                con_factura: editVariableForm.con_factura ? 1 : 0
             };
             if (typeFound && typeFound.id) updates.tipo_costo_id = typeFound.id;
 
@@ -943,6 +945,17 @@ export default function Gastos() {
                             value={editVariableForm.dueDate} onChange={(e) => setEditVariableForm({ ...editVariableForm, dueDate: e.target.value })} />
                         <Input label="Observaciones" placeholder="Detalles adicionales..."
                             value={editVariableForm.observations} onChange={(e) => setEditVariableForm({ ...editVariableForm, observations: e.target.value })} />
+                        <div className="flex items-center justify-between p-3 bg-secondary/30 rounded-xl border border-border/40">
+                            <div>
+                                <p className="text-sm font-medium text-foreground">Con factura (IVA)</p>
+                                <p className="text-xs text-muted-foreground">Genera crédito fiscal en F29</p>
+                            </div>
+                            <button type="button"
+                                onClick={() => setEditVariableForm({ ...editVariableForm, con_factura: !editVariableForm.con_factura })}
+                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${editVariableForm.con_factura ? 'bg-violet-500' : 'bg-border'}`}>
+                                <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${editVariableForm.con_factura ? 'translate-x-6' : 'translate-x-1'}`} />
+                            </button>
+                        </div>
                         <div className="flex gap-3 pt-2">
                             <button type="button" onClick={handleEditVariableClose}
                                 className="flex-1 py-2.5 rounded-lg border border-border text-muted-foreground hover:bg-secondary transition-colors text-sm font-medium">
