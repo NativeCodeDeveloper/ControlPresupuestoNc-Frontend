@@ -141,7 +141,8 @@ function TicketModal({ estados, socios, onClose, onCreated }) {
         prioridad: 'media', sla_horas: 24, id_estado: estados[0]?.id_estado ?? '',
         id_responsable: '', enviar_apertura: true
     });
-    const [proyectos, setProyectos] = useState([]);
+    const [proyectos,      setProyectos]      = useState([]);
+    const [proyectoSearch, setProyectoSearch] = useState('');
     const [saving, setSaving] = useState(false);
     const [error, setError]   = useState('');
 
@@ -199,12 +200,32 @@ function TicketModal({ estados, socios, onClose, onCreated }) {
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-5 space-y-4">
-                    {/* Proyecto */}
+                    {/* Proyecto con buscador */}
                     <div>
                         <label className="text-[11px] text-muted-foreground mb-1 block">Proyecto asociado</label>
-                        <select value={form.id_proyecto} onChange={e => handleProyecto(e.target.value)} className={inputCls}>
+                        <div className="relative mb-1">
+                            <input
+                                type="text"
+                                value={proyectoSearch}
+                                onChange={e => setProyectoSearch(e.target.value)}
+                                placeholder="Buscar proyecto..."
+                                className="w-full bg-secondary/40 border border-border rounded-lg px-3 py-1.5 text-[12px] text-foreground focus:outline-none focus:ring-1 focus:ring-sky-500/50 pr-6"
+                            />
+                            {proyectoSearch && (
+                                <button type="button" onClick={() => setProyectoSearch('')}
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-[10px]">✕</button>
+                            )}
+                        </div>
+                        <select value={form.id_proyecto} onChange={e => handleProyecto(e.target.value)} className={inputCls} size={Math.min(5, 1 + proyectos.filter(p => !proyectoSearch || p.nombre.toLowerCase().includes(proyectoSearch.toLowerCase()) || (p.nombre_cliente||'').toLowerCase().includes(proyectoSearch.toLowerCase())).length)}>
                             <option value="">— Ticket interno (sin proyecto) —</option>
-                            {proyectos.map(p => <option key={p.id_proyecto} value={p.id_proyecto}>{p.nombre}</option>)}
+                            {proyectos
+                                .filter(p => !proyectoSearch ||
+                                    p.nombre.toLowerCase().includes(proyectoSearch.toLowerCase()) ||
+                                    (p.nombre_cliente || '').toLowerCase().includes(proyectoSearch.toLowerCase()) ||
+                                    (p.email_cliente  || '').toLowerCase().includes(proyectoSearch.toLowerCase())
+                                )
+                                .map(p => <option key={p.id_proyecto} value={p.id_proyecto}>{p.nombre}{p.nombre_cliente ? ` — ${p.nombre_cliente}` : ''}</option>)
+                            }
                         </select>
                     </div>
 

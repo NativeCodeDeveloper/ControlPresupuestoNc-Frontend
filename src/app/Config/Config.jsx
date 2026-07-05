@@ -6,6 +6,7 @@ import * as partnersService from '../../services/partnersService';
 import * as costsService from '../../services/costsService';
 import * as synapseService from '../../services/synapseService';
 import * as soporteService from '../../services/soporteService';
+import * as actualizacionesService from '../../services/actualizacionesService';
 import apiClient from '../../services/apiClient';
 import {
     Settings,
@@ -24,7 +25,8 @@ import {
     CheckCircle2,
     Circle,
     Receipt,
-    Hammer
+    Hammer,
+    Rss
 } from 'lucide-react';
 
 const Section = ({ title, icon, children }) => (
@@ -69,6 +71,10 @@ export default function Config() {
     const [soporteEstados, setSoporteEstados] = useState([]);
     const [newSoporteEstadoForm, setNewSoporteEstadoForm] = useState({ nombre: '', color_hex: '#38bdf8', es_cierre: false });
 
+    // Nexus — estados de actualizaciones
+    const [actEstados, setActEstados] = useState([]);
+    const [newActEstadoForm, setNewActEstadoForm] = useState({ nombre: '', color_hex: '#0ea5e9' });
+
     // Normalizar socio del backend
     const normalizePartner = (p) => ({
         ...p,
@@ -80,7 +86,7 @@ export default function Config() {
     useEffect(() => {
         const loadData = async () => {
             try {
-                const [types, statuses, services, costTypes, config, partners, synEstados, synEtiquetas, synTeams, srtEstados] = await Promise.all([
+                const [types, statuses, services, costTypes, config, partners, synEstados, synEtiquetas, synTeams, srtEstados, actEsts] = await Promise.all([
                     configService.getProjectTypes(),
                     configService.getProjectStatuses(),
                     costsService.getServices(),
@@ -91,11 +97,13 @@ export default function Config() {
                     synapseService.getEtiquetas(),
                     synapseService.getTeams(),
                     soporteService.getEstados().catch(() => []),
+                    actualizacionesService.getEstados().catch(() => []),
                 ]);
                 if (synEstados && Array.isArray(synEstados)) setSynapseEstados(synEstados);
                 if (synEtiquetas && Array.isArray(synEtiquetas)) setSynapseEtiquetas(synEtiquetas);
                 if (synTeams && Array.isArray(synTeams)) setSynapseTeams(synTeams);
                 if (srtEstados && Array.isArray(srtEstados)) setSoporteEstados(srtEstados);
+                if (actEsts && Array.isArray(actEsts)) setActEstados(actEsts);
 
                 if (types && Array.isArray(types)) setProjectTypesData(types);
                 if (statuses && Array.isArray(statuses)) setProjectStatusesData(statuses);
@@ -431,6 +439,33 @@ export default function Config() {
             if (Array.isArray(estados)) setSoporteEstados(estados);
         } catch (e) {
             console.error('Error eliminando estado Nexus:', e);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // === NEXUS: ESTADOS DE ACTUALIZACIONES ===
+    const handleAddActEstado = async () => {
+        if (!newActEstadoForm.nombre.trim()) return;
+        setIsLoading(true);
+        try {
+            const { estados } = await actualizacionesService.createEstado(newActEstadoForm);
+            if (Array.isArray(estados)) setActEstados(estados);
+            setNewActEstadoForm({ nombre: '', color_hex: '#0ea5e9' });
+        } catch (e) {
+            console.error('Error creando estado de actualización:', e);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleDeleteActEstado = async (id) => {
+        setIsLoading(true);
+        try {
+            const { estados } = await actualizacionesService.deleteEstado(id);
+            if (Array.isArray(estados)) setActEstados(estados);
+        } catch (e) {
+            console.error('Error eliminando estado de actualización:', e);
         } finally {
             setIsLoading(false);
         }
@@ -1036,6 +1071,45 @@ export default function Config() {
                             disabled={isLoading || !newSoporteEstadoForm.nombre.trim()}
                             className="flex items-center gap-1.5 bg-sky-500 hover:bg-sky-600 disabled:opacity-40 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
                         >
+                            <Plus size={14} /> Agregar
+                        </button>
+                    </div>
+                </Section>
+
+                {/* ── Nexus: Estados de Actualizaciones ── */}
+                <Section title="Nexus — Estados de Actualizaciones" icon={Rss}>
+                    <p className="text-sm text-muted-foreground mb-5">
+                        Estados del flujo de actualizaciones del sistema enviadas a clientes.
+                    </p>
+                    <div className="space-y-2 mb-5">
+                        {actEstados.map(est => (
+                            <div key={est.id_estado} className="flex items-center gap-3 bg-secondary/40 border border-border/40 rounded-xl px-4 py-3">
+                                <span className="w-3 h-3 rounded-full shrink-0" style={{ background: est.color_hex }} />
+                                <span className="text-sm font-medium text-foreground flex-1">{est.nombre}</span>
+                                <button onClick={() => handleDeleteActEstado(est.id_estado)} disabled={isLoading}
+                                        className="text-muted-foreground hover:text-red-400 transition-colors p-1.5 rounded-lg hover:bg-red-500/8 disabled:opacity-40">
+                                    <Trash2 size={14} />
+                                </button>
+                            </div>
+                        ))}
+                        {!actEstados.length && (
+                            <p className="text-sm text-muted-foreground text-center py-4">No hay estados configurados. Ejecuta la migración primero.</p>
+                        )}
+                    </div>
+                    <div className="flex flex-wrap gap-2 items-end">
+                        <input type="text" placeholder="Nombre del estado..."
+                               value={newActEstadoForm.nombre}
+                               onChange={e => setNewActEstadoForm(f => ({ ...f, nombre: e.target.value }))}
+                               onKeyDown={e => { if (e.key === 'Enter') handleAddActEstado(); }}
+                               className="flex-1 min-w-36 bg-secondary/50 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500/30 transition-all" />
+                        <div className="flex items-center gap-2">
+                            <label className="text-xs text-muted-foreground">Color</label>
+                            <input type="color" value={newActEstadoForm.color_hex}
+                                   onChange={e => setNewActEstadoForm(f => ({ ...f, color_hex: e.target.value }))}
+                                   className="w-8 h-8 rounded-lg border border-border cursor-pointer" />
+                        </div>
+                        <button onClick={handleAddActEstado} disabled={isLoading || !newActEstadoForm.nombre.trim()}
+                                className="flex items-center gap-1.5 bg-sky-500 hover:bg-sky-600 disabled:opacity-40 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
                             <Plus size={14} /> Agregar
                         </button>
                     </div>
