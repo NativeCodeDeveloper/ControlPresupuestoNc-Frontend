@@ -498,15 +498,40 @@ function TicketDetalle({ ticket, estados, socios, onClose, onUpdated }) {
                             {actividad.length === 0 && (
                                 <p className="text-[11px] text-muted-foreground text-center py-2">Sin actividad registrada.</p>
                             )}
-                            {actividad.map(a => (
-                                <div key={a.id_actividad} className="flex gap-2 text-[11px]">
-                                    {TIPO_ACTIVIDAD_ICON[a.tipo] ?? <Circle size={10} className="mt-0.5 shrink-0 text-slate-500" />}
-                                    <div className="min-w-0 flex-1">
-                                        <p className="text-foreground whitespace-pre-wrap">{a.contenido}</p>
-                                        <p className="text-muted-foreground">{fmt(a.creado_en)}{a.socio_nombre ? ` · ${a.socio_nombre}` : ''}</p>
+                            {actividad.map(a => {
+                                // Para entradas de resolución mostramos el detalle del ticket
+                                const esResolucion = a.tipo === 'resolucion';
+                                const detalleViejo = esResolucion && (
+                                    a.contenido === 'Resolución registrada' || !a.contenido?.includes(':')
+                                );
+                                const camposResolucion = [
+                                    { label: 'Causa',      valor: ticket.resolucion_causa },
+                                    { label: 'Acción',     valor: ticket.resolucion_accion },
+                                    { label: 'Resultado',  valor: ticket.resolucion_resultado },
+                                    { label: 'Obs.',       valor: ticket.resolucion_observaciones },
+                                ].filter(c => c.valor);
+
+                                return (
+                                    <div key={a.id_actividad} className="flex gap-2 text-[11px]">
+                                        {TIPO_ACTIVIDAD_ICON[a.tipo] ?? <Circle size={10} className="mt-0.5 shrink-0 text-slate-500" />}
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-foreground whitespace-pre-wrap">{a.contenido}</p>
+                                            {/* Si es resolución, expande el detalle guardado en el ticket */}
+                                            {esResolucion && camposResolucion.length > 0 && (
+                                                <div className="mt-1.5 bg-emerald-500/8 border border-emerald-500/20 rounded-lg px-2.5 py-2 space-y-1">
+                                                    {camposResolucion.map(c => (
+                                                        <div key={c.label}>
+                                                            <span className="text-emerald-400 font-semibold">{c.label}: </span>
+                                                            <span className="text-foreground/80 whitespace-pre-wrap">{c.valor}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                            <p className="text-muted-foreground mt-0.5">{fmt(a.creado_en)}{a.socio_nombre ? ` · ${a.socio_nombre}` : ''}</p>
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
 
                         {/* Agregar comentario */}
