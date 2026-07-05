@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Megaphone, Send, CheckSquare, Square, RefreshCw, CheckCircle2, AlertCircle, Clock } from 'lucide-react';
+import { Rss, Send, CheckSquare, Square, RefreshCw, CheckCircle2, AlertCircle, Clock } from 'lucide-react';
 import { getProjects } from '../../services/projectsService';
 import { getActualizaciones, enviarActualizacion } from '../../services/actualizacionesService';
 
@@ -113,7 +113,7 @@ export default function Actualizaciones() {
             <div className="px-6 py-4 border-b border-border flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-3">
                     <div className="p-2 rounded-lg bg-sky-500/12 text-sky-400">
-                        <Megaphone size={18} />
+                        <Rss size={18} />
                     </div>
                     <div>
                         <h2 className="font-semibold text-foreground text-sm">Actualizaciones del Sistema</h2>
