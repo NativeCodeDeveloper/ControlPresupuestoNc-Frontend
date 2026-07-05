@@ -590,7 +590,7 @@ export default function Gastos() {
                                             <div className="min-w-0">
                                                 <p className="text-sm font-medium text-foreground truncate">{item.titulo}</p>
                                                 <p className="text-xs text-muted-foreground">
-                                                    {item.tipo} · vence {item.fecha_vencimiento}
+                                                    {item.tipo === 'f29' ? 'SII · F29' : item.tipo} · vence {item.fecha_vencimiento}
                                                 </p>
                                             </div>
                                         </div>
