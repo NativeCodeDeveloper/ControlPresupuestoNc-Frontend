@@ -51,84 +51,84 @@ export default function Reportes() {
         partnersAvailability: []
     });
 
-    useEffect(() => {
-        const loadData = async () => {
-            setIsLoading(true);
-            try {
-                const month = parseInt(selectedMonth, 10);
-                const year = parseInt(selectedYear, 10);
-                const summary = await financeService.getFinancialSummary(month, year);
-                const fixedCosts = Number(summary?.fixedCosts || 0);
-                const fixedCostsCommitted = Number(summary?.fixedCostsCommitted ?? fixedCosts);
-                const variableCosts = Number(summary?.variableCosts || 0);
-                const expenses = fixedCosts + variableCosts;
-                const income = Number(summary?.income || 0);
-                const operatingResult = income - expenses;
+    const loadData = async () => {
+        setIsLoading(true);
+        try {
+            const month = parseInt(selectedMonth, 10);
+            const year = parseInt(selectedYear, 10);
+            const summary = await financeService.getFinancialSummary(month, year);
+            const fixedCosts = Number(summary?.fixedCosts || 0);
+            const fixedCostsCommitted = Number(summary?.fixedCostsCommitted ?? fixedCosts);
+            const variableCosts = Number(summary?.variableCosts || 0);
+            const expenses = fixedCosts + variableCosts;
+            const income = Number(summary?.income || 0);
+            const operatingResult = income - expenses;
 
-                const summaryNetProfit = Number(summary?.netProfit || 0);
-                const summaryWithdrawals = Number(summary?.withdrawals || 0);
-                const summaryPartnersAvailable = Math.max(
-                    0,
-                    Number(summary?.partnersAvailable ?? (summaryNetProfit - summaryWithdrawals))
-                );
+            const summaryNetProfit = Number(summary?.netProfit || 0);
+            const summaryWithdrawals = Number(summary?.withdrawals || 0);
+            const summaryPartnersAvailable = Math.max(
+                0,
+                Number(summary?.partnersAvailable ?? (summaryNetProfit - summaryWithdrawals))
+            );
 
-                const partnersAvailability = Array.isArray(summary?.partnersAvailability)
-                    ? summary.partnersAvailability.map((partner) => ({
-                        id: Number(partner?.id),
-                        name: partner?.name || partner?.nombre || `Socio ${partner?.id}`,
-                        percentage: Number(partner?.percentage || partner?.porcentaje_participacion || 0),
-                        assigned: Number(partner?.assigned || partner?.asignado || 0),
-                        withdrawn: Number(partner?.withdrawn || partner?.retirado || 0),
-                        available: Number(partner?.available || partner?.disponible || 0)
-                    }))
-                    : [];
+            const partnersAvailability = Array.isArray(summary?.partnersAvailability)
+                ? summary.partnersAvailability.map((partner) => ({
+                    id: Number(partner?.id),
+                    name: partner?.name || partner?.nombre || `Socio ${partner?.id}`,
+                    percentage: Number(partner?.percentage || partner?.porcentaje_participacion || 0),
+                    assigned: Number(partner?.assigned || partner?.asignado || 0),
+                    withdrawn: Number(partner?.withdrawn || partner?.retirado || 0),
+                    available: Number(partner?.available || partner?.disponible || 0)
+                }))
+                : [];
 
-                const summaryTotalPartnersAvailable = Number(summary?.totalPartnersAvailable);
-                const totalPartnersAvailable = Number.isFinite(summaryTotalPartnersAvailable)
-                    ? summaryTotalPartnersAvailable
-                    : (partnersAvailability.length > 0
-                        ? partnersAvailability.reduce((sum, partner) => sum + Number(partner.available || 0), 0)
-                        : summaryPartnersAvailable);
-                const summaryTotalPartnersAvailableAccumulated = Number(summary?.totalPartnersAvailableAccumulated);
-                const totalPartnersAvailableAccumulated = Number.isFinite(summaryTotalPartnersAvailableAccumulated)
-                    ? summaryTotalPartnersAvailableAccumulated
-                    : totalPartnersAvailable;
+            const summaryTotalPartnersAvailable = Number(summary?.totalPartnersAvailable);
+            const totalPartnersAvailable = Number.isFinite(summaryTotalPartnersAvailable)
+                ? summaryTotalPartnersAvailable
+                : (partnersAvailability.length > 0
+                    ? partnersAvailability.reduce((sum, partner) => sum + Number(partner.available || 0), 0)
+                    : summaryPartnersAvailable);
+            const summaryTotalPartnersAvailableAccumulated = Number(summary?.totalPartnersAvailableAccumulated);
+            const totalPartnersAvailableAccumulated = Number.isFinite(summaryTotalPartnersAvailableAccumulated)
+                ? summaryTotalPartnersAvailableAccumulated
+                : totalPartnersAvailable;
 
-                setStats({
-                    income,
-                    fixedCosts,
-                    fixedCostsCommitted,
-                    variableCosts,
-                    expenses,
-                    operatingResult,
-                    emergencyFundDeduction: Number(summary?.emergencyFundDeduction || 0),
-                    reinvestmentDeduction: Number(summary?.reinvestmentDeduction || 0),
-                    emergencyFundPercentage: Number(summary?.config?.porcentaje_fondo_emergencia || 0),
-                    reinvestmentPercentage: Number(summary?.config?.porcentaje_reinversion || 0),
-                    netProfit: summaryNetProfit,
-                    withdrawals: summaryWithdrawals,
-                    investmentsTotal: Number(summary?.investments?.total || 0),
-                    investmentsReinvest: Number(summary?.investments?.reinversion || 0),
-                    investmentsEmergency: Number(summary?.investments?.emergencia || 0),
-                    fundReinvestAssigned: Number(summary?.fondos?.reinversion?.asignado || 0),
-                    fundReinvestUsed: Number(summary?.fondos?.reinversion?.usado || 0),
-                    fundReinvestAvailable: Number(summary?.fondos?.reinversion?.disponible || 0),
-                    fundEmergencyAssigned: Number(summary?.fondos?.emergencia?.asignado || 0),
-                    fundEmergencyUsed: Number(summary?.fondos?.emergencia?.usado || 0),
-                    fundEmergencyAvailable: Number(summary?.fondos?.emergencia?.disponible || 0),
-                    totalPartnersAvailable,
-                    totalPartnersAvailableAccumulated,
-                    partnersAvailability
-                });
-            } catch (error) {
-                console.error('Error cargando datos de reportes:', error);
-            } finally {
-                setIsLoading(false);
-            }
-        };
+            setStats({
+                income,
+                fixedCosts,
+                fixedCostsCommitted,
+                variableCosts,
+                expenses,
+                operatingResult,
+                emergencyFundDeduction: Number(summary?.emergencyFundDeduction || 0),
+                reinvestmentDeduction: Number(summary?.reinvestmentDeduction || 0),
+                emergencyFundPercentage: Number(summary?.config?.porcentaje_fondo_emergencia || 0),
+                reinvestmentPercentage: Number(summary?.config?.porcentaje_reinversion || 0),
+                netProfit: summaryNetProfit,
+                withdrawals: summaryWithdrawals,
+                investmentsTotal: Number(summary?.investments?.total || 0),
+                investmentsReinvest: Number(summary?.investments?.reinversion || 0),
+                investmentsEmergency: Number(summary?.investments?.emergencia || 0),
+                fundReinvestAssigned: Number(summary?.fondos?.reinversion?.asignado || 0),
+                fundReinvestUsed: Number(summary?.fondos?.reinversion?.usado || 0),
+                fundReinvestAvailable: Number(summary?.fondos?.reinversion?.disponible || 0),
+                fundEmergencyAssigned: Number(summary?.fondos?.emergencia?.asignado || 0),
+                fundEmergencyUsed: Number(summary?.fondos?.emergencia?.usado || 0),
+                fundEmergencyAvailable: Number(summary?.fondos?.emergencia?.disponible || 0),
+                totalPartnersAvailable,
+                totalPartnersAvailableAccumulated,
+                partnersAvailability
+            });
+        } catch (error) {
+            console.error('Error cargando datos de reportes:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     useRealtime(loadData);
 
+    useEffect(() => {
         loadData();
     }, [selectedMonth, selectedYear]);
 

@@ -76,30 +76,31 @@ export default function Gastos() {
         ? variableTypesFromBD.map(t => typeof t === 'string' ? t : t.nombre)
         : defaultVariableTypes;
 
-    // Load data from backend on mount
-    useEffect(() => {
-        const loadData = async () => {
-            try {
-                const [fixedData, variableData, services, types, projects, dueData] = await Promise.all([
-                    costsService.getFixedCosts(),
-                    costsService.getVariableCosts(),
-                    costsService.getServices(),
-                    costsService.getVariableCostTypes(),
-                    projectsService.getProjects(),
-                    financeService.getDueAlerts(10)
-                ]);
-                if (fixedData && Array.isArray(fixedData)) setFixedCostsData(fixedData);
-                if (variableData && Array.isArray(variableData)) setVariableCostsData(variableData);
-                if (services && Array.isArray(services) && services.length > 0) setServicesFromBD(services);
-                if (types && Array.isArray(types) && types.length > 0) setVariableTypesFromBD(types);
-                if (projects && Array.isArray(projects)) setProjectsFromBD(projects);
-                if (dueData?.items && Array.isArray(dueData.items)) setDueAlerts(dueData.items);
-            } catch (error) {
-                console.error('Error cargando datos de gastos:', error);
-            }
-        };
+    const loadData = async () => {
+        try {
+            const [fixedData, variableData, services, types, projects, dueData] = await Promise.all([
+                costsService.getFixedCosts(),
+                costsService.getVariableCosts(),
+                costsService.getServices(),
+                costsService.getVariableCostTypes(),
+                projectsService.getProjects(),
+                financeService.getDueAlerts(10)
+            ]);
+            if (fixedData && Array.isArray(fixedData)) setFixedCostsData(fixedData);
+            if (variableData && Array.isArray(variableData)) setVariableCostsData(variableData);
+            if (services && Array.isArray(services) && services.length > 0) setServicesFromBD(services);
+            if (types && Array.isArray(types) && types.length > 0) setVariableTypesFromBD(types);
+            if (projects && Array.isArray(projects)) setProjectsFromBD(projects);
+            if (dueData?.items && Array.isArray(dueData.items)) setDueAlerts(dueData.items);
+        } catch (error) {
+            console.error('Error cargando datos de gastos:', error);
+        }
+    };
 
     useRealtime(loadData);
+
+    // Load data from backend on mount
+    useEffect(() => {
         loadData();
     }, []);
 
