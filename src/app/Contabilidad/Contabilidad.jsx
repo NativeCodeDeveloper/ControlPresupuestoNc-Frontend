@@ -360,18 +360,18 @@ export default function Contabilidad() {
                                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
                                     <div className="rounded-xl border border-border bg-secondary/30 p-4">
                                         <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Débito Fiscal</p>
-                                        <p className="text-lg font-bold text-foreground">{fmt(f29Data.debito_fiscal)}</p>
-                                        <p className="text-[10px] text-muted-foreground mt-1">IVA ventas (19%)</p>
+                                        <p className="text-lg font-bold text-foreground">{fmt(f29Data.debito_fiscal.iva)}</p>
+                                        <p className="text-[10px] text-muted-foreground mt-1">Base: {fmt(f29Data.debito_fiscal.base)}</p>
                                     </div>
                                     <div className="rounded-xl border border-border bg-secondary/30 p-4">
                                         <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Crédito Fiscal</p>
-                                        <p className="text-lg font-bold text-[hsl(var(--emerald-premium))]">{fmt(f29Data.credito_fiscal)}</p>
+                                        <p className="text-lg font-bold text-[hsl(var(--emerald-premium))]">{fmt(f29Data.credito_fiscal.total)}</p>
                                         <p className="text-[10px] text-muted-foreground mt-1">IVA compras con factura</p>
                                     </div>
                                     <div className="rounded-xl border border-border bg-secondary/30 p-4">
-                                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">PPM ({f29Data.tasa_ppm ?? 1}%)</p>
-                                        <p className="text-lg font-bold text-[hsl(var(--corporate-blue))]">{fmt(f29Data.ppm)}</p>
-                                        <p className="text-[10px] text-muted-foreground mt-1">Base: {fmt(f29Data.base_ppm)}</p>
+                                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">PPM ({f29Data.ppm.tasa}%)</p>
+                                        <p className="text-lg font-bold text-[hsl(var(--corporate-blue))]">{fmt(f29Data.ppm.monto)}</p>
+                                        <p className="text-[10px] text-muted-foreground mt-1">Base: {fmt(f29Data.debito_fiscal.base)}</p>
                                     </div>
                                     <div className="rounded-xl border border-[hsl(var(--purple-premium))]/30 bg-[hsl(var(--purple-premium))]/8 p-4">
                                         <p className="text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--purple-premium))]/70 mb-1">Total F29</p>
@@ -380,12 +380,12 @@ export default function Contabilidad() {
                                     </div>
                                 </div>
 
-                                {/* Fila resumen IVA neto */}
+                                {/* Fila resumen IVA neto / remanente */}
                                 <div className="rounded-lg bg-secondary/20 border border-border/40 px-4 py-2.5 flex items-center justify-between text-[12px]">
                                     <span className="text-muted-foreground">IVA Neto (Débito − Crédito)</span>
-                                    <span className={`font-semibold ${f29Data.iva_neto >= 0 ? 'text-foreground' : 'text-[hsl(var(--emerald-premium))]'}`}>
+                                    <span className={`font-semibold ${f29Data.remanente > 0 ? 'text-[hsl(var(--emerald-premium))]' : 'text-foreground'}`}>
                                         {fmt(f29Data.iva_neto)}
-                                        {f29Data.iva_neto < 0 && <span className="ml-1.5 text-[10px] font-normal text-muted-foreground">remanente a favor</span>}
+                                        {f29Data.remanente > 0 && <span className="ml-1.5 text-[10px] font-normal text-muted-foreground">remanente {fmt(f29Data.remanente)} a favor</span>}
                                     </span>
                                 </div>
                             </>
