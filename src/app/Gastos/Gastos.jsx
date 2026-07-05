@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Input, Select } from '../../components/ui/FormElements';
+import AdjuntosPanel from '../../components/AdjuntosPanel';
 
 export default function Gastos() {
     const [activeTab, setActiveTab] = usePersistedState('gastos:activeTab', 'fixed');
@@ -801,6 +802,9 @@ export default function Gastos() {
                                             className="mt-3 w-full flex items-center justify-center gap-2 text-xs font-medium py-2 rounded-lg border border-[hsl(var(--emerald-premium))]/40 text-[hsl(var(--emerald-premium))] bg-[hsl(var(--emerald-premium))]/5 hover:bg-[hsl(var(--emerald-premium))]/15 transition-colors disabled:opacity-40">
                                             <CheckCircle2 size={13} /> Registrar Pago
                                         </button>
+                                        <div className="mt-2">
+                                            <AdjuntosPanel entidad="costo_fijo" idEntidad={cost.id} compact label="Facturas" />
+                                        </div>
                                     </div>
                                     );
                                 })}
@@ -814,43 +818,46 @@ export default function Gastos() {
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {variableCosts.slice().reverse().map((cost) => (
-                                    <div key={cost.id} className="bg-card border border-border p-4 rounded-xl flex justify-between items-start group">
-                                        <div>
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <span className="text-xs font-medium text-white bg-[hsl(var(--copper))] px-2 py-0.5 rounded-full">
-                                                    {cost.tipo_nombre || 'Variable'}
-                                                </span>
-                                            </div>
-                                            <h4 className="font-semibold text-foreground">
-                                                {cost.proyecto_nombre || 'General'}
-                                            </h4>
-                                            <p className="text-sm text-muted-foreground">{cost.observaciones || cost.concepto || 'Sin observaciones'}</p>
-                                            <p className="text-xs text-muted-foreground mt-1">
-                                                {cost.fecha ? new Date(cost.fecha).toLocaleDateString('es-CL') : ''}
-                                            </p>
-                                            {cost.fecha_vencimiento && (
-                                                <p className={`text-xs mt-1 font-medium ${getDueStatus(cost.fecha_vencimiento).className}`}>
-                                                    Vence: {new Date(cost.fecha_vencimiento).toLocaleDateString('es-CL')} · {getDueStatus(cost.fecha_vencimiento).label}
+                                    <div key={cost.id} className="bg-card border border-border p-4 rounded-xl flex flex-col gap-2 group">
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <span className="text-xs font-medium text-white bg-[hsl(var(--copper))] px-2 py-0.5 rounded-full">
+                                                        {cost.tipo_nombre || 'Variable'}
+                                                    </span>
+                                                </div>
+                                                <h4 className="font-semibold text-foreground">
+                                                    {cost.proyecto_nombre || 'General'}
+                                                </h4>
+                                                <p className="text-sm text-muted-foreground">{cost.observaciones || cost.concepto || 'Sin observaciones'}</p>
+                                                <p className="text-xs text-muted-foreground mt-1">
+                                                    {cost.fecha ? new Date(cost.fecha).toLocaleDateString('es-CL') : ''}
                                                 </p>
-                                            )}
-                                        </div>
-                                        <div className="flex flex-col items-end gap-2">
-                                            <span className="font-bold text-[hsl(var(--copper))]">
-                                                -{Math.round(parseFloat(cost.monto || 0)).toLocaleString('es-CL')}
-                                            </span>
-                                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <button onClick={() => handleEditVariableOpen(cost)}
-                                                    className="text-muted-foreground hover:text-primary p-1 rounded hover:bg-primary/10"
-                                                    title="Editar Gasto">
-                                                    <Pencil size={14} />
-                                                </button>
-                                                <button onClick={() => handleDeleteVariable(cost.id)}
-                                                    className="text-muted-foreground hover:text-destructive p-1"
-                                                    title="Eliminar Gasto">
-                                                    <Trash2 size={16} />
-                                                </button>
+                                                {cost.fecha_vencimiento && (
+                                                    <p className={`text-xs mt-1 font-medium ${getDueStatus(cost.fecha_vencimiento).className}`}>
+                                                        Vence: {new Date(cost.fecha_vencimiento).toLocaleDateString('es-CL')} · {getDueStatus(cost.fecha_vencimiento).label}
+                                                    </p>
+                                                )}
+                                            </div>
+                                            <div className="flex flex-col items-end gap-2">
+                                                <span className="font-bold text-[hsl(var(--copper))]">
+                                                    -{Math.round(parseFloat(cost.monto || 0)).toLocaleString('es-CL')}
+                                                </span>
+                                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button onClick={() => handleEditVariableOpen(cost)}
+                                                        className="text-muted-foreground hover:text-primary p-1 rounded hover:bg-primary/10"
+                                                        title="Editar Gasto">
+                                                        <Pencil size={14} />
+                                                    </button>
+                                                    <button onClick={() => handleDeleteVariable(cost.id)}
+                                                        className="text-muted-foreground hover:text-destructive p-1"
+                                                        title="Eliminar Gasto">
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
+                                        <AdjuntosPanel entidad="costo_variable" idEntidad={cost.id} compact label="Facturas" />
                                     </div>
                                 ))}
                             </div>

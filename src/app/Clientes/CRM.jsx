@@ -10,6 +10,7 @@ import {
 import Link from 'next/link';
 import { cn } from '../../lib/utils';
 import * as svc from '../../services/clientesService';
+import AdjuntosPanel from '../../components/AdjuntosPanel';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -144,7 +145,8 @@ function ClienteDetalle({ nombre, onClose }) {
             ) : (
                 <div className="divide-y divide-border/40">
                     {proyectos.map(p => (
-                        <div key={p.id_proyecto} className="px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                        <div key={p.id_proyecto} className="px-4 py-3 flex flex-col gap-2">
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                             {/* Proyecto */}
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
@@ -200,6 +202,16 @@ function ClienteDetalle({ nombre, onClose }) {
                                         <ExternalLink size={11} />
                                     </a>
                                 )}
+                            </div>
+                            </div>
+                            {/* Carpeta de documentos por proyecto */}
+                            <div className="pl-1">
+                                <AdjuntosPanel
+                                    entidad="proyecto"
+                                    idEntidad={p.id_proyecto}
+                                    compact
+                                    label="Documentos"
+                                />
                             </div>
                         </div>
                     ))}

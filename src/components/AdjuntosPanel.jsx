@@ -1,141 +1,214 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
-import { Paperclip, Upload, Trash2, Download, FileText, FileImage, File } from 'lucide-react';
+
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { Paperclip, Upload, Trash2, Download, FileText, FileImage, File, Loader2, X } from 'lucide-react';
+import { cn } from '../lib/utils';
 import * as adjuntosService from '../services/adjuntosService';
 
-const ICON_MAP = {
-    'image/': FileImage,
-    'application/pdf': FileText,
-};
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function FileIcon({ mimetype }) {
-    const Icon = Object.entries(ICON_MAP).find(([k]) => mimetype?.startsWith(k))?.[1] ?? File;
-    return <Icon size={14} className="shrink-0 text-zinc-400" />;
+    if (mimetype?.startsWith('image/'))    return <FileImage size={13} className="shrink-0 text-sky-400" />;
+    if (mimetype === 'application/pdf')    return <FileText  size={13} className="shrink-0 text-red-400" />;
+    if (mimetype?.includes('sheet') || mimetype?.includes('excel'))
+                                           return <FileText  size={13} className="shrink-0 text-emerald-400" />;
+    if (mimetype?.includes('word'))        return <FileText  size={13} className="shrink-0 text-blue-400" />;
+    return                                        <File      size={13} className="shrink-0 text-muted-foreground" />;
 }
 
 function fmtSize(bytes) {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    if (!bytes) return '';
+    if (bytes < 1024)           return `${bytes} B`;
+    if (bytes < 1024 * 1024)    return `${(bytes / 1024).toFixed(0)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function fmtDate(d) {
+    return d ? new Date(d).toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: '2-digit' }) : '';
+}
+
 const ACCEPT = [
-    'image/*',
-    '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
-    '.txt', '.csv', '.json', '.zip',
+    'image/*', '.pdf', '.doc', '.docx', '.xls', '.xlsx',
+    '.ppt', '.pptx', '.txt', '.csv', '.json', '.zip',
 ].join(',');
 
-export default function AdjuntosPanel({ entidad, idEntidad, compact = false }) {
-    const [adjuntos, setAdjuntos] = useState([]);
-    const [uploading, setUploading] = useState(false);
-    const [error, setError] = useState(null);
-    const inputRef = useRef(null);
+// ── Contenido del panel ───────────────────────────────────────────────────────
 
-    useEffect(() => {
-        if (!idEntidad) return;
-        adjuntosService.getAdjuntos(entidad, idEntidad)
-            .then(setAdjuntos)
-            .catch(() => {});
-    }, [entidad, idEntidad]);
-
-    const handleFiles = async (files) => {
-        setError(null);
-        for (const file of files) {
-            if (file.size > 20 * 1024 * 1024) {
-                setError(`"${file.name}" supera el límite de 20 MB`);
-                continue;
-            }
-            setUploading(true);
-            try {
-                const adj = await adjuntosService.uploadAdjunto(entidad, idEntidad, file);
-                setAdjuntos(prev => [adj, ...prev]);
-            } catch {
-                setError(`Error al subir "${file.name}"`);
-            } finally {
-                setUploading(false);
-            }
-        }
-    };
-
-    const handleDrop = (e) => {
-        e.preventDefault();
-        handleFiles([...e.dataTransfer.files]);
-    };
-
-    const handleDelete = async (adj) => {
-        try {
-            await adjuntosService.deleteAdjunto(adj.id_adjunto);
-            setAdjuntos(prev => prev.filter(a => a.id_adjunto !== adj.id_adjunto));
-        } catch {
-            setError('Error al eliminar archivo');
-        }
-    };
-
-    const handleDownload = async (adj) => {
-        try { await adjuntosService.downloadAdjunto(adj); }
-        catch { setError('Error al descargar archivo'); }
-    };
-
+function PanelBody({ adjuntos, loading, uploading, dragging, inputRef, onFiles, onDrop, onDragOver, onDragLeave, onDelete, onDownload, error }) {
     return (
         <div className="space-y-2">
-            {!compact && (
-                <div className="flex items-center gap-1.5 text-xs font-medium text-zinc-400 uppercase tracking-wider">
-                    <Paperclip size={12} />
-                    Adjuntos
-                </div>
-            )}
-
             {/* Drop zone */}
             <div
-                onDrop={handleDrop}
-                onDragOver={(e) => e.preventDefault()}
+                onDrop={onDrop}
+                onDragOver={onDragOver}
+                onDragLeave={onDragLeave}
                 onClick={() => inputRef.current?.click()}
-                className="border border-dashed border-border rounded-lg p-3 flex items-center gap-2 cursor-pointer hover:border-violet-500/60 hover:bg-violet-500/5 transition-colors text-muted-foreground text-xs"
+                className={cn(
+                    'border border-dashed rounded-lg p-2.5 flex items-center gap-2 cursor-pointer transition-colors text-[11px]',
+                    dragging
+                        ? 'border-amber-500/60 bg-amber-500/8 text-amber-400'
+                        : 'border-border/60 text-muted-foreground hover:border-amber-500/30 hover:text-amber-400'
+                )}
             >
-                <Upload size={13} />
-                <span>
-                    {uploading ? 'Subiendo...' : 'Arrastra archivos o haz clic — PDF, Word, Excel, imágenes… (máx. 20 MB)'}
-                </span>
-                <input
-                    ref={inputRef}
-                    type="file"
-                    multiple
-                    accept={ACCEPT}
-                    className="hidden"
-                    onChange={(e) => handleFiles([...e.target.files])}
-                />
+                {uploading
+                    ? <><Loader2 size={12} className="animate-spin shrink-0" /><span>Subiendo…</span></>
+                    : <><Upload size={12} className="shrink-0" /><span>Arrastra o clic — PDF, Word, Excel, imágenes (máx. 20 MB)</span></>
+                }
+                <input ref={inputRef} type="file" multiple accept={ACCEPT} className="hidden"
+                    onChange={e => onFiles([...e.target.files])} />
             </div>
 
-            {error && (
-                <p className="text-xs text-red-400">{error}</p>
-            )}
+            {error && <p className="text-[11px] text-red-400">{error}</p>}
 
             {/* Lista */}
-            {adjuntos.length > 0 && (
-                <ul className="space-y-1">
-                    {adjuntos.map((adj) => (
-                        <li key={adj.id_adjunto} className="flex items-center gap-2 group rounded-md px-2 py-1.5 hover:bg-zinc-800/60">
+            {loading ? (
+                <div className="flex items-center gap-1.5 py-1 text-[11px] text-muted-foreground">
+                    <Loader2 size={11} className="animate-spin" /> Cargando…
+                </div>
+            ) : adjuntos.length === 0 ? (
+                <p className="text-[11px] text-muted-foreground/50 py-1">Sin archivos adjuntos</p>
+            ) : (
+                <ul className="divide-y divide-border/30">
+                    {adjuntos.map(adj => (
+                        <li key={adj.id_adjunto} className="flex items-center gap-2 py-1.5 group">
                             <FileIcon mimetype={adj.mimetype} />
-                            <span className="flex-1 text-xs text-zinc-300 truncate">{adj.nombre_original}</span>
-                            <span className="text-xs text-zinc-600 shrink-0">{fmtSize(adj.tamanio)}</span>
-                            <button
-                                onClick={() => handleDownload(adj)}
-                                className="opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-violet-400 transition-opacity"
-                                title="Descargar"
-                            >
-                                <Download size={13} />
+                            <div className="flex-1 min-w-0">
+                                <p className="text-[11px] text-foreground truncate">{adj.nombre_original}</p>
+                                <p className="text-[10px] text-muted-foreground/60">
+                                    {fmtSize(adj.tamanio)}{adj.creado_en ? ` · ${fmtDate(adj.creado_en)}` : ''}
+                                </p>
+                            </div>
+                            <button onClick={() => onDownload(adj)}
+                                className="shrink-0 p-0.5 text-muted-foreground hover:text-sky-400 transition-colors opacity-0 group-hover:opacity-100"
+                                title="Descargar">
+                                <Download size={12} />
                             </button>
-                            <button
-                                onClick={() => handleDelete(adj)}
-                                className="opacity-0 group-hover:opacity-100 text-zinc-400 hover:text-red-400 transition-opacity"
-                                title="Eliminar"
-                            >
-                                <Trash2 size={13} />
+                            <button onClick={() => onDelete(adj)}
+                                className="shrink-0 p-0.5 text-muted-foreground hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                                title="Eliminar">
+                                <Trash2 size={12} />
                             </button>
                         </li>
                     ))}
                 </ul>
             )}
+        </div>
+    );
+}
+
+// ── Componente principal ──────────────────────────────────────────────────────
+
+/**
+ * AdjuntosPanel — adjuntos reutilizable por entidad
+ *
+ * Props:
+ *   entidad   — 'proyecto' | 'costo_fijo' | 'costo_variable'
+ *   idEntidad — ID numérico del registro
+ *   compact   — modo compacto con botón toggle (para tarjetas de gastos)
+ *   label     — texto del botón en modo compact
+ */
+export default function AdjuntosPanel({ entidad, idEntidad, compact = false, label = 'Adjuntos' }) {
+    const [adjuntos, setAdjuntos]   = useState([]);
+    const [loading, setLoading]     = useState(false);
+    const [uploading, setUploading] = useState(false);
+    const [open, setOpen]           = useState(!compact);
+    const [dragging, setDragging]   = useState(false);
+    const [error, setError]         = useState(null);
+    const inputRef                  = useRef(null);
+
+    const load = useCallback(async () => {
+        if (!idEntidad) return;
+        setLoading(true);
+        try {
+            const data = await adjuntosService.getAdjuntos(entidad, idEntidad);
+            setAdjuntos(Array.isArray(data) ? data : []);
+        } catch { setAdjuntos([]); }
+        finally { setLoading(false); }
+    }, [entidad, idEntidad]);
+
+    useEffect(() => { if (open) load(); }, [open, load]);
+
+    const handleFiles = async (files) => {
+        setError(null);
+        setUploading(true);
+        try {
+            for (const file of files) {
+                if (file.size > 20 * 1024 * 1024) {
+                    setError(`"${file.name}" supera el límite de 20 MB`);
+                    continue;
+                }
+                const adj = await adjuntosService.uploadAdjunto(entidad, idEntidad, file);
+                setAdjuntos(prev => [adj, ...prev]);
+            }
+        } catch (e) { setError('Error al subir archivo'); }
+        finally {
+            setUploading(false);
+            if (inputRef.current) inputRef.current.value = '';
+        }
+    };
+
+    const handleDrop = (e) => { e.preventDefault(); setDragging(false); handleFiles([...e.dataTransfer.files]); };
+    const handleDragOver = (e) => { e.preventDefault(); setDragging(true); };
+    const handleDragLeave = () => setDragging(false);
+
+    const handleDelete = async (adj) => {
+        try {
+            await adjuntosService.deleteAdjunto(adj.id_adjunto);
+            setAdjuntos(prev => prev.filter(a => a.id_adjunto !== adj.id_adjunto));
+        } catch { setError('Error al eliminar'); }
+    };
+
+    const handleDownload = async (adj) => {
+        try { await adjuntosService.downloadAdjunto(adj); }
+        catch { setError('Error al descargar'); }
+    };
+
+    const bodyProps = { adjuntos, loading, uploading, dragging, inputRef, error,
+        onFiles: handleFiles, onDrop: handleDrop, onDragOver: handleDragOver,
+        onDragLeave: handleDragLeave, onDelete: handleDelete, onDownload: handleDownload };
+
+    // ── Modo compacto ─────────────────────────────────────────────────────────
+    if (compact) {
+        return (
+            <div>
+                <button
+                    onClick={() => setOpen(o => !o)}
+                    className={cn(
+                        'flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[11px] font-medium transition-colors',
+                        open
+                            ? 'border-amber-500/30 bg-amber-500/8 text-amber-400'
+                            : 'border-border text-muted-foreground hover:border-amber-500/20 hover:text-amber-400'
+                    )}
+                >
+                    <Paperclip size={11} />
+                    {label}
+                    {adjuntos.length > 0 && (
+                        <span className="bg-amber-500/20 text-amber-400 rounded-full px-1.5 text-[10px] font-bold">
+                            {adjuntos.length}
+                        </span>
+                    )}
+                </button>
+
+                {open && (
+                    <div className="mt-2 border border-border/60 rounded-xl p-3 bg-card">
+                        <PanelBody {...bodyProps} />
+                    </div>
+                )}
+            </div>
+        );
+    }
+
+    // ── Modo full ─────────────────────────────────────────────────────────────
+    return (
+        <div className="space-y-3">
+            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+                <Paperclip size={11} />
+                Documentos
+                {adjuntos.length > 0 && (
+                    <span className="ml-1 text-amber-400 font-bold">{adjuntos.length}</span>
+                )}
+            </div>
+            <PanelBody {...bodyProps} />
         </div>
     );
 }
