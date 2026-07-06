@@ -1,13 +1,15 @@
 'use client';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Bell, BellOff, X, CheckCheck, CalendarDays, CreditCard, Receipt } from 'lucide-react';
+import { Bell, BellOff, X, CheckCheck, CalendarDays, CreditCard, Receipt, Hammer, ArrowRightLeft } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useNotificaciones } from '../hooks/useNotificaciones';
 
 function getNotifStyle(tipo) {
-    if (tipo === 'vencimiento') return { Icon: CreditCard, bg: 'bg-amber-500/15', color: 'text-amber-400' };
-    if (tipo === 'f29') return { Icon: Receipt, bg: 'bg-purple-500/15', color: 'text-purple-400' };
+    if (tipo === 'vencimiento')   return { Icon: CreditCard,      bg: 'bg-amber-500/15',  color: 'text-amber-400' };
+    if (tipo === 'f29')           return { Icon: Receipt,          bg: 'bg-purple-500/15', color: 'text-purple-400' };
+    if (tipo === 'ticket_nuevo')  return { Icon: Hammer,           bg: 'bg-sky-500/15',    color: 'text-sky-400' };
+    if (tipo === 'ticket_estado') return { Icon: ArrowRightLeft,   bg: 'bg-teal-500/15',   color: 'text-teal-400' };
     return { Icon: CalendarDays, bg: 'bg-indigo-500/15', color: 'text-indigo-400' };
 }
 
