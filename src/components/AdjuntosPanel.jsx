@@ -141,7 +141,7 @@ export default function AdjuntosPanel({ entidad, idEntidad, compact = false, lab
                 const adj = await adjuntosService.uploadAdjunto(entidad, idEntidad, file);
                 setAdjuntos(prev => [adj, ...prev]);
             }
-        } catch (e) { setError('Error al subir archivo'); }
+        } catch (e) { console.error('[ADJUNTOS] upload:', e); setError(e?.message || 'Error al subir archivo'); }
         finally {
             setUploading(false);
             if (inputRef.current) inputRef.current.value = '';
