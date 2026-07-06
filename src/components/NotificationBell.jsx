@@ -169,7 +169,7 @@ export default function NotificationBell() {
                             </button>
                         </div>
                         );
-                    }))
+                    })
                 )}
             </div>
         </div>,
