@@ -683,9 +683,9 @@ function TicketKanbanCard({ ticket, onSelect, isSelected }) {
                 </div>
             )}
             <div className="flex items-center justify-between gap-2 mt-1">
-                {ticket.sla_vence_en ? (
-                    <span className="flex items-center gap-1 text-[10px] text-amber-400">
-                        <Clock size={9} /> {fmt(ticket.sla_vence_en)}
+                {ticket.creado_en ? (
+                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                        <Clock size={9} /> {fmt(ticket.creado_en)}
                     </span>
                 ) : <span />}
                 {ticket.responsable_nombre && (
@@ -808,9 +808,9 @@ function TicketListView({ tickets, estados, onSelect, selected }) {
                                             <User size={10} /> {t.responsable_nombre}
                                         </span>
                                     )}
-                                    {t.sla_vence_en && (
-                                        <span className="hidden md:flex items-center gap-1 text-[11px] text-amber-400 shrink-0">
-                                            <Clock size={10} /> {fmt(t.sla_vence_en)}
+                                    {t.creado_en && (
+                                        <span className="hidden md:flex items-center gap-1 text-[11px] text-muted-foreground shrink-0">
+                                            <Clock size={10} /> {fmt(t.creado_en)}
                                         </span>
                                     )}
                                 </div>
