@@ -1,9 +1,15 @@
 'use client';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Bell, BellOff, X, CheckCheck, CalendarDays } from 'lucide-react';
+import { Bell, BellOff, X, CheckCheck, CalendarDays, CreditCard, Receipt } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { useNotificaciones } from '../hooks/useNotificaciones';
+
+function getNotifStyle(tipo) {
+    if (tipo === 'vencimiento') return { Icon: CreditCard, bg: 'bg-amber-500/15', color: 'text-amber-400' };
+    if (tipo === 'f29') return { Icon: Receipt, bg: 'bg-purple-500/15', color: 'text-purple-400' };
+    return { Icon: CalendarDays, bg: 'bg-indigo-500/15', color: 'text-indigo-400' };
+}
 
 export default function NotificationBell() {
     const [open, setOpen] = useState(false);
@@ -132,13 +138,15 @@ export default function NotificationBell() {
                         <p className="text-xs text-muted-foreground">Sin notificaciones pendientes</p>
                     </div>
                 ) : (
-                    notifs.map(n => (
+                    notifs.map(n => {
+                        const { Icon, bg, color } = getNotifStyle(n.tipo);
+                        return (
                         <div
                             key={n.id}
                             className="flex items-start gap-3 px-4 py-3 border-b border-border/20 hover:bg-foreground/3 transition-colors group"
                         >
-                            <div className="w-8 h-8 rounded-xl bg-indigo-500/15 flex items-center justify-center shrink-0 mt-0.5">
-                                <CalendarDays size={14} className="text-indigo-400" />
+                            <div className={`w-8 h-8 rounded-xl ${bg} flex items-center justify-center shrink-0 mt-0.5`}>
+                                <Icon size={14} className={color} />
                             </div>
                             <div className="flex-1 min-w-0">
                                 <p className="text-xs font-medium text-foreground truncate">{n.titulo}</p>
@@ -160,7 +168,8 @@ export default function NotificationBell() {
                                 <X size={11} />
                             </button>
                         </div>
-                    ))
+                        );
+                    }))
                 )}
             </div>
         </div>,
