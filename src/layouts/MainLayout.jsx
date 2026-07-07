@@ -7,7 +7,7 @@ import {
     House, LayoutDashboard, TrendingUp, TrendingDown, PieChart,
     Settings, Menu, Users, PiggyBank, Waves, BookOpen, LogOut,
     Brain, ChevronLeft, DollarSign, LayoutGrid, Gauge, Server, Terminal, CalendarDays,
-    Hammer, Rss, Building2, Shield
+    Hammer, Rss, Building2, Shield, FlaskConical
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { getTeams } from '../services/synapseService';
@@ -77,8 +77,9 @@ const MODULES = [
         accent: 'text-sky-400',
         accentBg: 'bg-sky-500/12',
         items: [
-            { icon: Hammer,    label: 'Tickets de Soporte',       path: '/nexus',                  tone: 'text-sky-400', activeBg: 'bg-sky-500/14' },
-            { icon: Rss,       label: 'Actualizaciones del Sistema', path: '/nexus/actualizaciones', tone: 'text-sky-400', activeBg: 'bg-sky-500/14' },
+            { icon: Hammer,       label: 'Tickets de Soporte',          path: '/nexus',                  tone: 'text-sky-400',    activeBg: 'bg-sky-500/14'    },
+            { icon: Rss,          label: 'Actualizaciones del Sistema', path: '/nexus/actualizaciones',  tone: 'text-sky-400',    activeBg: 'bg-sky-500/14'    },
+            { icon: FlaskConical, label: 'Q.A. & Testing',              path: '/nexus/qa',               tone: 'text-violet-400', activeBg: 'bg-violet-500/14' },
         ],
     },
 ];
