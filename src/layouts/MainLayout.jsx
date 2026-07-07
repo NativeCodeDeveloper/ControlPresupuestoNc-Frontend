@@ -138,7 +138,7 @@ export default function MainLayout({ children }) {
 
     useEffect(() => {
         getTeams().then(data => setTeams(Array.isArray(data) ? data : [])).catch(() => {});
-    }, [pathname]);
+    }, []);
     const router   = useRouter();
     const { signOut } = useClerk();
 
@@ -376,20 +376,19 @@ export default function MainLayout({ children }) {
                     />
                 </header>
 
-                {/* Área de contenido — full-height sin padding para páginas tipo terminal */}
-                {(pathname?.startsWith('/synapse/monitor') || pathname?.startsWith('/calendario') || pathname?.startsWith('/nexus')) ? (
-                    <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
-                        {children}
-                    </div>
-                ) : (
-                    <div className="flex-1 overflow-y-auto">
-                        <div className="p-4 lg:p-8">
-                            <div className="max-w-7xl mx-auto">
-                                {children}
+                {/* Área de contenido — mismo árbol siempre, solo cambian estilos */}
+                {(() => {
+                    const isFullscreen = pathname?.startsWith('/synapse/monitor') || pathname?.startsWith('/calendario') || pathname?.startsWith('/nexus');
+                    return (
+                        <div className={cn("flex-1", isFullscreen ? "min-h-0 overflow-hidden flex flex-col" : "overflow-y-auto")}>
+                            <div className={cn(!isFullscreen && "p-4 lg:p-8")}>
+                                <div className={cn(!isFullscreen && "max-w-7xl mx-auto")}>
+                                    {children}
+                                </div>
                             </div>
                         </div>
-                    </div>
-                )}
+                    );
+                })()}
             </main>
         </div>
     );
