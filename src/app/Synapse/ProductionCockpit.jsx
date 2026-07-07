@@ -553,7 +553,8 @@ export default function ProductionCockpit() {
 
             {/* ── Header ── */}
             <div className="mb-5">
-                <div className="flex items-start justify-between gap-4 flex-wrap">
+                {/* Título */}
+                <div className="flex items-center justify-between mb-3">
                     <div>
                         <div className="flex items-center gap-2 mb-1">
                             <Gauge size={18} className="text-violet-400" strokeWidth={1.8} />
@@ -563,9 +564,13 @@ export default function ProductionCockpit() {
                             Vista operativa de proyectos activos — Synapse
                         </p>
                     </div>
+                </div>
+
+                {/* Stats cards — siempre 2 columnas en móvil */}
+                <div className="grid grid-cols-2 sm:flex sm:items-stretch gap-3">
 
                     {/* Total general acumulado */}
-                    <div className="flex flex-col gap-1 bg-card border border-border rounded-xl px-4 py-3 min-w-0 w-full sm:w-auto sm:min-w-[180px] flex-1 sm:flex-none">
+                    <div className="flex flex-col gap-1 bg-card border border-border rounded-xl px-4 py-3 min-w-0 sm:min-w-[180px]">
                         <div className="flex items-center gap-1.5">
                             <TrendingUp size={12} className="text-emerald-400" />
                             <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -580,7 +585,7 @@ export default function ProductionCockpit() {
 
                     {/* Meta mensual chip */}
                     <div
-                        className="flex flex-col gap-1 bg-card border border-border rounded-xl px-4 py-3 min-w-0 w-full sm:w-auto sm:min-w-[220px] flex-1 sm:flex-none cursor-pointer hover:border-violet-500/40 transition-colors"
+                        className="flex flex-col gap-1 bg-card border border-border rounded-xl px-4 py-3 min-w-0 sm:min-w-[220px] cursor-pointer hover:border-violet-500/40 transition-colors"
                         onClick={() => setMetaModal(true)}
                     >
                         <div className="flex items-center justify-between gap-3">
