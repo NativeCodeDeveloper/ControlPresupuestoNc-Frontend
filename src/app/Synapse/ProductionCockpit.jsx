@@ -565,7 +565,7 @@ export default function ProductionCockpit() {
                     </div>
 
                     {/* Total general acumulado */}
-                    <div className="flex flex-col gap-1 bg-card border border-border rounded-xl px-4 py-3 min-w-0 sm:min-w-[180px] flex-1 sm:flex-none">
+                    <div className="flex flex-col gap-1 bg-card border border-border rounded-xl px-4 py-3 min-w-0 w-full sm:w-auto sm:min-w-[180px] flex-1 sm:flex-none">
                         <div className="flex items-center gap-1.5">
                             <TrendingUp size={12} className="text-emerald-400" />
                             <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -580,7 +580,7 @@ export default function ProductionCockpit() {
 
                     {/* Meta mensual chip */}
                     <div
-                        className="flex flex-col gap-1 bg-card border border-border rounded-xl px-4 py-3 min-w-0 sm:min-w-[220px] flex-1 sm:flex-none cursor-pointer hover:border-violet-500/40 transition-colors"
+                        className="flex flex-col gap-1 bg-card border border-border rounded-xl px-4 py-3 min-w-0 w-full sm:w-auto sm:min-w-[220px] flex-1 sm:flex-none cursor-pointer hover:border-violet-500/40 transition-colors"
                         onClick={() => setMetaModal(true)}
                     >
                         <div className="flex items-center justify-between gap-3">
@@ -612,11 +612,11 @@ export default function ProductionCockpit() {
             </div>
 
             {/* ── Toolbar ── */}
-            <div className="flex items-center gap-2 mb-4 flex-wrap">
+            <div className="flex flex-col gap-2 mb-4">
 
-                {/* Búsqueda */}
-                <div className="relative flex-1 min-w-[160px] max-w-full sm:max-w-[300px]">
-                    <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                {/* Fila 1: búsqueda (ancho completo en móvil) */}
+                <div className="relative w-full">
+                    <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                     <input
                         value={search}
                         onChange={e => setSearch(e.target.value)}
@@ -625,105 +625,107 @@ export default function ProductionCockpit() {
                     />
                 </div>
 
-                {/* Filtro estado pago */}
-                <select
-                    value={filterAlerta}
-                    onChange={e => setFilterAlerta(e.target.value)}
-                    className="text-[12px] bg-card border border-border rounded-lg px-2.5 py-1.5 outline-none focus:border-violet-500 transition-colors text-foreground"
-                >
-                    <option value="">Todos los estados</option>
-                    <option value="verde">Al día</option>
-                    <option value="naranja">Por vencer</option>
-                    <option value="rojo">Vencida</option>
-                </select>
+                {/* Fila 2: filtros + acciones */}
+                <div className="flex items-center gap-2 flex-wrap">
 
-                {/* Filtro servidor */}
-                {servidoresUnicos.length > 0 && (
+                    {/* Filtro estado pago */}
                     <select
-                        value={filterServidor}
-                        onChange={e => setFilterServidor(e.target.value)}
-                        className="text-[12px] bg-card border border-border rounded-lg px-2.5 py-1.5 outline-none focus:border-violet-500 transition-colors text-foreground"
+                        value={filterAlerta}
+                        onChange={e => setFilterAlerta(e.target.value)}
+                        className="text-[12px] bg-card border border-border rounded-lg px-2.5 py-1.5 outline-none focus:border-violet-500 transition-colors text-foreground shrink-0"
                     >
-                        <option value="">Todos los servidores</option>
-                        {servidoresUnicos.map(s => (
-                            <option key={s} value={s}>{s}</option>
-                        ))}
+                        <option value="">Todos los estados</option>
+                        <option value="verde">Al día</option>
+                        <option value="naranja">Por vencer</option>
+                        <option value="rojo">Vencida</option>
                     </select>
-                )}
 
-                {/* Vista mes / todo */}
-                <div className="flex items-center gap-0 bg-card border border-border rounded-lg overflow-hidden">
-                    <button
-                        onClick={() => setVistaGeneral(false)}
-                        className={cn('px-3 py-1.5 text-[12px] transition-colors', !vistaGeneral ? 'bg-violet-600 text-white' : 'text-muted-foreground hover:text-foreground')}
-                    >
-                        Este mes
-                    </button>
-                    <button
-                        onClick={() => setVistaGeneral(true)}
-                        className={cn('px-3 py-1.5 text-[12px] transition-colors', vistaGeneral ? 'bg-violet-600 text-white' : 'text-muted-foreground hover:text-foreground')}
-                    >
-                        Todo
-                    </button>
-                </div>
-
-                {/* Selector mes/año */}
-                {!vistaGeneral && (
-                    <div className="flex items-center gap-1.5">
+                    {/* Filtro servidor */}
+                    {servidoresUnicos.length > 0 && (
                         <select
-                            value={mes}
-                            onChange={e => setMes(Number(e.target.value))}
-                            className="text-[12px] bg-card border border-border rounded-lg px-2.5 py-1.5 outline-none focus:border-violet-500 transition-colors"
+                            value={filterServidor}
+                            onChange={e => setFilterServidor(e.target.value)}
+                            className="text-[12px] bg-card border border-border rounded-lg px-2.5 py-1.5 outline-none focus:border-violet-500 transition-colors text-foreground shrink-0"
                         >
-                            {MONTHS_ES.map((m, i) => (
-                                <option key={i} value={i + 1}>{m}</option>
+                            <option value="">Todos los servidores</option>
+                            {servidoresUnicos.map(s => (
+                                <option key={s} value={s}>{s}</option>
                             ))}
                         </select>
-                        <select
-                            value={anio}
-                            onChange={e => setAnio(Number(e.target.value))}
-                            className="text-[12px] bg-card border border-border rounded-lg px-2.5 py-1.5 outline-none focus:border-violet-500 transition-colors"
-                        >
-                            {[2024, 2025, 2026, 2027].map(y => (
-                                <option key={y} value={y}>{y}</option>
-                            ))}
-                        </select>
-                    </div>
-                )}
+                    )}
 
-                <div className="ml-auto flex items-center gap-2">
-                    {/* Columnas toggle */}
-                    <div className="relative" ref={colToggleRef}>
+                    {/* Vista mes / todo */}
+                    <div className="flex items-center bg-card border border-border rounded-lg overflow-hidden shrink-0">
                         <button
-                            onClick={() => setColToggle(v => !v)}
-                            className={cn(
-                                'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] border transition-colors',
-                                colToggle ? 'bg-violet-600/10 border-violet-500/30 text-violet-400' : 'border-border text-muted-foreground hover:text-foreground hover:bg-foreground/5'
-                            )}
+                            onClick={() => setVistaGeneral(false)}
+                            className={cn('px-3 py-1.5 text-[12px] transition-colors', !vistaGeneral ? 'bg-violet-600 text-white' : 'text-muted-foreground hover:text-foreground')}
                         >
-                            <Settings2 size={13} />
-                            Columnas
+                            Este mes
                         </button>
-                        {colToggle && (
-                            <ColumnToggle
-                                columnas={columnas}
-                                onChange={toggleColumna}
-                                onClose={() => setColToggle(false)}
-                            />
-                        )}
+                        <button
+                            onClick={() => setVistaGeneral(true)}
+                            className={cn('px-3 py-1.5 text-[12px] transition-colors', vistaGeneral ? 'bg-violet-600 text-white' : 'text-muted-foreground hover:text-foreground')}
+                        >
+                            Todo
+                        </button>
                     </div>
 
-                    {/* Refresh */}
-                    <button
-                        onClick={loadData}
-                        disabled={loading}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] border border-border text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors disabled:opacity-40"
-                    >
-                        {loading
-                            ? <Loader2 size={13} className="animate-spin" />
-                            : <RefreshCw size={13} />
-                        }
-                    </button>
+                    {/* Selector mes/año */}
+                    {!vistaGeneral && (
+                        <div className="flex items-center gap-1.5 shrink-0">
+                            <select
+                                value={mes}
+                                onChange={e => setMes(Number(e.target.value))}
+                                className="text-[12px] bg-card border border-border rounded-lg px-2.5 py-1.5 outline-none focus:border-violet-500 transition-colors"
+                            >
+                                {MONTHS_ES.map((m, i) => (
+                                    <option key={i} value={i + 1}>{m}</option>
+                                ))}
+                            </select>
+                            <select
+                                value={anio}
+                                onChange={e => setAnio(Number(e.target.value))}
+                                className="text-[12px] bg-card border border-border rounded-lg px-2.5 py-1.5 outline-none focus:border-violet-500 transition-colors"
+                            >
+                                {[2024, 2025, 2026, 2027].map(y => (
+                                    <option key={y} value={y}>{y}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+
+                    {/* Columnas + Refresh — empujados a la derecha */}
+                    <div className="ml-auto flex items-center gap-2 shrink-0">
+                        <div className="relative" ref={colToggleRef}>
+                            <button
+                                onClick={() => setColToggle(v => !v)}
+                                className={cn(
+                                    'hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] border transition-colors',
+                                    colToggle ? 'bg-violet-600/10 border-violet-500/30 text-violet-400' : 'border-border text-muted-foreground hover:text-foreground hover:bg-foreground/5'
+                                )}
+                            >
+                                <Settings2 size={13} />
+                                Columnas
+                            </button>
+                            {colToggle && (
+                                <ColumnToggle
+                                    columnas={columnas}
+                                    onChange={toggleColumna}
+                                    onClose={() => setColToggle(false)}
+                                />
+                            )}
+                        </div>
+                        <button
+                            onClick={loadData}
+                            disabled={loading}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] border border-border text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors disabled:opacity-40"
+                        >
+                            {loading
+                                ? <Loader2 size={13} className="animate-spin" />
+                                : <RefreshCw size={13} />
+                            }
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -744,27 +746,42 @@ export default function ProductionCockpit() {
                     {/* ── Vista cards (móvil) ── */}
                     <div className="md:hidden divide-y divide-border/40">
                         {proyectosFiltrados.map(p => {
-                            const isPaying = quickPayId === p.id_proyecto;
+                            const isPaying    = quickPayId === p.id_proyecto;
+                            const isSaving    = savingId   === p.id_proyecto;
                             const esRecurrente = p.ciclo_facturacion && p.ciclo_facturacion !== 'Unico';
+                            const urlFront    = p.url_front ? (p.url_front.startsWith('http') ? p.url_front : `https://${p.url_front}`) : null;
                             return (
-                                <div key={p.id_proyecto} className="px-4 py-4 space-y-3">
+                                <div key={p.id_proyecto} className={cn('px-4 py-4 space-y-3', isSaving && 'opacity-60')}>
+
+                                    {/* Cabecera: nombre + badge */}
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="min-w-0">
-                                            <p className="font-semibold text-[13px] text-foreground truncate">{p.nombre}</p>
-                                            {p.codigo_interno && (
-                                                <span className="text-[10px] text-violet-400/80 font-mono">{p.codigo_interno}</span>
-                                            )}
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <p className="font-semibold text-[13px] text-foreground truncate">{p.nombre}</p>
+                                                {p.codigo_interno && (
+                                                    <span className="text-[10px] text-violet-400/80 font-mono shrink-0">{p.codigo_interno}</span>
+                                                )}
+                                            </div>
                                             <p className="text-[12px] text-muted-foreground mt-0.5 truncate">{p.nombre_cliente}</p>
                                         </div>
                                         <AlertaBadge alerta={p.estado_alerta_pago} />
                                     </div>
 
+                                    {/* Montos y vencimiento */}
                                     <div className="flex items-center gap-3 text-[11px] text-muted-foreground flex-wrap">
-                                        {p.monto_acordado && (
+                                        {p.monto_acordado > 0 && (
                                             <span className="font-semibold text-foreground">{fmt(p.monto_acordado)}</span>
                                         )}
+                                        {!vistaGeneral && p.total_pagado_mes > 0 && (
+                                            <span className="text-emerald-400 font-semibold flex items-center gap-0.5">
+                                                <Check size={10} strokeWidth={3} /> {fmt(p.total_pagado_mes)}
+                                            </span>
+                                        )}
                                         {esRecurrente && p.fecha_proximo_pago && (
-                                            <span>
+                                            <span className={cn(
+                                                p.estado_alerta_pago === 'rojo' ? 'text-red-400' :
+                                                p.estado_alerta_pago === 'naranja' ? 'text-amber-400' : ''
+                                            )}>
                                                 {p.dias_para_vencer !== null
                                                     ? p.dias_para_vencer >= 0
                                                         ? `Vence en ${p.dias_para_vencer}d`
@@ -780,6 +797,16 @@ export default function ProductionCockpit() {
                                         )}
                                     </div>
 
+                                    {/* Link Front */}
+                                    {urlFront && (
+                                        <a href={urlFront} target="_blank" rel="noopener noreferrer"
+                                           className="inline-flex items-center gap-1 text-[11px] text-violet-400 hover:text-violet-300 transition-colors">
+                                            <ExternalLink size={11} />
+                                            {p.url_front.replace(/^https?:\/\//, '')}
+                                        </a>
+                                    )}
+
+                                    {/* Acciones */}
                                     <div className="flex items-center gap-2 flex-wrap">
                                         <button
                                             onClick={() => setEmailModal(p)}
@@ -807,9 +834,15 @@ export default function ProductionCockpit() {
                                         )}
                                     </div>
 
-                                    {p.cockpit_observaciones && (
-                                        <p className="text-[11px] text-muted-foreground/70 italic">{p.cockpit_observaciones}</p>
-                                    )}
+                                    {/* Observaciones editables */}
+                                    <div className="pt-1">
+                                        <InlineEdit
+                                            value={p.cockpit_observaciones}
+                                            placeholder="Agregar nota…"
+                                            multiline
+                                            onSave={v => handleUpdateField(p.id_proyecto, 'cockpit_observaciones', v)}
+                                        />
+                                    </div>
                                 </div>
                             );
                         })}
