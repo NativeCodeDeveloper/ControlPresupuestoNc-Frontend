@@ -169,9 +169,10 @@ function VersionModal({ onClose, onCreated }) {
         descripcion: '', id_proyecto: '', version_tag: '',
         estado: 'Planificado', fecha_inicio: '', fecha_objetivo: ''
     });
-    const [proyectos, setProyectos] = useState([]);
-    const [saving, setSaving]       = useState(false);
-    const [error,  setError]        = useState('');
+    const [proyectos,  setProyectos]  = useState([]);
+    const [saving,     setSaving]     = useState(false);
+    const [error,      setError]      = useState('');
+    const [creada,     setCreada]     = useState(null); // versión recién creada — muestra transición
 
     useEffect(() => {
         getProjects().then(p => setProyectos(Array.isArray(p) ? p : [])).catch(() => {});
@@ -190,21 +191,50 @@ function VersionModal({ onClose, onCreated }) {
         try {
             const payload = {
                 ...form,
-                id_proyecto:    form.tipo_contexto === 'Actualizacion' && form.id_proyecto ? Number(form.id_proyecto) : null,
+                id_proyecto:     form.tipo_contexto === 'Actualizacion' && form.id_proyecto ? Number(form.id_proyecto) : null,
                 nombre_producto: form.tipo_contexto !== 'Actualizacion' ? form.nombre_producto.trim() : null,
-                fecha_inicio:   form.fecha_inicio   || null,
-                fecha_objetivo: form.fecha_objetivo || null,
+                fecha_inicio:    form.fecha_inicio   || null,
+                fecha_objetivo:  form.fecha_objetivo || null,
             };
             const data = await qaService.createVersion(payload);
-            onCreated(data.version);
+            // Muestra estado de éxito 1s antes de navegar
+            setCreada(data.version);
+            setTimeout(() => onCreated(data.version), 1000);
         } catch (err) {
             setError(err.message || 'Error al crear versión');
-        } finally {
             setSaving(false);
         }
     };
 
     const inputCls = "w-full bg-secondary/40 border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-violet-500";
+
+    // ── Estado de transición: versión creada exitosamente ─────────────────────
+    if (creada) {
+        const ctx = CONTEXTO_OPTS.find(o => o.value === (creada.tipo_contexto ?? 'Actualizacion')) ?? CONTEXTO_OPTS[0];
+        return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+                <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-sm p-8 flex flex-col items-center gap-4 text-center">
+                    <div className="w-14 h-14 rounded-full bg-violet-500/15 border border-violet-500/30 flex items-center justify-center animate-pulse">
+                        <FlaskConical size={24} className="text-violet-400" />
+                    </div>
+                    <div>
+                        <p className="text-[11px] text-muted-foreground mb-1">Versión creada</p>
+                        <p className="text-base font-bold text-foreground">{creada.nombre}</p>
+                        {creada.version_tag && (
+                            <code className="text-[11px] text-violet-400/80 font-mono">{creada.version_tag}</code>
+                        )}
+                    </div>
+                    <span className={`inline-flex items-center gap-1.5 text-[11px] px-3 py-1 rounded-full border font-medium ${CONTEXTO_BADGE[creada.tipo_contexto] ?? CONTEXTO_BADGE['Actualizacion']}`}>
+                        {ctx.icon} {ctx.label}
+                    </span>
+                    <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
+                        <RefreshCw size={12} className="animate-spin" />
+                        Cargando casos…
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
@@ -539,7 +569,11 @@ function CasoDetalle({ caso, estados, socios, onClose, onUpdated, onDeleted }) {
         try {
             await qaService.deleteCaso(caso.id_caso);
             onDeleted(caso.id_caso);
-        } catch { setDeleting(false); }
+        } catch (e) {
+            console.error('[QA] Error eliminando caso', e);
+            alert('No se pudo eliminar el caso. Intenta nuevamente.');
+            setDeleting(false);
+        }
     };
 
     const inputCls = "w-full bg-secondary/30 border border-border rounded-lg px-2 py-1.5 text-[12px] text-foreground focus:outline-none focus:ring-1 focus:ring-violet-500 resize-none";
@@ -1105,18 +1139,29 @@ export default function QA() {
     };
 
     const handleDeleteCaso = (id_caso) => {
-        setCasos(prev => prev.filter(c => c.id_caso !== id_caso));
+        setCasos(prev => {
+            const next = prev.filter(c => c.id_caso !== id_caso);
+            if (versionActivaRef.current) casosCacheSave(versionActivaRef.current.id_version, next);
+            return next;
+        });
         setSelected(null);
-        load(true); // actualiza progress bar
+        load(true);
     };
 
     const handleDeleteVersion = async (version) => {
         if (!window.confirm(`¿Eliminar la versión "${version.nombre}"? Se eliminarán también todos sus casos. Esta acción no se puede deshacer.`)) return;
         try {
             await qaService.deleteVersion(version.id_version);
-            setVersiones(prev => prev.filter(v => v.id_version !== version.id_version));
+            setVersiones(prev => {
+                const next = prev.filter(v => v.id_version !== version.id_version);
+                cacheSave({ versiones: next, estados: [], socios: [] }); // invalida cache
+                return next;
+            });
             setSavedVersionId(null);
-        } catch { /* el backend responde con error si falla */ }
+        } catch (e) {
+            console.error('[QA] Error eliminando versión', e);
+            alert('No se pudo eliminar la versión. Intenta nuevamente.');
+        }
     };
 
     const handleMoveCaso = async (id_caso, id_estado) => {
