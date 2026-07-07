@@ -566,8 +566,8 @@ export default function ProductionCockpit() {
                     </div>
                 </div>
 
-                {/* Stats cards — siempre 2 columnas en móvil */}
-                <div className="grid grid-cols-2 sm:flex sm:items-stretch gap-3">
+                {/* Stats cards — apiladas en móvil, lado a lado en desktop */}
+                <div className="flex flex-col sm:flex-row sm:items-stretch gap-3">
 
                     {/* Total general acumulado */}
                     <div className="flex flex-col gap-1 bg-card border border-border rounded-xl px-4 py-3 min-w-0 sm:min-w-[180px]">
