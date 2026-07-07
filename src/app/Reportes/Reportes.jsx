@@ -1,6 +1,6 @@
 'use client';
 
-import { createElement, useState, useEffect } from 'react';
+import { createElement, useState, useEffect, useCallback } from 'react';
 import { useRealtime } from '../../hooks/useRealtime';
 import * as financeService from '../../services/financeService';
 import {
@@ -54,8 +54,8 @@ export default function Reportes() {
         partnersAvailability: []
     });
 
-    const loadData = async () => {
-        setIsLoading(true);
+    const loadData = useCallback(async (silent = false) => {
+        if (!silent) setIsLoading(true);
         try {
             const month = parseInt(selectedMonth, 10);
             const year = parseInt(selectedYear, 10);
@@ -129,11 +129,12 @@ export default function Reportes() {
         } catch (error) {
             console.error('Error cargando datos de reportes:', error);
         } finally {
-            setIsLoading(false);
+            if (!silent) setIsLoading(false);
         }
-    };
+    }, [selectedMonth, selectedYear]);
 
-    useRealtime(loadData);
+    const loadDataSilent = useCallback(() => loadData(true), [loadData]);
+    useRealtime(loadDataSilent);
 
     useEffect(() => {
         loadData();

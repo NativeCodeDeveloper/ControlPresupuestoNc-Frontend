@@ -346,9 +346,9 @@ export default function Synapse({ teamId = null }) {
 
     const teamInfo = numTeamId ? teams.find(t => t.id_team === numTeamId) : null;
 
-    const loadAll = useCallback(async () => {
-        setLoading(true);
-        setError('');
+    const loadAll = useCallback(async (silent = false) => {
+        if (!silent) setLoading(true);
+        if (!silent) setError('');
         try {
             const params = numTeamId ? { id_team: numTeamId } : {};
             const [est, tar, proys, tms] = await Promise.all([
@@ -362,13 +362,14 @@ export default function Synapse({ teamId = null }) {
             setProyectosRef(Array.isArray(proys) ? proys : []);
             setTeams(Array.isArray(tms) ? tms : []);
         } catch (e) {
-            setError('No se pudo cargar Synapse. Verifica la conexión.');
+            if (!silent) setError('No se pudo cargar Synapse. Verifica la conexión.');
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     }, [numTeamId]);
 
-    useRealtime(loadAll);
+    const loadAllSilent = useCallback(() => loadAll(true), [loadAll]);
+    useRealtime(loadAllSilent);
 
     useEffect(() => { loadAll(); }, [loadAll]);
 

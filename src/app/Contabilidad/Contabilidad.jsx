@@ -101,9 +101,9 @@ export default function Contabilidad() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    const load = useCallback(async () => {
-        setLoading(true);
-        setError(null);
+    const load = useCallback(async (silent = false) => {
+        if (!silent) setLoading(true);
+        if (!silent) setError(null);
         try {
             const [sum, flujo, f29] = await Promise.all([
                 getFinancialSummary(month, year),
@@ -114,13 +114,14 @@ export default function Contabilidad() {
             setFlujoCaja(flujo);
             setF29Data(f29);
         } catch (e) {
-            setError(e.message || 'Error al cargar datos contables');
+            if (!silent) setError(e.message || 'Error al cargar datos contables');
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     }, [month, year]);
 
-    useRealtime(load);
+    const loadSilent = useCallback(() => load(true), [load]);
+    useRealtime(loadSilent);
 
     useEffect(() => { load(); }, [load]);
 

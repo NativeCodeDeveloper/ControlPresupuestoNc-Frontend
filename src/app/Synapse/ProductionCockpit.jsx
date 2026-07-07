@@ -376,8 +376,8 @@ export default function ProductionCockpit() {
 
     // ── Carga de datos ────────────────────────────────────────────────────────
 
-    const loadData = useCallback(async () => {
-        setLoading(true);
+    const loadData = useCallback(async (silent = false) => {
+        if (!silent) setLoading(true);
         try {
             const params = vistaGeneral ? {} : { mes, anio };
             const [data, cfg] = await Promise.all([
@@ -402,11 +402,12 @@ export default function ProductionCockpit() {
         } catch (e) {
             console.error('[Cockpit] Error cargando datos', e);
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     }, [mes, anio, vistaGeneral]);
 
-    useRealtime(loadData);
+    const loadDataSilent = useCallback(() => loadData(true), [loadData]);
+    useRealtime(loadDataSilent);
 
     useEffect(() => { loadData(); }, [loadData]);
 

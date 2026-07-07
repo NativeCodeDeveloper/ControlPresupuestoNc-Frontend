@@ -97,19 +97,22 @@ export default function FlujoCaja() {
     const [f29Data, setF29Data] = useState(null);
     const [f29Loading, setF29Loading] = useState(true);
 
-    const load = useCallback(async () => {
-        setLoading(true);
-        setError(null);
+    const load = useCallback(async (silent = false) => {
+        if (!silent) setLoading(true);
+        if (!silent) setError(null);
         try {
             const result = await getFlujoCaja(year);
             if (!result) throw new Error('Sin respuesta del servidor');
             setData(result);
         } catch (e) {
-            setError(e.message || 'Error al cargar flujo de caja');
+            if (!silent) setError(e.message || 'Error al cargar flujo de caja');
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     }, [year]);
+
+    const loadSilent = useCallback(() => load(true), [load]);
+    useRealtime(loadSilent);
 
     const loadF29 = useCallback(async () => {
         setF29Loading(true);
@@ -119,8 +122,6 @@ export default function FlujoCaja() {
         } catch { setF29Data(null); }
         finally { setF29Loading(false); }
     }, [f29Month, f29Year]);
-
-    useRealtime(load);
 
     useEffect(() => { load(); }, [load]);
     useEffect(() => { loadF29(); }, [loadF29]);

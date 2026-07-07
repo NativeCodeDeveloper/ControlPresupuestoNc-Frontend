@@ -376,13 +376,15 @@ export default function MainLayout({ children }) {
                     />
                 </header>
 
-                {/* Área de contenido — mismo árbol siempre, solo cambian estilos */}
+                {/* Área de contenido — mismo árbol siempre, solo cambian estilos.
+                    En modo fullscreen los divs intermedios usan "contents" para no
+                    interrumpir el flujo flex y que children ocupe toda la altura. */}
                 {(() => {
                     const isFullscreen = pathname?.startsWith('/synapse/monitor') || pathname?.startsWith('/calendario') || pathname?.startsWith('/nexus');
                     return (
                         <div className={cn("flex-1", isFullscreen ? "min-h-0 overflow-hidden flex flex-col" : "overflow-y-auto")}>
-                            <div className={cn(!isFullscreen && "p-4 lg:p-8")}>
-                                <div className={cn(!isFullscreen && "max-w-7xl mx-auto")}>
+                            <div className={isFullscreen ? "contents" : "p-4 lg:p-8"}>
+                                <div className={isFullscreen ? "contents" : "max-w-7xl mx-auto"}>
                                     {children}
                                 </div>
                             </div>
