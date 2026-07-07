@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import apiClient from '../services/apiClient';
+import { useRealtime } from './useRealtime';
 
 const BASE = '/api/calendario';
 
@@ -55,6 +56,9 @@ export function useNotificaciones() {
         intervalRef.current = setInterval(fetchNotifs, 30_000);
         return () => clearInterval(intervalRef.current);
     }, [fetchNotifs]);
+
+    // Actualización instantánea vía socket cuando hay cambios en el sistema
+    useRealtime(fetchNotifs);
 
     async function pedirPermiso() {
         if (!('Notification' in window)) return;
