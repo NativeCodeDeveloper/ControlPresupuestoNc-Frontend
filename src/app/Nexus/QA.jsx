@@ -130,9 +130,43 @@ function TipoBadge({ tipo }) {
 
 // ─── Modal nueva versión ──────────────────────────────────────────────────────
 
+const CONTEXTO_OPTS = [
+    {
+        value: 'Actualizacion',
+        label: 'Actualización',
+        desc:  'Nueva versión de un producto existente',
+        icon:  '↑',
+        color: 'text-blue-400 border-blue-500/40 bg-blue-500/8',
+        active:'border-blue-500 bg-blue-500/15 text-blue-300',
+    },
+    {
+        value: 'Integracion',
+        label: 'Integración',
+        desc:  'Conexión entre módulos o servicios',
+        icon:  '⇄',
+        color: 'text-amber-400 border-amber-500/40 bg-amber-500/8',
+        active:'border-amber-500 bg-amber-500/15 text-amber-300',
+    },
+    {
+        value: 'Nuevo Producto',
+        label: 'Nuevo producto',
+        desc:  'Desarrollo de plataforma o producto desde cero',
+        icon:  '✦',
+        color: 'text-emerald-400 border-emerald-500/40 bg-emerald-500/8',
+        active:'border-emerald-500 bg-emerald-500/15 text-emerald-300',
+    },
+];
+
+const CONTEXTO_BADGE = {
+    'Actualizacion':  'text-blue-400   bg-blue-500/10   border-blue-500/30',
+    'Integracion':    'text-amber-400  bg-amber-500/10  border-amber-500/30',
+    'Nuevo Producto': 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
+};
+
 function VersionModal({ onClose, onCreated }) {
     const [form, setForm] = useState({
-        nombre: '', descripcion: '', id_proyecto: '', version_tag: '',
+        nombre: '', tipo_contexto: 'Actualizacion', nombre_producto: '',
+        descripcion: '', id_proyecto: '', version_tag: '',
         estado: 'Planificado', fecha_inicio: '', fecha_objetivo: ''
     });
     const [proyectos, setProyectos] = useState([]);
@@ -147,15 +181,21 @@ function VersionModal({ onClose, onCreated }) {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (form.tipo_contexto !== 'Actualizacion' && !form.nombre_producto.trim()) {
+            setError('Ingresa el nombre del producto o plataforma.');
+            return;
+        }
         setSaving(true);
         setError('');
         try {
-            const data = await qaService.createVersion({
+            const payload = {
                 ...form,
-                id_proyecto:    form.id_proyecto    ? Number(form.id_proyecto) : null,
+                id_proyecto:    form.tipo_contexto === 'Actualizacion' && form.id_proyecto ? Number(form.id_proyecto) : null,
+                nombre_producto: form.tipo_contexto !== 'Actualizacion' ? form.nombre_producto.trim() : null,
                 fecha_inicio:   form.fecha_inicio   || null,
                 fecha_objetivo: form.fecha_objetivo || null,
-            });
+            };
+            const data = await qaService.createVersion(payload);
             onCreated(data.version);
         } catch (err) {
             setError(err.message || 'Error al crear versión');
@@ -177,11 +217,46 @@ function VersionModal({ onClose, onCreated }) {
                     <button onClick={onClose}><X size={16} className="text-muted-foreground hover:text-foreground" /></button>
                 </div>
                 <form onSubmit={handleSubmit} className="p-5 space-y-4">
+
+                    {/* Tipo de contexto */}
+                    <div>
+                        <label className="text-[11px] text-muted-foreground mb-2 block">Tipo de prueba *</label>
+                        <div className="grid grid-cols-3 gap-2">
+                            {CONTEXTO_OPTS.map(opt => (
+                                <button key={opt.value} type="button"
+                                        onClick={() => set('tipo_contexto', opt.value)}
+                                        className={`flex flex-col items-center gap-1 px-2 py-3 rounded-xl border text-center transition-all ${
+                                            form.tipo_contexto === opt.value ? opt.active : 'border-border bg-card hover:border-violet-500/30'
+                                        }`}>
+                                    <span className={`text-base leading-none ${form.tipo_contexto === opt.value ? '' : opt.color.split(' ')[0]}`}>
+                                        {opt.icon}
+                                    </span>
+                                    <span className="text-[11px] font-semibold text-foreground leading-tight">{opt.label}</span>
+                                    <span className="text-[10px] text-muted-foreground leading-tight">{opt.desc}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Nombre del producto/plataforma — solo para Integración y Nuevo Producto */}
+                    {form.tipo_contexto !== 'Actualizacion' && (
+                        <div>
+                            <label className="text-[11px] text-muted-foreground mb-1 block">
+                                {form.tipo_contexto === 'Nuevo Producto' ? 'Nombre del producto / plataforma *' : 'Sistemas involucrados *'}
+                            </label>
+                            <input required value={form.nombre_producto}
+                                   onChange={e => set('nombre_producto', e.target.value)}
+                                   placeholder={form.tipo_contexto === 'Nuevo Producto' ? 'ej: Portal Clínico v1' : 'ej: Finance ↔ Agenda Clínica'}
+                                   className={inputCls} />
+                        </div>
+                    )}
+
                     <div>
                         <label className="text-[11px] text-muted-foreground mb-1 block">Nombre *</label>
                         <input required value={form.nombre} onChange={e => set('nombre', e.target.value)}
                                placeholder="ej: NativeCode Finance v2.3" className={inputCls} />
                     </div>
+
                     <div className="grid grid-cols-2 gap-3">
                         <div>
                             <label className="text-[11px] text-muted-foreground mb-1 block">Tag de versión</label>
@@ -197,15 +272,20 @@ function VersionModal({ onClose, onCreated }) {
                             </select>
                         </div>
                     </div>
-                    <div>
-                        <label className="text-[11px] text-muted-foreground mb-1 block">Proyecto asociado</label>
-                        <select value={form.id_proyecto} onChange={e => set('id_proyecto', e.target.value)} className={inputCls}>
-                            <option value="">— Sin proyecto —</option>
-                            {proyectos.map(p =>
-                                <option key={p.id_proyecto} value={p.id_proyecto}>{p.nombre}</option>
-                            )}
-                        </select>
-                    </div>
+
+                    {/* Proyecto asociado — solo para Actualización */}
+                    {form.tipo_contexto === 'Actualizacion' && (
+                        <div>
+                            <label className="text-[11px] text-muted-foreground mb-1 block">Proyecto asociado</label>
+                            <select value={form.id_proyecto} onChange={e => set('id_proyecto', e.target.value)} className={inputCls}>
+                                <option value="">— Sin proyecto —</option>
+                                {proyectos.map(p =>
+                                    <option key={p.id_proyecto} value={p.id_proyecto}>{p.nombre}</option>
+                                )}
+                            </select>
+                        </div>
+                    )}
+
                     <div>
                         <label className="text-[11px] text-muted-foreground mb-1 block">Descripción</label>
                         <textarea value={form.descripcion} onChange={e => set('descripcion', e.target.value)}
@@ -788,6 +868,16 @@ function VersionCard({ version, onClick }) {
                 </div>
             </div>
 
+            {/* Contexto — producto/proyecto */}
+            {(version.nombre_producto || version.proyecto_nombre) && (
+                <div className="mb-3">
+                    <span className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border font-medium ${CONTEXTO_BADGE[version.tipo_contexto] ?? CONTEXTO_BADGE['Actualizacion']}`}>
+                        <Tag size={8} />
+                        {version.nombre_producto || version.proyecto_nombre}
+                    </span>
+                </div>
+            )}
+
             <div className="flex items-center justify-between text-[10px] text-muted-foreground">
                 <div className="flex items-center gap-3">
                     <span className="flex items-center gap-1"><Target size={9} /> {total} casos</span>
@@ -796,9 +886,9 @@ function VersionCard({ version, onClick }) {
                             <AlertTriangle size={9} /> {rechazados} rechazados
                         </span>
                     )}
-                    {version.proyecto_nombre && (
-                        <span className="hidden sm:flex items-center gap-1">
-                            <Tag size={9} /> {version.proyecto_nombre}
+                    {version.tipo_contexto && version.tipo_contexto !== 'Actualizacion' && (
+                        <span className={`hidden sm:inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full border text-[9px] font-semibold ${CONTEXTO_BADGE[version.tipo_contexto]}`}>
+                            {version.tipo_contexto}
                         </span>
                     )}
                 </div>
@@ -845,8 +935,9 @@ export default function QA() {
     const [showVersionModal, setShowVersionModal] = useState(false);
 
     // Filtros lista de versiones
-    const [busquedaVersion,      setBusquedaVersion]      = usePersistedState('nexus:qa:busquedaVersion', '');
-    const [filtroVersionEstado,  setFiltroVersionEstado]  = usePersistedState('nexus:qa:filtroVersionEstado', '');
+    const [busquedaVersion,       setBusquedaVersion]       = usePersistedState('nexus:qa:busquedaVersion', '');
+    const [filtroVersionEstado,   setFiltroVersionEstado]   = usePersistedState('nexus:qa:filtroVersionEstado', '');
+    const [filtroVersionContexto, setFiltroVersionContexto] = usePersistedState('nexus:qa:filtroVersionContexto', '');
 
     // Vista detalle de version (kanban de casos)
     const [versionActiva,  setVersionActiva]  = useState(null);
@@ -1005,11 +1096,13 @@ export default function QA() {
     // ── Filtrado versiones ────────────────────────────────────────────────────
 
     const versionesFiltradas = versiones.filter(v => {
-        if (filtroVersionEstado && v.estado !== filtroVersionEstado) return false;
+        if (filtroVersionEstado   && v.estado         !== filtroVersionEstado)   return false;
+        if (filtroVersionContexto && v.tipo_contexto  !== filtroVersionContexto) return false;
         if (busquedaVersion) {
             const q = busquedaVersion.toLowerCase();
             if (!v.nombre?.toLowerCase().includes(q) &&
-                !(v.version_tag ?? '').toLowerCase().includes(q) &&
+                !(v.version_tag     ?? '').toLowerCase().includes(q) &&
+                !(v.nombre_producto ?? '').toLowerCase().includes(q) &&
                 !(v.proyecto_nombre ?? '').toLowerCase().includes(q)) return false;
         }
         return true;
@@ -1068,13 +1161,18 @@ export default function QA() {
                     />
                     <select value={filtroVersionEstado} onChange={e => setFiltroVersionEstado(e.target.value)}
                             className={`${selectCls} min-w-0`}>
-                        <option value="">Todos los estados</option>
+                        <option value="">Estado</option>
                         {['Planificado','En Testing','Aprobado','Rechazado'].map(s =>
                             <option key={s} value={s}>{s}</option>
                         )}
                     </select>
-                    {(busquedaVersion || filtroVersionEstado) && (
-                        <button onClick={() => { setBusquedaVersion(''); setFiltroVersionEstado(''); }}
+                    <select value={filtroVersionContexto} onChange={e => setFiltroVersionContexto(e.target.value)}
+                            className={`${selectCls} min-w-0`}>
+                        <option value="">Tipo</option>
+                        {CONTEXTO_OPTS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                    {(busquedaVersion || filtroVersionEstado || filtroVersionContexto) && (
+                        <button onClick={() => { setBusquedaVersion(''); setFiltroVersionEstado(''); setFiltroVersionContexto(''); }}
                                 className="h-8 px-2 text-[11px] text-muted-foreground hover:text-foreground border border-border rounded-lg transition-colors">
                             Limpiar
                         </button>
