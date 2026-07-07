@@ -6,7 +6,7 @@ import {
     FlaskConical, Plus, RefreshCw, X, ChevronLeft,
     ChevronRight, Clock, User, LayoutGrid, List,
     Circle, MessageSquare, CheckCircle2, AlertTriangle,
-    Send, Tag, Calendar, Target
+    Send, Tag, Calendar, Target, Trash2
 } from 'lucide-react';
 import * as qaService from '../../services/qaService';
 import { getPartners } from '../../services/partnersService';
@@ -471,10 +471,11 @@ function CasoModal({ version, estados, socios, onClose, onCreated }) {
 
 // ─── Panel de detalle del caso ────────────────────────────────────────────────
 
-function CasoDetalle({ caso, estados, socios, onClose, onUpdated }) {
+function CasoDetalle({ caso, estados, socios, onClose, onUpdated, onDeleted }) {
     const [actividad,   setActividad]   = useState([]);
     const [comentario,  setComentario]  = useState('');
     const [saving,      setSaving]      = useState(false);
+    const [deleting,    setDeleting]    = useState(false);
     const [tabObs,      setTabObs]      = useState('preview'); // 'preview' | 'editar'
     const [obsEdit,     setObsEdit]     = useState(caso.observaciones ?? '');
     const [obsSaved,    setObsSaved]    = useState(false);
@@ -532,6 +533,15 @@ function CasoDetalle({ caso, estados, socios, onClose, onUpdated }) {
         } finally { setSaving(false); }
     };
 
+    const handleEliminar = async () => {
+        if (!window.confirm(`¿Eliminar el caso "${caso.numero_caso} — ${caso.titulo}"? Esta acción no se puede deshacer.`)) return;
+        setDeleting(true);
+        try {
+            await qaService.deleteCaso(caso.id_caso);
+            onDeleted(caso.id_caso);
+        } catch { setDeleting(false); }
+    };
+
     const inputCls = "w-full bg-secondary/30 border border-border rounded-lg px-2 py-1.5 text-[12px] text-foreground focus:outline-none focus:ring-1 focus:ring-violet-500 resize-none";
 
     return (
@@ -543,9 +553,16 @@ function CasoDetalle({ caso, estados, socios, onClose, onUpdated }) {
                     <p className="text-sm font-semibold text-foreground line-clamp-2">{caso.titulo}</p>
                     <p className="text-[11px] text-muted-foreground mt-0.5">{caso.version_nombre}</p>
                 </div>
-                <button onClick={onClose} className="shrink-0 ml-2 text-muted-foreground hover:text-foreground">
-                    <X size={15} />
-                </button>
+                <div className="shrink-0 ml-2 flex items-center gap-1">
+                    <button onClick={handleEliminar} disabled={deleting}
+                            title="Eliminar caso"
+                            className="p-1 rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-40">
+                        <Trash2 size={13} />
+                    </button>
+                    <button onClick={onClose} className="p-1 rounded-lg text-muted-foreground hover:text-foreground transition-colors">
+                        <X size={15} />
+                    </button>
+                </div>
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -579,14 +596,14 @@ function CasoDetalle({ caso, estados, socios, onClose, onUpdated }) {
 
                 {/* Descripción + pasos */}
                 {caso.descripcion && (
-                    <div className="bg-secondary/20 rounded-lg p-3">
+                    <div className="bg-secondary/20 rounded-2xl p-3">
                         <p className="text-[10px] text-muted-foreground mb-1 font-semibold uppercase tracking-wider">Descripción</p>
                         <p className="text-[12px] text-foreground whitespace-pre-wrap">{caso.descripcion}</p>
                     </div>
                 )}
 
                 {caso.pasos && (
-                    <div className="bg-secondary/20 rounded-lg p-3">
+                    <div className="bg-secondary/20 rounded-2xl p-3">
                         <p className="text-[10px] text-muted-foreground mb-1 font-semibold uppercase tracking-wider">Pasos</p>
                         <p className="text-[12px] text-foreground whitespace-pre-wrap">{caso.pasos}</p>
                     </div>
@@ -595,13 +612,13 @@ function CasoDetalle({ caso, estados, socios, onClose, onUpdated }) {
                 {(caso.resultado_esperado || caso.resultado_actual) && (
                     <div className="grid grid-cols-1 gap-2">
                         {caso.resultado_esperado && (
-                            <div className="bg-emerald-500/6 border border-emerald-500/20 rounded-lg p-3">
+                            <div className="bg-emerald-500/6 border border-emerald-500/20 rounded-2xl p-3">
                                 <p className="text-[10px] text-emerald-400 mb-1 font-semibold uppercase tracking-wider">Resultado esperado</p>
                                 <p className="text-[12px] text-foreground whitespace-pre-wrap">{caso.resultado_esperado}</p>
                             </div>
                         )}
                         {caso.resultado_actual && (
-                            <div className="bg-amber-500/6 border border-amber-500/20 rounded-lg p-3">
+                            <div className="bg-amber-500/6 border border-amber-500/20 rounded-2xl p-3">
                                 <p className="text-[10px] text-amber-400 mb-1 font-semibold uppercase tracking-wider">Resultado actual</p>
                                 <p className="text-[12px] text-foreground whitespace-pre-wrap">{caso.resultado_actual}</p>
                             </div>
@@ -613,7 +630,7 @@ function CasoDetalle({ caso, estados, socios, onClose, onUpdated }) {
                 <div>
                     <div className="flex items-center justify-between mb-2">
                         <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Observaciones</p>
-                        <div className="flex rounded-md border border-border overflow-hidden">
+                        <div className="flex rounded-xl border border-border overflow-hidden">
                             <button onClick={() => setTabObs('preview')}
                                     className={`px-2 py-0.5 text-[10px] transition-colors ${tabObs==='preview' ? 'bg-violet-500/15 text-violet-400' : 'text-muted-foreground hover:text-foreground'}`}>
                                 Preview
@@ -626,7 +643,7 @@ function CasoDetalle({ caso, estados, socios, onClose, onUpdated }) {
                     </div>
 
                     {tabObs === 'preview' ? (
-                        <div className="min-h-[60px] bg-secondary/20 border border-border rounded-lg px-3 py-2">
+                        <div className="min-h-[60px] bg-secondary/20 border border-border rounded-2xl px-3 py-2">
                             {caso.observaciones
                                 ? <MarkdownPreview content={caso.observaciones} />
                                 : <p className="text-[11px] text-muted-foreground italic">Sin observaciones. Cambia a "Editar" para agregar.</p>
@@ -825,7 +842,7 @@ function CasoListView({ casos, estados, onSelect, selected }) {
 
 // ─── Vista de versiones ───────────────────────────────────────────────────────
 
-function VersionCard({ version, onClick }) {
+function VersionCard({ version, onClick, onDelete }) {
     const total    = version.total_casos ?? 0;
     const aprobados = version.casos_aprobados ?? 0;
     const rechazados = version.casos_rechazados ?? 0;
@@ -847,9 +864,17 @@ function VersionCard({ version, onClick }) {
                         <code className="text-[11px] text-muted-foreground font-mono">{version.version_tag}</code>
                     )}
                 </div>
-                <span className={`shrink-0 text-[10px] px-2 py-0.5 rounded-full border font-semibold ${estiloBadge}`}>
-                    {version.estado}
-                </span>
+                <div className="flex items-center gap-1.5 shrink-0">
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full border font-semibold ${estiloBadge}`}>
+                        {version.estado}
+                    </span>
+                    <button
+                        onClick={e => { e.stopPropagation(); onDelete(version); }}
+                        title="Eliminar versión"
+                        className="opacity-0 group-hover:opacity-100 p-1 rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-all">
+                        <Trash2 size={12} />
+                    </button>
+                </div>
             </div>
 
             {version.descripcion && (
@@ -1070,13 +1095,28 @@ export default function QA() {
         setShowCasoModal(false);
         if (caso) setCasos(prev => [caso, ...prev]);
         loadCasos(versionActiva.id_version, true);
-        load(true); // actualiza progress bar de la versión
+        load(true);
         setSelected(caso);
     };
 
     const handleCasoUpdated = (caso) => {
         setCasos(prev => prev.map(c => c.id_caso === caso.id_caso ? caso : c));
         setSelected(caso);
+    };
+
+    const handleDeleteCaso = (id_caso) => {
+        setCasos(prev => prev.filter(c => c.id_caso !== id_caso));
+        setSelected(null);
+        load(true); // actualiza progress bar
+    };
+
+    const handleDeleteVersion = async (version) => {
+        if (!window.confirm(`¿Eliminar la versión "${version.nombre}"? Se eliminarán también todos sus casos. Esta acción no se puede deshacer.`)) return;
+        try {
+            await qaService.deleteVersion(version.id_version);
+            setVersiones(prev => prev.filter(v => v.id_version !== version.id_version));
+            setSavedVersionId(null);
+        } catch { /* el backend responde con error si falla */ }
     };
 
     const handleMoveCaso = async (id_caso, id_estado) => {
@@ -1208,7 +1248,8 @@ export default function QA() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                             {versionesFiltradas.map(v => (
                                 <VersionCard key={v.id_version} version={v}
-                                            onClick={() => handleSeleccionarVersion(v)} />
+                                            onClick={() => handleSeleccionarVersion(v)}
+                                            onDelete={handleDeleteVersion} />
                             ))}
                         </div>
                     )}
@@ -1334,6 +1375,7 @@ export default function QA() {
                         socios={socios}
                         onClose={() => setSelected(null)}
                         onUpdated={handleCasoUpdated}
+                        onDeleted={handleDeleteCaso}
                     />
                 </div>
             )}
