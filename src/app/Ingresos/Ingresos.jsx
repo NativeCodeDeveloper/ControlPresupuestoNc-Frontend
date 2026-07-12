@@ -307,6 +307,16 @@ export default function Ingresos() {
             const tipo_proyecto_id = tipoFound?.id ?? editForm.tipoId;
             const estado_proyecto_id = estadoFound?.id ?? editForm.estadoId;
 
+            // El estado guardado en el proyecto puede haber quedado huérfano (renombrado o
+            // eliminado desde Config). Sin esta guarda, se manda estado_proyecto_id: null y
+            // el backend lo rechaza siempre igual — cada intento de guardar vuelve a fallar
+            // con el mismo error hasta que alguien note que hay que reelegir el estado a mano.
+            if (!estado_proyecto_id) {
+                alert('El estado de este proyecto ya no es válido (puede haber sido renombrado o eliminado). Selecciona un estado desde la lista antes de guardar.');
+                setIsEditLoading(false);
+                return;
+            }
+
             const updates = {
                 nombre: editForm.name,
                 nombre_cliente: editForm.clientName,
