@@ -38,10 +38,13 @@ export default function NotificationBell() {
         setOpen(o => !o);
     }
 
-    // Auto-marcar como leídas después de 4 segundos con panel abierto
+    // Auto-marcar como leídas tras un tiempo largo con el panel abierto — respaldo
+    // por si el usuario nunca usa el botón de tilde. No debe interrumpir la lectura,
+    // así que el marcado manual (tilde / X por notificación) sigue siendo lo normal.
     useEffect(() => {
         if (!open || notifs.length === 0) return;
-        const t = setTimeout(() => { marcarTodasLeidas(); }, 4000);
+        const SEIS_HORAS_MS = 6 * 60 * 60 * 1000;
+        const t = setTimeout(() => { marcarTodasLeidas(); }, SEIS_HORAS_MS);
         return () => clearTimeout(t);
     }, [open, notifs.length, marcarTodasLeidas]);
 

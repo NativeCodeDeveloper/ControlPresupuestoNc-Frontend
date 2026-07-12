@@ -3,6 +3,7 @@ import apiClient from './apiClient';
 export const getEstados      = ()         => apiClient.get('/api/soporte/estados');
 export const createEstado    = (data)     => apiClient.post('/api/soporte/estados', data);
 export const deleteEstado    = (id)       => apiClient.delete(`/api/soporte/estados/${id}`);
+export const reorderEstados  = (ids)      => apiClient.patch('/api/soporte/estados/reorder', { ids });
 export const getTickets    = (filtros = {}) => {
     const q = new URLSearchParams();
     if (filtros.estado)      q.append('estado',      filtros.estado);

@@ -26,7 +26,9 @@ import {
     Circle,
     Receipt,
     Hammer,
-    Rss
+    Rss,
+    ChevronUp,
+    ChevronDown
 } from 'lucide-react';
 
 const Section = ({ title, icon, children }) => (
@@ -417,6 +419,25 @@ export default function Config() {
         }
     };
 
+    const handleMoveSynapseEstado = async (id, direction) => {
+        const idx = synapseEstados.findIndex(e => e.id_estado === id);
+        const targetIdx = idx + direction;
+        if (idx === -1 || targetIdx < 0 || targetIdx >= synapseEstados.length) return;
+
+        const reordered = [...synapseEstados];
+        [reordered[idx], reordered[targetIdx]] = [reordered[targetIdx], reordered[idx]];
+        const previous = synapseEstados;
+        setSynapseEstados(reordered);
+
+        try {
+            await synapseService.reorderEstados(reordered.map(e => e.id_estado));
+        } catch (e) {
+            console.error('Error reordenando estados Synapse:', e);
+            setSynapseEstados(previous);
+            alert('No se pudo guardar el nuevo orden.');
+        }
+    };
+
     // === NEXUS: ESTADOS DE SOPORTE ===
     const handleAddSoporteEstado = async () => {
         if (!newSoporteEstadoForm.nombre.trim()) return;
@@ -441,6 +462,25 @@ export default function Config() {
             console.error('Error eliminando estado Nexus:', e);
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const handleMoveSoporteEstado = async (id, direction) => {
+        const idx = soporteEstados.findIndex(e => e.id_estado === id);
+        const targetIdx = idx + direction;
+        if (idx === -1 || targetIdx < 0 || targetIdx >= soporteEstados.length) return;
+
+        const reordered = [...soporteEstados];
+        [reordered[idx], reordered[targetIdx]] = [reordered[targetIdx], reordered[idx]];
+        const previous = soporteEstados;
+        setSoporteEstados(reordered);
+
+        try {
+            await soporteService.reorderEstados(reordered.map(e => e.id_estado));
+        } catch (e) {
+            console.error('Error reordenando estados Nexus:', e);
+            setSoporteEstados(previous);
+            alert('No se pudo guardar el nuevo orden.');
         }
     };
 
@@ -940,8 +980,26 @@ export default function Config() {
 
                     {/* Listado */}
                     <div className="space-y-2 mb-5">
-                        {synapseEstados.map(est => (
+                        {synapseEstados.map((est, idx) => (
                             <div key={est.id_estado} className="flex items-center gap-3 bg-secondary/40 border border-border/40 rounded-xl px-4 py-3">
+                                <div className="flex flex-col -my-1 shrink-0">
+                                    <button
+                                        onClick={() => handleMoveSynapseEstado(est.id_estado, -1)}
+                                        disabled={isLoading || idx === 0}
+                                        className="text-muted-foreground hover:text-foreground transition-colors disabled:opacity-25 disabled:cursor-not-allowed"
+                                        title="Mover antes"
+                                    >
+                                        <ChevronUp size={14} />
+                                    </button>
+                                    <button
+                                        onClick={() => handleMoveSynapseEstado(est.id_estado, 1)}
+                                        disabled={isLoading || idx === synapseEstados.length - 1}
+                                        className="text-muted-foreground hover:text-foreground transition-colors disabled:opacity-25 disabled:cursor-not-allowed"
+                                        title="Mover después"
+                                    >
+                                        <ChevronDown size={14} />
+                                    </button>
+                                </div>
                                 <span className="w-3 h-3 rounded-full shrink-0" style={{ background: est.color_hex }} />
                                 <span className="text-sm font-medium text-foreground flex-1">{est.nombre}</span>
                                 {est.es_final ? (
@@ -1012,8 +1070,26 @@ export default function Config() {
                     </p>
 
                     <div className="space-y-2 mb-5">
-                        {soporteEstados.map(est => (
+                        {soporteEstados.map((est, idx) => (
                             <div key={est.id_estado} className="flex items-center gap-3 bg-secondary/40 border border-border/40 rounded-xl px-4 py-3">
+                                <div className="flex flex-col -my-1 shrink-0">
+                                    <button
+                                        onClick={() => handleMoveSoporteEstado(est.id_estado, -1)}
+                                        disabled={isLoading || idx === 0}
+                                        className="text-muted-foreground hover:text-foreground transition-colors disabled:opacity-25 disabled:cursor-not-allowed"
+                                        title="Mover antes"
+                                    >
+                                        <ChevronUp size={14} />
+                                    </button>
+                                    <button
+                                        onClick={() => handleMoveSoporteEstado(est.id_estado, 1)}
+                                        disabled={isLoading || idx === soporteEstados.length - 1}
+                                        className="text-muted-foreground hover:text-foreground transition-colors disabled:opacity-25 disabled:cursor-not-allowed"
+                                        title="Mover después"
+                                    >
+                                        <ChevronDown size={14} />
+                                    </button>
+                                </div>
                                 <span className="w-3 h-3 rounded-full shrink-0" style={{ background: est.color_hex }} />
                                 <span className="text-sm font-medium text-foreground flex-1">{est.nombre}</span>
                                 {est.es_cierre ? (

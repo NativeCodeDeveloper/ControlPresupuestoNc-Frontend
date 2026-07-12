@@ -128,13 +128,15 @@ export default function Ingresos() {
         const updatedProjects = await projectsService.getProjects();
         if (updatedProjects && Array.isArray(updatedProjects)) {
             setProjects(updatedProjects);
+            const paymentsResults = await Promise.all(
+                updatedProjects.map(p => projectsService.getProjectPayments(p.id))
+            );
             const paymentsMap = {};
-            for (const p of updatedProjects) {
-                const pagos = await projectsService.getProjectPayments(p.id);
-                if (pagos && Array.isArray(pagos)) {
-                    paymentsMap[p.id] = pagos;
+            updatedProjects.forEach((p, i) => {
+                if (paymentsResults[i] && Array.isArray(paymentsResults[i])) {
+                    paymentsMap[p.id] = paymentsResults[i];
                 }
-            }
+            });
             setProjectPayments(paymentsMap);
         }
     };
