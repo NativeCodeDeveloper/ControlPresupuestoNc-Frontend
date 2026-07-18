@@ -68,7 +68,7 @@ export const generateDtePreview = async (data) => {
     doc.restoreGraphicsState?.();
 
     // --- Header: logo + identidad del documento ---
-    const logoPath = '/nativecode-logo.png';
+    const logoPath = '/logofactura.png';
     let logoLoaded = false;
     let logoBottom = marginX + 8;
     try {
