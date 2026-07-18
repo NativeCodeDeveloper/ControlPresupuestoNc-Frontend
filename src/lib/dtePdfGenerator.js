@@ -156,20 +156,24 @@ export const generateDtePreview = async (data) => {
         contacto: [receptor.email, receptor.telefono].filter(Boolean).join('  ·  ') || null
     });
 
-    const writeColumn = (lines, x, startY) => {
+    const writeColumn = (lines, x, startY, width) => {
         let cy = startY;
         lines.forEach(({ text, bold }) => {
             doc.setFont('helvetica', bold ? 'bold' : 'normal');
-            doc.setFontSize(bold ? 10.5 : 9);
+            const fontSize = bold ? 10.5 : 9;
+            const rowHeight = bold ? 5.5 : 4.4;
+            doc.setFontSize(fontSize);
             doc.setTextColor(...INK);
+            const wrapped = doc.splitTextToSize(text, width);
             cy += bold ? 5.5 : 4.8;
-            doc.text(text, x, cy);
+            doc.text(wrapped, x, cy);
+            if (wrapped.length > 1) cy += (wrapped.length - 1) * rowHeight;
         });
         return cy;
     };
 
-    const emisorBottom = writeColumn(emisorLines, marginX, y);
-    const receptorBottom = writeColumn(receptorLines, col2X, y);
+    const emisorBottom = writeColumn(emisorLines, marginX, y, colWidth);
+    const receptorBottom = writeColumn(receptorLines, col2X, y, colWidth);
     y = Math.max(emisorBottom, receptorBottom) + 6;
 
     line(doc, marginX, y, pageWidth - marginX);
