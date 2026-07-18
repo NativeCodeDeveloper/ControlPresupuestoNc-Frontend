@@ -79,6 +79,23 @@ export const updateFinancialConfig = async (config) => {
     }
 };
 
+/**
+ * updateEmisorConfig - Actualiza los datos de la empresa emisora usados como
+ * encabezado de los documentos tributarios (facturas/boletas borrador).
+ *
+ * @param {Object} emisor - { emisor_rut, emisor_razon_social, emisor_giro, emisor_direccion, emisor_comuna, emisor_actividad_economica }
+ * @returns {Promise<Object>} - { ok, resultado, data }
+ */
+export const updateEmisorConfig = async (emisor) => {
+    try {
+        const data = await apiClient.put('/api/config/financiera/emisor', emisor);
+        return data || null;
+    } catch (error) {
+        console.error('Error actualizando datos del emisor:', error);
+        return null;
+    }
+};
+
 // ========================================
 // CATÁLOGOS DE TIPOS DE PROYECTO
 // ========================================

@@ -23,10 +23,12 @@ import {
     Repeat,
     Mail,
     ExternalLink,
-    CheckCircle2
+    CheckCircle2,
+    FileText
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Input, Select } from '../../components/ui/FormElements';
+import { generateDtePreview } from '../../lib/dtePdfGenerator';
 
 export default function Ingresos() {
     const [activeTab, setActiveTab]       = usePersistedState('ingresos:activeTab', 'projects');
@@ -50,6 +52,8 @@ export default function Ingresos() {
         clientPhone: '',
         clientEmail: '',
         clientProfession: '',
+        clientAddress: '',
+        clientComuna: '',
         deliveryDate: '',
         observations: '',
         ciclo: 'Unico',
@@ -78,6 +82,11 @@ export default function Ingresos() {
     const [editPayment, setEditPayment] = useState(null);
     const [editPaymentForm, setEditPaymentForm] = useState({});
     const [isPaymentEditLoading, setIsPaymentEditLoading] = useState(false);
+
+    const [dteProject, setDteProject] = useState(null);
+    const [dteForm, setDteForm] = useState(null);
+    const [isSavingClientData, setIsSavingClientData] = useState(false);
+    const [clientDataSaved, setClientDataSaved] = useState(false);
 
     const fmtPreview = (val) => {
         const n = Math.round(parseFloat(val) || 0);
@@ -163,6 +172,8 @@ export default function Ingresos() {
                 email_cliente: projectForm.clientEmail,
                 telefono_cliente: projectForm.clientPhone,
                 profesion_cliente: projectForm.clientProfession || null,
+                direccion_cliente: projectForm.clientAddress || null,
+                comuna_cliente: projectForm.clientComuna || null,
                 monto_acordado: Math.round(parseFloat(projectForm.agreedAmount || 0)),
                 fecha_creacion: new Date().toISOString().split('T')[0],
                 fecha_entrega: projectForm.deliveryDate || null,
@@ -191,6 +202,8 @@ export default function Ingresos() {
                 clientPhone: '',
                 clientEmail: '',
                 clientProfession: '',
+                clientAddress: '',
+                clientComuna: '',
                 deliveryDate: '',
                 observations: '',
                 ciclo: 'Unico',
@@ -282,6 +295,8 @@ export default function Ingresos() {
             clientPhone: project.telefono_cliente || '',
             clientEmail: project.email_cliente || '',
             clientProfession: project.profesion_cliente || '',
+            clientAddress: project.direccion_cliente || '',
+            clientComuna: project.comuna_cliente || '',
             deliveryDate: project.fecha_entrega ? project.fecha_entrega.split('T')[0] : '',
             observations: project.observaciones || '',
             ciclo: project.ciclo_facturacion || 'Unico',
@@ -324,6 +339,8 @@ export default function Ingresos() {
                 email_cliente: editForm.clientEmail,
                 telefono_cliente: editForm.clientPhone,
                 profesion_cliente: editForm.clientProfession || null,
+                direccion_cliente: editForm.clientAddress || null,
+                comuna_cliente: editForm.clientComuna || null,
                 monto_acordado: Math.round(parseFloat(editForm.agreedAmount || 0)),
                 fecha_entrega: editForm.deliveryDate || null,
                 observaciones: editForm.observations || null,
@@ -412,6 +429,131 @@ export default function Ingresos() {
             await reloadProjects();
         } else {
             alert('Error al eliminar el pago');
+        }
+    };
+
+    const DTE_FORMAS_PAGO = ['Transferencia', 'Contado', 'Crédito', 'Efectivo', 'Otro'];
+
+    const handleDteOpen = (project) => {
+        setDteProject(project);
+        setClientDataSaved(false);
+        setDteForm({
+            tipoDte: project.rut_cliente ? 33 : 39,
+            receptor: {
+                nombre: project.nombre_cliente || '',
+                rut: project.rut_cliente || '',
+                giro: project.profesion_cliente || '',
+                email: project.email_cliente || '',
+                telefono: project.telefono_cliente || '',
+                direccion: project.direccion_cliente || '',
+                comuna: project.comuna_cliente || ''
+            },
+            formaPago: 'Transferencia',
+            referencias: '',
+            detalle: [{
+                nombre: project.nombre || '',
+                descripcion: '',
+                cantidad: 1,
+                unidad: 'Un',
+                precioUnitario: Math.round(parseFloat(project.monto_acordado || 0)),
+                descuentoPct: 0
+            }],
+            descuentoGlobalPct: 0
+        });
+    };
+
+    const handleDteClose = () => {
+        setDteProject(null);
+        setDteForm(null);
+    };
+
+    const addDetalleLine = () => {
+        setDteForm(prev => ({
+            ...prev,
+            detalle: [...prev.detalle, { nombre: '', descripcion: '', cantidad: 1, unidad: 'Un', precioUnitario: 0, descuentoPct: 0 }]
+        }));
+    };
+
+    const removeDetalleLine = (index) => {
+        setDteForm(prev => {
+            if (prev.detalle.length <= 1) return prev;
+            return { ...prev, detalle: prev.detalle.filter((_, i) => i !== index) };
+        });
+    };
+
+    const updateDetalleLine = (index, field, value) => {
+        setDteForm(prev => ({
+            ...prev,
+            detalle: prev.detalle.map((line, i) => i === index ? { ...line, [field]: value } : line)
+        }));
+    };
+
+    const safeNum = (v) => {
+        const n = Number(v);
+        return Number.isFinite(n) ? n : 0;
+    };
+
+    const computeDteTotals = (form, afectoIva) => {
+        if (!form) return { subtotal: 0, descuentoGlobalMonto: 0, montoNeto: 0, iva: 0, total: 0 };
+        const subtotal = form.detalle.reduce((sum, line) => {
+            const cantidad = safeNum(line.cantidad);
+            const precioUnitario = safeNum(line.precioUnitario);
+            const descuentoPct = safeNum(line.descuentoPct);
+            return sum + Math.round(cantidad * precioUnitario * (1 - descuentoPct / 100));
+        }, 0);
+        const descuentoGlobalMonto = Math.round(subtotal * (safeNum(form.descuentoGlobalPct) / 100));
+        const montoNeto = subtotal - descuentoGlobalMonto;
+        const iva = afectoIva ? Math.round(montoNeto * 0.19) : 0;
+        const total = montoNeto + iva;
+        return { subtotal, descuentoGlobalMonto, montoNeto, iva, total };
+    };
+
+    const handleSaveClientData = async () => {
+        if (!dteProject || !dteForm) return;
+        setIsSavingClientData(true);
+        setClientDataSaved(false);
+        try {
+            const result = await projectsService.updateProject(dteProject.id, {
+                nombre_cliente: dteForm.receptor.nombre,
+                rut_cliente: dteForm.receptor.rut,
+                profesion_cliente: dteForm.receptor.giro || null,
+                email_cliente: dteForm.receptor.email,
+                telefono_cliente: dteForm.receptor.telefono,
+                direccion_cliente: dteForm.receptor.direccion || null,
+                comuna_cliente: dteForm.receptor.comuna || null
+            });
+            if (result && (result.ok || result.id)) {
+                await reloadProjects();
+                setClientDataSaved(true);
+            } else {
+                alert('Error al guardar los datos del cliente');
+            }
+        } catch (error) {
+            console.error('Error guardando datos del cliente:', error);
+            alert('Error al guardar los datos del cliente');
+        } finally {
+            setIsSavingClientData(false);
+        }
+    };
+
+    const handleDtePreviewPdf = async () => {
+        if (!dteProject || !dteForm) return;
+        try {
+            const emisorConfig = await configService.getFinancialConfig();
+            const totales = computeDteTotals(dteForm, Boolean(dteProject.afecto_iva));
+            await generateDtePreview({
+                tipoDte: dteForm.tipoDte,
+                emisor: emisorConfig || {},
+                receptor: dteForm.receptor,
+                detalle: dteForm.detalle,
+                formaPago: dteForm.formaPago,
+                referencias: dteForm.referencias,
+                totales,
+                codigoInterno: dteProject.codigo_interno
+            });
+        } catch (error) {
+            console.error('Error generando vista previa PDF:', error);
+            alert('Error al generar la vista previa del documento');
         }
     };
 
@@ -579,6 +721,12 @@ export default function Ingresos() {
                                             value={projectForm.clientEmail} onChange={(e) => setProjectForm({ ...projectForm, clientEmail: e.target.value })} required />
                                         <Input label="Profesión / Giro (Opcional)" placeholder="Ej: Abogado, Retail..."
                                             value={projectForm.clientProfession} onChange={(e) => setProjectForm({ ...projectForm, clientProfession: e.target.value })} />
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <Input label="Dirección (Opcional)" placeholder="Av. Siempre Viva 123"
+                                                value={projectForm.clientAddress} onChange={(e) => setProjectForm({ ...projectForm, clientAddress: e.target.value })} />
+                                            <Input label="Comuna (Opcional)" placeholder="Santiago"
+                                                value={projectForm.clientComuna} onChange={(e) => setProjectForm({ ...projectForm, clientComuna: e.target.value })} />
+                                        </div>
                                         <Input label="Fecha de Entrega (Opcional)" type="date"
                                             value={projectForm.deliveryDate}
                                             onChange={(e) => setProjectForm({ ...projectForm, deliveryDate: e.target.value })} />
@@ -855,6 +1003,10 @@ export default function Ingresos() {
                                                     </select>
                                                 </div>
                                                 <div className="flex items-center gap-1">
+                                                    <button onClick={() => handleDteOpen(project)}
+                                                        className="text-muted-foreground hover:text-[hsl(var(--purple-premium))] transition-colors p-1" title="Emitir Documento Tributario (borrador)">
+                                                        <FileText size={14} />
+                                                    </button>
                                                     <button onClick={() => handleEditOpen(project)}
                                                         className="text-muted-foreground hover:text-primary transition-colors p-1" title="Editar Proyecto">
                                                         <Pencil size={14} />
@@ -1005,6 +1157,12 @@ export default function Ingresos() {
                                     value={editForm.clientEmail} onChange={(e) => setEditForm({ ...editForm, clientEmail: e.target.value })} required />
                                 <Input label="Profesión / Giro (Opcional)" placeholder="Ej: Abogado, Retail..."
                                     value={editForm.clientProfession} onChange={(e) => setEditForm({ ...editForm, clientProfession: e.target.value })} />
+                                <div className="grid grid-cols-2 gap-3">
+                                    <Input label="Dirección (Opcional)" placeholder="Av. Siempre Viva 123"
+                                        value={editForm.clientAddress || ''} onChange={(e) => setEditForm({ ...editForm, clientAddress: e.target.value })} />
+                                    <Input label="Comuna (Opcional)" placeholder="Santiago"
+                                        value={editForm.clientComuna || ''} onChange={(e) => setEditForm({ ...editForm, clientComuna: e.target.value })} />
+                                </div>
                                 <Input label="Fecha de Entrega (Opcional)" type="date"
                                     value={editForm.deliveryDate} onChange={(e) => setEditForm({ ...editForm, deliveryDate: e.target.value })} />
                                 <Input label="Observaciones (Opcional)" placeholder="Notas del proyecto/cliente"
@@ -1109,6 +1267,165 @@ export default function Ingresos() {
                 </div>
             </div>
         )}
+
+        {/* Modal Emitir Documento Tributario (borrador) */}
+        {dteProject && dteForm && (() => {
+            const totales = computeDteTotals(dteForm, Boolean(dteProject.afecto_iva));
+            return (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+                    onClick={(e) => e.target === e.currentTarget && handleDteClose()}>
+                    <div className="bg-card border border-border rounded-xl shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200">
+                        <div className="flex items-center justify-between p-5 border-b border-border sticky top-0 bg-card z-10">
+                            <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                                <FileText size={18} className="text-[hsl(var(--purple-premium))]" />
+                                Emitir Documento Tributario
+                            </h3>
+                            <button onClick={handleDteClose}
+                                className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-secondary">
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <div className="p-5 space-y-5">
+                            <div className="flex items-center gap-2 p-3 rounded-lg border border-[hsl(var(--gold))]/40 bg-[hsl(var(--gold))]/10 text-[hsl(var(--gold))] text-xs font-medium">
+                                <span>BORRADOR — Sin validez tributaria (falta CAF del SII)</span>
+                            </div>
+
+                            <Select label="Tipo de Documento" value={String(dteForm.tipoDte)}
+                                onChange={(e) => setDteForm({ ...dteForm, tipoDte: Number(e.target.value) })}>
+                                <option value="39">Boleta Electrónica (39)</option>
+                                <option value="33">Factura Electrónica (33)</option>
+                            </Select>
+
+                            <div>
+                                <h4 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
+                                    <User size={14} /> Receptor
+                                </h4>
+                                <div className="space-y-3">
+                                    <Input label="Nombre" value={dteForm.receptor.nombre}
+                                        onChange={(e) => setDteForm({ ...dteForm, receptor: { ...dteForm.receptor, nombre: e.target.value } })} />
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <Input label="RUT" value={dteForm.receptor.rut}
+                                            onChange={(e) => setDteForm({ ...dteForm, receptor: { ...dteForm.receptor, rut: e.target.value } })} />
+                                        <Input label="Giro" value={dteForm.receptor.giro}
+                                            onChange={(e) => setDteForm({ ...dteForm, receptor: { ...dteForm.receptor, giro: e.target.value } })} />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <Input label="Email" type="email" value={dteForm.receptor.email}
+                                            onChange={(e) => setDteForm({ ...dteForm, receptor: { ...dteForm.receptor, email: e.target.value } })} />
+                                        <Input label="Teléfono" value={dteForm.receptor.telefono}
+                                            onChange={(e) => setDteForm({ ...dteForm, receptor: { ...dteForm.receptor, telefono: e.target.value } })} />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <Input label="Dirección" value={dteForm.receptor.direccion}
+                                            onChange={(e) => setDteForm({ ...dteForm, receptor: { ...dteForm.receptor, direccion: e.target.value } })} />
+                                        <Input label="Comuna" value={dteForm.receptor.comuna}
+                                            onChange={(e) => setDteForm({ ...dteForm, receptor: { ...dteForm.receptor, comuna: e.target.value } })} />
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <button type="button" onClick={handleSaveClientData} disabled={isSavingClientData}
+                                            className="text-xs font-medium px-3 py-1.5 rounded-lg border border-border text-muted-foreground hover:bg-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                                            {isSavingClientData ? 'Guardando...' : 'Guardar estos datos en el proyecto'}
+                                        </button>
+                                        {clientDataSaved && <span className="text-xs text-emerald-500">Guardado</span>}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <h4 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
+                                    <Receipt size={14} /> Detalle
+                                </h4>
+                                <div className="space-y-2">
+                                    {dteForm.detalle.map((line, index) => (
+                                        <div key={index} className="grid grid-cols-12 gap-1.5 items-end bg-secondary/30 border border-border/40 rounded-lg p-2">
+                                            <input placeholder="Producto/Servicio" value={line.nombre}
+                                                onChange={(e) => updateDetalleLine(index, 'nombre', e.target.value)}
+                                                className="col-span-4 bg-background border border-border rounded px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary/30" />
+                                            <input placeholder="Descripción" value={line.descripcion}
+                                                onChange={(e) => updateDetalleLine(index, 'descripcion', e.target.value)}
+                                                className="col-span-3 bg-background border border-border rounded px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary/30" />
+                                            <input type="number" placeholder="Cant." value={line.cantidad}
+                                                onChange={(e) => updateDetalleLine(index, 'cantidad', e.target.value)}
+                                                className="col-span-1 bg-background border border-border rounded px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary/30" />
+                                            <input type="number" placeholder="P. Unit." value={line.precioUnitario}
+                                                onChange={(e) => updateDetalleLine(index, 'precioUnitario', e.target.value)}
+                                                className="col-span-2 bg-background border border-border rounded px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary/30" />
+                                            <input type="number" placeholder="%Desc." value={line.descuentoPct}
+                                                onChange={(e) => updateDetalleLine(index, 'descuentoPct', e.target.value)}
+                                                className="col-span-1 bg-background border border-border rounded px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary/30" />
+                                            <button type="button" onClick={() => removeDetalleLine(index)}
+                                                disabled={dteForm.detalle.length <= 1}
+                                                className="col-span-1 text-muted-foreground hover:text-destructive transition-colors p-1 disabled:opacity-30 disabled:cursor-not-allowed flex justify-center">
+                                                <Trash2 size={13} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                                <button type="button" onClick={addDetalleLine}
+                                    className="mt-2 text-xs font-medium text-primary hover:underline">
+                                    + Agregar línea
+                                </button>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <Select label="Forma de Pago" value={dteForm.formaPago}
+                                    onChange={(e) => setDteForm({ ...dteForm, formaPago: e.target.value })}>
+                                    {DTE_FORMAS_PAGO.map(f => <option key={f} value={f}>{f}</option>)}
+                                </Select>
+                                <Input label="Descuento Global (%)" type="number" min="0" max="100"
+                                    value={dteForm.descuentoGlobalPct}
+                                    onChange={(e) => setDteForm({ ...dteForm, descuentoGlobalPct: e.target.value })} />
+                            </div>
+
+                            <Input label="Referencias (Opcional)" placeholder="Ej: Corresponde a mensualidad Julio 2026"
+                                value={dteForm.referencias}
+                                onChange={(e) => setDteForm({ ...dteForm, referencias: e.target.value })} />
+
+                            <div className="border-t border-border pt-4">
+                                <div className="max-w-xs ml-auto space-y-1.5 text-sm">
+                                    <div className="flex justify-between text-muted-foreground">
+                                        <span>Subtotal</span>
+                                        <span>{totales.subtotal.toLocaleString('es-CL')}</span>
+                                    </div>
+                                    <div className="flex justify-between text-muted-foreground">
+                                        <span>Descuento Global</span>
+                                        <span>{totales.descuentoGlobalMonto.toLocaleString('es-CL')}</span>
+                                    </div>
+                                    <div className="flex justify-between text-muted-foreground">
+                                        <span>Monto Neto</span>
+                                        <span>{totales.montoNeto.toLocaleString('es-CL')}</span>
+                                    </div>
+                                    <div className="flex justify-between text-muted-foreground">
+                                        <span>{dteProject.afecto_iva ? 'IVA (19%)' : 'IVA (exento)'}</span>
+                                        <span>{totales.iva.toLocaleString('es-CL')}</span>
+                                    </div>
+                                    <div className="flex justify-between text-foreground font-bold text-base pt-1.5 border-t border-border">
+                                        <span>Total</span>
+                                        <span>{totales.total.toLocaleString('es-CL')}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex gap-3 pt-2">
+                                <button type="button" onClick={handleDteClose}
+                                    className="flex-1 py-2.5 rounded-lg border border-border text-muted-foreground hover:bg-secondary transition-colors text-sm font-medium">
+                                    Cerrar
+                                </button>
+                                <button type="button" onClick={handleDtePreviewPdf}
+                                    className="flex-1 bg-primary text-primary-foreground font-medium py-2.5 rounded-lg hover:bg-primary/90 transition-colors text-sm">
+                                    Vista Previa PDF
+                                </button>
+                                <button type="button" disabled title="Requiere CAF del SII (pendiente)"
+                                    className="flex-1 bg-secondary text-muted-foreground font-medium py-2.5 rounded-lg text-sm cursor-not-allowed">
+                                    Emitir DTE
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        })()}
         </div>
     );
 }

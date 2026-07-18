@@ -28,7 +28,8 @@ import {
     Hammer,
     Rss,
     ChevronUp,
-    ChevronDown
+    ChevronDown,
+    Building2
 } from 'lucide-react';
 
 const Section = ({ title, icon, children }) => (
@@ -60,6 +61,17 @@ export default function Config() {
         reinvestmentPercentage: 0,
         tasaPpm: 1
     });
+    const [emisorConfig, setEmisorConfig] = useState({
+        emisor_rut: '',
+        emisor_razon_social: '',
+        emisor_giro: '',
+        emisor_direccion: '',
+        emisor_comuna: '',
+        emisor_actividad_economica: ''
+    });
+    const [isSavingEmisor, setIsSavingEmisor] = useState(false);
+    const [emisorError, setEmisorError] = useState(null);
+    const [emisorSaved, setEmisorSaved] = useState(false);
 
     // Synapse
     const [synapseEstados, setSynapseEstados] = useState([]);
@@ -118,6 +130,16 @@ export default function Config() {
                         tasaPpm: parseFloat(config.tasa_ppm || 1)
                     });
                 }
+                if (config && config.emisor_rut !== undefined) {
+                    setEmisorConfig({
+                        emisor_rut: config.emisor_rut || '',
+                        emisor_razon_social: config.emisor_razon_social || '',
+                        emisor_giro: config.emisor_giro || '',
+                        emisor_direccion: config.emisor_direccion || '',
+                        emisor_comuna: config.emisor_comuna || '',
+                        emisor_actividad_economica: config.emisor_actividad_economica || ''
+                    });
+                }
                 if (partners && Array.isArray(partners)) setPartnersData(partners.map(normalizePartner));
             } catch (error) {
                 console.error('Error cargando configuración:', error);
@@ -173,6 +195,45 @@ export default function Config() {
             setFinancialConfigError('Error al guardar la configuración. Intenta nuevamente.');
         } finally {
             setIsSavingFinancialConfig(false);
+        }
+    };
+
+    // Guardar datos del emisor (empresa) para documentos tributarios
+    const handleEmisorChange = (key, value) => {
+        setEmisorConfig(prev => ({ ...prev, [key]: value }));
+        setEmisorSaved(false);
+    };
+
+    const handleEmisorSave = async () => {
+        if (isSavingEmisor) return;
+        setEmisorError(null);
+
+        if (!emisorConfig.emisor_rut.trim() || !emisorConfig.emisor_razon_social.trim()) {
+            setEmisorError('RUT y Razón Social son obligatorios');
+            return;
+        }
+
+        setIsSavingEmisor(true);
+        try {
+            const result = await configService.updateEmisorConfig(emisorConfig);
+            if (result?.ok && result?.data) {
+                setEmisorConfig({
+                    emisor_rut: result.data.emisor_rut || '',
+                    emisor_razon_social: result.data.emisor_razon_social || '',
+                    emisor_giro: result.data.emisor_giro || '',
+                    emisor_direccion: result.data.emisor_direccion || '',
+                    emisor_comuna: result.data.emisor_comuna || '',
+                    emisor_actividad_economica: result.data.emisor_actividad_economica || ''
+                });
+                setEmisorSaved(true);
+            } else {
+                setEmisorError('Error al guardar los datos del emisor. Intenta nuevamente.');
+            }
+        } catch (error) {
+            console.error('Error guardando datos del emisor:', error);
+            setEmisorError('Error al guardar los datos del emisor. Intenta nuevamente.');
+        } finally {
+            setIsSavingEmisor(false);
         }
     };
 
@@ -643,6 +704,89 @@ export default function Config() {
                         >
                             <Save size={16} />
                             {isSavingFinancialConfig ? 'Guardando...' : 'Guardar porcentajes'}
+                        </button>
+                    </div>
+                </Section>
+
+                <Section title="Datos del Emisor (SII)" icon={Building2}>
+                    <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
+                        Estos datos aparecerán como emisor en los documentos tributarios (borrador). La emisión real ante el SII requiere CAF y LibreDTE, aún pendiente.
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-xs font-medium text-muted-foreground mb-1.5">RUT Empresa</label>
+                            <input
+                                type="text"
+                                value={emisorConfig.emisor_rut}
+                                onChange={(e) => handleEmisorChange('emisor_rut', e.target.value)}
+                                placeholder="76.123.456-7"
+                                className="w-full bg-secondary/50 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium text-muted-foreground mb-1.5">Razón Social</label>
+                            <input
+                                type="text"
+                                value={emisorConfig.emisor_razon_social}
+                                onChange={(e) => handleEmisorChange('emisor_razon_social', e.target.value)}
+                                placeholder="NativeCode SpA"
+                                className="w-full bg-secondary/50 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium text-muted-foreground mb-1.5">Giro</label>
+                            <input
+                                type="text"
+                                value={emisorConfig.emisor_giro}
+                                onChange={(e) => handleEmisorChange('emisor_giro', e.target.value)}
+                                placeholder="Desarrollo de software"
+                                className="w-full bg-secondary/50 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium text-muted-foreground mb-1.5">Actividad Económica (SII)</label>
+                            <input
+                                type="text"
+                                value={emisorConfig.emisor_actividad_economica}
+                                onChange={(e) => handleEmisorChange('emisor_actividad_economica', e.target.value)}
+                                placeholder="Código o descripción SII"
+                                className="w-full bg-secondary/50 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium text-muted-foreground mb-1.5">Dirección</label>
+                            <input
+                                type="text"
+                                value={emisorConfig.emisor_direccion}
+                                onChange={(e) => handleEmisorChange('emisor_direccion', e.target.value)}
+                                placeholder="Av. Siempre Viva 123"
+                                className="w-full bg-secondary/50 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium text-muted-foreground mb-1.5">Comuna</label>
+                            <input
+                                type="text"
+                                value={emisorConfig.emisor_comuna}
+                                onChange={(e) => handleEmisorChange('emisor_comuna', e.target.value)}
+                                placeholder="Santiago"
+                                className="w-full bg-secondary/50 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                            />
+                        </div>
+                    </div>
+                    {emisorError && (
+                        <p className="mt-3 text-sm text-rose-500">{emisorError}</p>
+                    )}
+                    <div className="mt-5 flex items-center justify-end gap-3">
+                        {emisorSaved && <span className="text-sm text-emerald-500">Guardado</span>}
+                        <button
+                            type="button"
+                            onClick={handleEmisorSave}
+                            disabled={isSavingEmisor}
+                            className="inline-flex items-center gap-2 bg-[hsl(var(--corporate-blue))] text-white text-sm font-semibold px-4 py-2.5 rounded-lg border border-[hsl(var(--corporate-blue))] shadow-sm hover:opacity-95 active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--corporate-blue))]/30 disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                            <Save size={16} />
+                            {isSavingEmisor ? 'Guardando...' : 'Guardar datos del emisor'}
                         </button>
                     </div>
                 </Section>
