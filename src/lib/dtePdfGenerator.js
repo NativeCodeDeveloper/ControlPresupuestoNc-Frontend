@@ -32,7 +32,32 @@ const line = (doc, x1, y, x2) => {
 };
 
 /**
- * Genera el PDF de vista previa de un Documento Tributario Electrónico (borrador).
+ * Calcula los totales de un DTE a partir de las líneas de detalle.
+ * Compartido entre el formulario (Ingresos.jsx) y cualquier flujo que arme el PDF
+ * sin pasar por el modal (ej. envío de factura desde el Cockpit).
+ *
+ * @param {Array} detalle - [{ cantidad, precioUnitario, descuentoPct }]
+ * @param {number} descuentoGlobalPct
+ * @param {boolean} afectoIva
+ * @returns {{ subtotal: number, descuentoGlobalMonto: number, montoNeto: number, iva: number, total: number }}
+ */
+export const computeDteTotals = (detalle, descuentoGlobalPct, afectoIva) => {
+    const lines = Array.isArray(detalle) ? detalle : [];
+    const subtotal = lines.reduce((sum, l) => {
+        const cantidad = safeNumber(l.cantidad);
+        const precioUnitario = safeNumber(l.precioUnitario);
+        const descuentoPct = safeNumber(l.descuentoPct);
+        return sum + Math.round(cantidad * precioUnitario * (1 - descuentoPct / 100));
+    }, 0);
+    const descuentoGlobalMonto = Math.round(subtotal * (safeNumber(descuentoGlobalPct) / 100));
+    const montoNeto = subtotal - descuentoGlobalMonto;
+    const iva = afectoIva ? Math.round(montoNeto * 0.19) : 0;
+    const total = montoNeto + iva;
+    return { subtotal, descuentoGlobalMonto, montoNeto, iva, total };
+};
+
+/**
+ * Construye el PDF de un Documento Tributario Electrónico (borrador), sin guardarlo ni descargarlo.
  * NO tiene validez tributaria: no está timbrado ni enviado al SII (falta CAF/LibreDTE).
  *
  * @param {Object} data
@@ -46,8 +71,9 @@ const line = (doc, x1, y, x2) => {
  * @param {string} data.referencias
  * @param {Object} data.totales - { subtotal, descuentoGlobalMonto, montoNeto, iva, total }
  * @param {string} data.codigoInterno
+ * @returns {Promise<{ doc: import('jspdf').jsPDF, fileName: string }>}
  */
-export const generateDtePreview = async (data) => {
+const buildDteDoc = async (data) => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
@@ -312,6 +338,28 @@ export const generateDtePreview = async (data) => {
     doc.text('Documento de prueba — no válido para efectos tributarios', pageWidth - marginX, footerY, { align: 'right' });
 
     const fileName = `Borrador-DTE-${data.codigoInterno || 'proyecto'}.pdf`;
+    return { doc, fileName };
+};
+
+/**
+ * Genera el PDF de vista previa y dispara la descarga en el navegador.
+ * @param {Object} data - ver buildDteDoc
+ * @returns {Promise<string>} nombre del archivo descargado
+ */
+export const generateDtePreview = async (data) => {
+    const { doc, fileName } = await buildDteDoc(data);
     doc.save(fileName);
     return fileName;
+};
+
+/**
+ * Genera el PDF y lo devuelve como File, listo para adjuntar a un correo
+ * (ej. envío de la factura desde el Cockpit) sin disparar una descarga.
+ * @param {Object} data - ver buildDteDoc
+ * @returns {Promise<File>}
+ */
+export const generateDteFile = async (data) => {
+    const { doc, fileName } = await buildDteDoc(data);
+    const blob = doc.output('blob');
+    return new File([blob], fileName, { type: 'application/pdf' });
 };

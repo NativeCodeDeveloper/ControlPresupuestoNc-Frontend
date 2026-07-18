@@ -7,11 +7,13 @@ import {
     Gauge, RefreshCw, Loader2, Search, ChevronDown, ChevronUp,
     Mail, MessageSquare, Eye, EyeOff, Settings2, X, Check,
     ExternalLink, Server, Calendar, Target, TrendingUp,
-    AlertCircle, Clock, CheckCircle2, Minus, Filter, Paperclip, Trash2
+    AlertCircle, Clock, CheckCircle2, Minus, Filter, Paperclip, Trash2, FileText
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import * as synapseService from '../../services/synapseService';
 import * as projectsService from '../../services/projectsService';
+import * as configService from '../../services/configService';
+import { generateDteFile, computeDteTotals } from '../../lib/dtePdfGenerator';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -123,14 +125,14 @@ function fileToBase64(file) {
     });
 }
 
-function EmailModal({ proyecto, onClose }) {
+function EmailModal({ proyecto, invoiceDraft, onClose }) {
     const [to, setTo]           = useState(proyecto?.email_cliente || '');
-    const [subject, setSubject] = useState(DEFAULT_EMAIL_SUBJECT(proyecto));
-    const [body, setBody]       = useState(DEFAULT_EMAIL_TEMPLATE(proyecto));
+    const [subject, setSubject] = useState(invoiceDraft?.subject || DEFAULT_EMAIL_SUBJECT(proyecto));
+    const [body, setBody]       = useState(invoiceDraft?.body || DEFAULT_EMAIL_TEMPLATE(proyecto));
     const [sending, setSending] = useState(false);
     const [sent, setSent]       = useState(false);
     const [error, setError]     = useState('');
-    const [adjuntos, setAdjuntos] = useState([]); // [{ file, name }]
+    const [adjuntos, setAdjuntos] = useState(invoiceDraft?.file ? [invoiceDraft.file] : []); // [{ file, name }]
     const fileInputRef = useRef(null);
 
     const handleAddFiles = (files) => {
@@ -165,8 +167,8 @@ function EmailModal({ proyecto, onClose }) {
             <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-lg">
                 <div className="flex items-center justify-between p-5 border-b border-border">
                     <div className="flex items-center gap-2">
-                        <Mail size={16} className="text-violet-400" />
-                        <span className="font-semibold text-[14px]">Enviar correo</span>
+                        {invoiceDraft ? <FileText size={16} className="text-sky-400" /> : <Mail size={16} className="text-violet-400" />}
+                        <span className="font-semibold text-[14px]">{invoiceDraft ? 'Enviar Factura' : 'Enviar correo'}</span>
                         <span className="text-[12px] text-muted-foreground">— {proyecto?.codigo_interno} {proyecto?.nombre_cliente}</span>
                     </div>
                     <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
@@ -370,6 +372,8 @@ export default function ProductionCockpit() {
     const [sortDir, setSortDir]             = usePersistedState('cockpit:sortDir', 'asc');
 
     const [emailModal, setEmailModal]       = useState(null);
+    const [invoiceDraft, setInvoiceDraft]   = useState(null); // { subject, body, file } precargado al enviar factura
+    const [invoiceLoadingId, setInvoiceLoadingId] = useState(null);
     const [metaModal, setMetaModal]         = useState(false);
     const [colToggle, setColToggle]         = useState(false);
     const colToggleRef                      = useRef(null);
@@ -468,6 +472,77 @@ export default function ProductionCockpit() {
         const tel  = proyecto.telefono_cliente.replace(/\D/g, '');
         const text = `Hola ${proyecto.nombre_cliente}, me comunico de NativeCode respecto a su proyecto "${proyecto.nombre}".`;
         window.open(`https://wa.me/${tel}?text=${encodeURIComponent(text)}`, '_blank');
+    };
+
+    // Genera el DTE (borrador) del proyecto y abre el modal de correo con el PDF
+    // ya adjunto y un texto profesional precargado, editable antes de enviar.
+    const handleSendInvoice = async (proyecto) => {
+        setInvoiceLoadingId(proyecto.id_proyecto);
+        try {
+            const [full, emisorConfig] = await Promise.all([
+                projectsService.getProject(proyecto.id_proyecto),
+                configService.getFinancialConfig(),
+            ]);
+            if (!full) {
+                alert('No se pudo obtener el detalle del proyecto');
+                return;
+            }
+
+            const tipoDte = full.rut_cliente ? 33 : 39;
+            const receptor = {
+                nombre: full.nombre_cliente || '',
+                rut: full.rut_cliente || '',
+                giro: full.profesion_cliente || '',
+                email: full.email_cliente || '',
+                telefono: full.telefono_cliente || '',
+                direccion: full.direccion_cliente || '',
+                comuna: full.comuna_cliente || '',
+            };
+            const detalle = [{
+                nombre: full.nombre || '',
+                descripcion: '',
+                cantidad: 1,
+                unidad: 'Un',
+                precioUnitario: Math.round(parseFloat(full.monto_acordado || 0)),
+                descuentoPct: 0,
+            }];
+            const formaPago = 'Crédito';
+            const totales = computeDteTotals(detalle, 0, Boolean(full.afecto_iva));
+
+            const file = await generateDteFile({
+                tipoDte,
+                emisor: emisorConfig || {},
+                receptor,
+                detalle,
+                formaPago,
+                referencias: '',
+                totales,
+                codigoInterno: full.codigo_interno,
+            });
+
+            const docLabel = tipoDte === 33 ? 'Factura Electrónica' : 'Boleta Electrónica';
+            const subject = `${docLabel} — ${full.nombre} (${full.codigo_interno})`;
+            const body = `Estimado/a ${full.nombre_cliente || ''},
+
+Adjuntamos el documento tributario correspondiente a su proyecto "${full.nombre || ''}".
+
+Monto total: ${fmt(totales.total)}
+
+Este documento es una vista previa y será reemplazado por el documento oficial timbrado por el SII una vez finalizado el proceso de facturación electrónica.
+
+Ante cualquier consulta, quedamos atentos.
+
+Saludos cordiales,
+Equipo NativeCode`;
+
+            setInvoiceDraft({ subject, body, file });
+            setEmailModal(proyecto);
+        } catch (e) {
+            console.error('[Cockpit] Error generando factura', e);
+            alert('Error al generar el documento tributario');
+        } finally {
+            setInvoiceLoadingId(null);
+        }
     };
 
     const toggleColumna = async (key) => {
@@ -814,7 +889,7 @@ export default function ProductionCockpit() {
                                     {/* Acciones */}
                                     <div className="flex items-center gap-2 flex-wrap">
                                         <button
-                                            onClick={() => setEmailModal(p)}
+                                            onClick={() => { setInvoiceDraft(null); setEmailModal(p); }}
                                             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-[12px] text-muted-foreground hover:text-violet-400 hover:border-violet-500/30 hover:bg-violet-500/5 transition-colors"
                                         >
                                             <Mail size={12} /> Correo
@@ -827,6 +902,14 @@ export default function ProductionCockpit() {
                                                 <MessageSquare size={12} /> WhatsApp
                                             </button>
                                         )}
+                                        <button
+                                            onClick={() => handleSendInvoice(p)}
+                                            disabled={invoiceLoadingId === p.id_proyecto}
+                                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-[12px] text-muted-foreground hover:text-sky-400 hover:border-sky-500/30 hover:bg-sky-500/5 transition-colors disabled:opacity-40"
+                                        >
+                                            {invoiceLoadingId === p.id_proyecto ? <Loader2 size={12} className="animate-spin" /> : <FileText size={12} />}
+                                            Factura
+                                        </button>
                                         {esRecurrente && (p.estado_alerta_pago === 'naranja' || p.estado_alerta_pago === 'rojo') && (
                                             <button
                                                 onClick={() => handleMarkPaid(p)}
@@ -1019,7 +1102,7 @@ export default function ProductionCockpit() {
                                                 <td className="px-2 py-2.5">
                                                     <div className="flex items-center gap-1">
                                                         <button
-                                                            onClick={() => setEmailModal(p)}
+                                                            onClick={() => { setInvoiceDraft(null); setEmailModal(p); }}
                                                             title="Enviar correo"
                                                             className="flex items-center justify-center w-7 h-7 rounded-lg border border-border text-muted-foreground hover:text-violet-400 hover:border-violet-500/30 hover:bg-violet-500/5 transition-colors"
                                                         >
@@ -1032,6 +1115,14 @@ export default function ProductionCockpit() {
                                                             className="flex items-center justify-center w-7 h-7 rounded-lg border border-border text-muted-foreground hover:text-emerald-400 hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                                                         >
                                                             <MessageSquare size={12} />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleSendInvoice(p)}
+                                                            title="Enviar Factura (PDF adjunto)"
+                                                            disabled={invoiceLoadingId === p.id_proyecto}
+                                                            className="flex items-center justify-center w-7 h-7 rounded-lg border border-border text-muted-foreground hover:text-sky-400 hover:border-sky-500/30 hover:bg-sky-500/5 transition-colors disabled:opacity-40"
+                                                        >
+                                                            {invoiceLoadingId === p.id_proyecto ? <Loader2 size={12} className="animate-spin" /> : <FileText size={12} />}
                                                         </button>
                                                     </div>
                                                 </td>
@@ -1075,7 +1166,8 @@ export default function ProductionCockpit() {
             {emailModal && (
                 <EmailModal
                     proyecto={emailModal}
-                    onClose={() => setEmailModal(null)}
+                    invoiceDraft={invoiceDraft}
+                    onClose={() => { setEmailModal(null); setInvoiceDraft(null); }}
                 />
             )}
             {metaModal && (

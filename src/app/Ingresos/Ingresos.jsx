@@ -28,7 +28,7 @@ import {
 } from 'lucide-react';
 import { cn, normalizeRut } from '../../lib/utils';
 import { Input, Select } from '../../components/ui/FormElements';
-import { generateDtePreview } from '../../lib/dtePdfGenerator';
+import { generateDtePreview, computeDteTotals as computeDteTotalsShared } from '../../lib/dtePdfGenerator';
 
 export default function Ingresos() {
     const [activeTab, setActiveTab]       = usePersistedState('ingresos:activeTab', 'projects');
@@ -493,24 +493,9 @@ export default function Ingresos() {
         }));
     };
 
-    const safeNum = (v) => {
-        const n = Number(v);
-        return Number.isFinite(n) ? n : 0;
-    };
-
     const computeDteTotals = (form, afectoIva) => {
         if (!form) return { subtotal: 0, descuentoGlobalMonto: 0, montoNeto: 0, iva: 0, total: 0 };
-        const subtotal = form.detalle.reduce((sum, line) => {
-            const cantidad = safeNum(line.cantidad);
-            const precioUnitario = safeNum(line.precioUnitario);
-            const descuentoPct = safeNum(line.descuentoPct);
-            return sum + Math.round(cantidad * precioUnitario * (1 - descuentoPct / 100));
-        }, 0);
-        const descuentoGlobalMonto = Math.round(subtotal * (safeNum(form.descuentoGlobalPct) / 100));
-        const montoNeto = subtotal - descuentoGlobalMonto;
-        const iva = afectoIva ? Math.round(montoNeto * 0.19) : 0;
-        const total = montoNeto + iva;
-        return { subtotal, descuentoGlobalMonto, montoNeto, iva, total };
+        return computeDteTotalsShared(form.detalle, form.descuentoGlobalPct, afectoIva);
     };
 
     const handleSaveClientData = async () => {
