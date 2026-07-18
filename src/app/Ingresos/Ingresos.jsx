@@ -29,6 +29,7 @@ import {
 import { cn, normalizeRut } from '../../lib/utils';
 import { Input, Select } from '../../components/ui/FormElements';
 import { generateDtePreview, computeDteTotals as computeDteTotalsShared } from '../../lib/dtePdfGenerator';
+import * as dteService from '../../services/dteService';
 
 export default function Ingresos() {
     const [activeTab, setActiveTab]       = usePersistedState('ingresos:activeTab', 'projects');
@@ -87,6 +88,10 @@ export default function Ingresos() {
     const [dteForm, setDteForm] = useState(null);
     const [isSavingClientData, setIsSavingClientData] = useState(false);
     const [clientDataSaved, setClientDataSaved] = useState(false);
+    const [estadoCaf, setEstadoCaf] = useState({ boleta39: false, factura33: false });
+    const [ultimoDocumento, setUltimoDocumento] = useState(null);
+    const [isEmitiendo, setIsEmitiendo] = useState(false);
+    const [emisionResultado, setEmisionResultado] = useState(null);
 
     const fmtPreview = (val) => {
         const n = Math.round(parseFloat(val) || 0);
@@ -440,6 +445,10 @@ export default function Ingresos() {
     const handleDteOpen = (project) => {
         setDteProject(project);
         setClientDataSaved(false);
+        setEmisionResultado(null);
+        setUltimoDocumento(null);
+        dteService.getEstadoCaf().then(setEstadoCaf);
+        dteService.getUltimoDocumento(project.id).then(setUltimoDocumento);
         setDteForm({
             tipoDte: project.rut_cliente ? 33 : 39,
             receptor: {
@@ -470,6 +479,40 @@ export default function Ingresos() {
     const handleDteClose = () => {
         setDteProject(null);
         setDteForm(null);
+        setEmisionResultado(null);
+    };
+
+    // Rellena el detalle con las mismas líneas del último documento emitido para este proyecto
+    // (equivalente a "Hacer documento similar al último emitido" del portal del SII).
+    const handleUsarUltimoDocumento = () => {
+        if (!ultimoDocumento?.detalle?.length) return;
+        setDteForm((prev) => ({
+            ...prev,
+            tipoDte: ultimoDocumento.tipo_dte,
+            detalle: ultimoDocumento.detalle,
+        }));
+    };
+
+    const handleEmitirDteReal = async () => {
+        if (!dteProject || !dteForm || isEmitiendo) return;
+        setIsEmitiendo(true);
+        setEmisionResultado(null);
+        try {
+            const resultado = await dteService.emitirDte(dteProject.id, {
+                tipoDte: dteForm.tipoDte,
+                detalle: dteForm.detalle,
+                fechaVencimiento: dteForm.fechaVencimiento || null,
+            });
+            setEmisionResultado(resultado);
+            if (resultado?.ok) {
+                await reloadProjects();
+            }
+        } catch (error) {
+            console.error('Error emitiendo DTE:', error);
+            setEmisionResultado({ ok: false, errorMensaje: 'Error inesperado al emitir el documento' });
+        } finally {
+            setIsEmitiendo(false);
+        }
     };
 
     const addDetalleLine = () => {
@@ -1412,6 +1455,23 @@ export default function Ingresos() {
                                 </div>
                             </div>
 
+                            {emisionResultado && (
+                                <div className={`p-3 rounded-lg border text-xs ${emisionResultado.ok
+                                    ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-600'
+                                    : 'border-destructive/40 bg-destructive/10 text-destructive'}`}>
+                                    {emisionResultado.ok
+                                        ? `Documento emitido — Folio ${emisionResultado.folio}${emisionResultado.trackId ? ` · Track ID ${emisionResultado.trackId}` : ''}`
+                                        : `Error al emitir: ${emisionResultado.errorMensaje || emisionResultado.message || 'revisar el estado del CAF'}`}
+                                </div>
+                            )}
+
+                            {ultimoDocumento?.detalle?.length > 0 && (
+                                <button type="button" onClick={handleUsarUltimoDocumento}
+                                    className="text-xs font-medium text-primary hover:underline text-left">
+                                    Usar los mismos datos que el último documento (Folio {ultimoDocumento.folio})
+                                </button>
+                            )}
+
                             <div className="flex gap-3 pt-2">
                                 <button type="button" onClick={handleDteClose}
                                     className="flex-1 py-2.5 rounded-lg border border-border text-muted-foreground hover:bg-secondary transition-colors text-sm font-medium">
@@ -1421,10 +1481,17 @@ export default function Ingresos() {
                                     className="flex-1 bg-primary text-primary-foreground font-medium py-2.5 rounded-lg hover:bg-primary/90 transition-colors text-sm">
                                     Vista Previa PDF
                                 </button>
-                                <button type="button" disabled title="Requiere CAF del SII (pendiente)"
-                                    className="flex-1 bg-secondary text-muted-foreground font-medium py-2.5 rounded-lg text-sm cursor-not-allowed">
-                                    Emitir DTE
-                                </button>
+                                {(() => {
+                                    const cafListo = dteForm.tipoDte === 33 ? estadoCaf.factura33 : estadoCaf.boleta39;
+                                    return (
+                                        <button type="button" onClick={handleEmitirDteReal}
+                                            disabled={!cafListo || isEmitiendo}
+                                            title={cafListo ? '' : 'Requiere CAF del SII (pendiente)'}
+                                            className="flex-1 bg-emerald-600 text-white font-medium py-2.5 rounded-lg hover:bg-emerald-500 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-secondary disabled:text-muted-foreground">
+                                            {isEmitiendo ? 'Emitiendo...' : 'Emitir DTE'}
+                                        </button>
+                                    );
+                                })()}
                             </div>
                         </div>
                     </div>
