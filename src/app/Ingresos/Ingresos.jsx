@@ -26,7 +26,7 @@ import {
     CheckCircle2,
     FileText
 } from 'lucide-react';
-import { cn } from '../../lib/utils';
+import { cn, normalizeRut } from '../../lib/utils';
 import { Input, Select } from '../../components/ui/FormElements';
 import { generateDtePreview } from '../../lib/dtePdfGenerator';
 
@@ -432,7 +432,10 @@ export default function Ingresos() {
         }
     };
 
-    const DTE_FORMAS_PAGO = ['Transferencia', 'Contado', 'Crédito', 'Efectivo', 'Otro'];
+    // Valores según Formato DTE del SII (<FmaPago>): 1 Contado, 2 Crédito, 3 Sin costo (entrega gratuita)
+    const DTE_FORMAS_PAGO = ['Contado', 'Crédito', 'Sin costo (entrega gratuita)'];
+    // <MedioPago>: modalidad concreta en que se paga (independiente de Forma de Pago)
+    const DTE_MEDIOS_PAGO = ['Efectivo', 'Transferencia', 'Tarjeta de Crédito', 'Tarjeta de Débito', 'Cheque', 'Otro'];
 
     const handleDteOpen = (project) => {
         setDteProject(project);
@@ -448,7 +451,9 @@ export default function Ingresos() {
                 direccion: project.direccion_cliente || '',
                 comuna: project.comuna_cliente || ''
             },
-            formaPago: 'Transferencia',
+            formaPago: 'Crédito',
+            medioPago: '',
+            fechaVencimiento: '',
             referencias: '',
             detalle: [{
                 nombre: project.nombre || '',
@@ -515,7 +520,7 @@ export default function Ingresos() {
         try {
             const result = await projectsService.updateProject(dteProject.id, {
                 nombre_cliente: dteForm.receptor.nombre,
-                rut_cliente: dteForm.receptor.rut,
+                rut_cliente: normalizeRut(dteForm.receptor.rut),
                 profesion_cliente: dteForm.receptor.giro || null,
                 email_cliente: dteForm.receptor.email,
                 telefono_cliente: dteForm.receptor.telefono,
@@ -544,9 +549,11 @@ export default function Ingresos() {
             await generateDtePreview({
                 tipoDte: dteForm.tipoDte,
                 emisor: emisorConfig || {},
-                receptor: dteForm.receptor,
+                receptor: { ...dteForm.receptor, rut: normalizeRut(dteForm.receptor.rut) },
                 detalle: dteForm.detalle,
                 formaPago: dteForm.formaPago,
+                medioPago: dteForm.medioPago,
+                fechaVencimiento: dteForm.fechaVencimiento,
                 referencias: dteForm.referencias,
                 totales,
                 codigoInterno: dteProject.codigo_interno
@@ -1369,10 +1376,23 @@ export default function Ingresos() {
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
-                                <Select label="Forma de Pago" value={dteForm.formaPago}
+                                <Select label="Forma de Pago (SII)" value={dteForm.formaPago}
                                     onChange={(e) => setDteForm({ ...dteForm, formaPago: e.target.value })}>
                                     {DTE_FORMAS_PAGO.map(f => <option key={f} value={f}>{f}</option>)}
                                 </Select>
+                                <Select label="Medio de Pago (Opcional)" value={dteForm.medioPago}
+                                    onChange={(e) => setDteForm({ ...dteForm, medioPago: e.target.value })}>
+                                    <option value="">—</option>
+                                    {DTE_MEDIOS_PAGO.map(m => <option key={m} value={m}>{m}</option>)}
+                                </Select>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                {dteForm.formaPago === 'Crédito' && (
+                                    <Input label="Fecha de Vencimiento" type="date"
+                                        value={dteForm.fechaVencimiento}
+                                        onChange={(e) => setDteForm({ ...dteForm, fechaVencimiento: e.target.value })} />
+                                )}
                                 <Input label="Descuento Global (%)" type="number" min="0" max="100"
                                     value={dteForm.descuentoGlobalPct}
                                     onChange={(e) => setDteForm({ ...dteForm, descuentoGlobalPct: e.target.value })} />

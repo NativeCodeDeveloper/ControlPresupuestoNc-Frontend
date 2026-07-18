@@ -8,6 +8,7 @@ import * as synapseService from '../../services/synapseService';
 import * as soporteService from '../../services/soporteService';
 import * as actualizacionesService from '../../services/actualizacionesService';
 import apiClient from '../../services/apiClient';
+import { normalizeRut } from '../../lib/utils';
 import {
     Settings,
     Shield,
@@ -215,7 +216,10 @@ export default function Config() {
 
         setIsSavingEmisor(true);
         try {
-            const result = await configService.updateEmisorConfig(emisorConfig);
+            const result = await configService.updateEmisorConfig({
+                ...emisorConfig,
+                emisor_rut: normalizeRut(emisorConfig.emisor_rut)
+            });
             if (result?.ok && result?.data) {
                 setEmisorConfig({
                     emisor_rut: result.data.emisor_rut || '',
