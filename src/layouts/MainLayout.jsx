@@ -7,7 +7,7 @@ import {
     House, LayoutDashboard, TrendingUp, TrendingDown, PieChart,
     Settings, Menu, Users, PiggyBank, Waves, BookOpen, LogOut,
     Brain, ChevronLeft, DollarSign, LayoutGrid, Gauge, Server, Terminal, CalendarDays,
-    Hammer, Rss, Building2, Shield, FlaskConical
+    Hammer, Rss, Building2, Shield, FlaskConical, Receipt
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { getTeams } from '../services/synapseService';
@@ -42,8 +42,9 @@ const MODULES = [
         accent: 'text-amber-400',
         accentBg: 'bg-amber-500/12',
         items: [
-            { icon: Users,   label: 'CRM — Clientes', path: '/clientes',        tone: 'text-amber-400', activeBg: 'bg-amber-500/14' },
-            { icon: Shield,  label: 'Bóveda',         path: '/clientes/boveda', tone: 'text-amber-400', activeBg: 'bg-amber-500/14' },
+            { icon: Users,   label: 'CRM — Clientes',         path: '/clientes',                        tone: 'text-amber-400', activeBg: 'bg-amber-500/14' },
+            { icon: Shield,  label: 'Bóveda',                 path: '/clientes/boveda',                 tone: 'text-amber-400', activeBg: 'bg-amber-500/14' },
+            { icon: Receipt, label: 'Documentos Tributarios', path: '/clientes/documentos-tributarios', tone: 'text-amber-400', activeBg: 'bg-amber-500/14' },
         ],
     },
     {

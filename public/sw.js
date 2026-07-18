@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ncf-shell-v7';
+const CACHE_NAME = 'ncf-shell-v8';
 
 const SHELL_ASSETS = [
     '/',
@@ -10,6 +10,7 @@ const SHELL_ASSETS = [
     '/synapse/cockpit',
     '/clientes',
     '/clientes/boveda',
+    '/clientes/documentos-tributarios',
     '/icon-192.png',
     '/icon-512.png',
     '/logonuevoblanco.png',

@@ -53,3 +53,29 @@ export const getUltimoDocumento = async (idProyecto) => {
         return null;
     }
 };
+
+/** Listado global de documentos emitidos (todos los proyectos) — vista de control "Documentos Tributarios". */
+export const getDocumentos = async ({ tipoDte, estado, ambiente } = {}) => {
+    try {
+        const params = new URLSearchParams();
+        if (tipoDte) params.set('tipoDte', tipoDte);
+        if (estado) params.set('estado', estado);
+        if (ambiente) params.set('ambiente', ambiente);
+        const qs = params.toString();
+        const data = await apiClient.get(`/api/dte/documentos${qs ? `?${qs}` : ''}`);
+        return Array.isArray(data) ? data : [];
+    } catch (error) {
+        console.error('Error obteniendo listado de documentos DTE:', error);
+        return [];
+    }
+};
+
+/** Consulta al SII el estado de los documentos "enviado" ahora mismo, sin esperar el cron horario. */
+export const actualizarEstados = async () => {
+    try {
+        return await apiClient.post('/api/dte/documentos/actualizar-estados');
+    } catch (error) {
+        console.error('Error actualizando estados DTE:', error);
+        return { revisados: 0, actualizados: 0, error: error.message };
+    }
+};
