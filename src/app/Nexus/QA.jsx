@@ -879,10 +879,7 @@ function VersionCard({ version, estados, onClick, onDelete }) {
                  e.dataTransfer.setData('id_version', String(version.id_version));
                  e.dataTransfer.effectAllowed = 'move';
              }}
-             className="relative overflow-hidden bg-card border border-border/60 rounded-2xl pl-6 pr-5 py-5 cursor-grab active:cursor-grabbing hover:border-violet-500/40 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 group">
-            {/* Acento de color según la columna del tablero */}
-            <div className="absolute inset-y-0 left-0 w-1.5" style={{ background: estadoColor }} />
-
+             className="bg-card border border-border/60 rounded-2xl p-5 cursor-grab active:cursor-grabbing hover:border-violet-500/40 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 group">
             <div className="flex items-start justify-between gap-3 mb-3">
                 <div className="flex-1 min-w-0">
                     <div className="flex items-start gap-2 mb-1">
