@@ -29,7 +29,8 @@ export default function Socios() {
         withdrawals: 0,
         totalPartnerAssigned: 0,
         totalPartnerWithdrawn: 0,
-        totalPartnerAvailable: 0
+        totalPartnerAvailable: 0,
+        totalPartnerAvailableReal: 0
     });
 
     const [withdrawalForm, setWithdrawalForm] = useState({
@@ -68,6 +69,14 @@ export default function Socios() {
             ? summaryTotalPartnersAvailable
             : Number(summary?.partnersAvailable ?? summaryTotals.available);
 
+        // "Disponible" devengado (arriba, canonicalAvailable) vs. disponible REAL de caja
+        // (totalPartnersAvailableAccumulated) — pueden diferir porque el devengado prorratea
+        // costos anuales/trimestrales, mientras que el real los descuenta de golpe el mes que
+        // se pagan. Se muestran ambos, explícitamente, para no esconder la diferencia.
+        const totalPartnerAvailableReal = Number(
+            summary?.totalPartnersAvailableAccumulated ?? summary?.partnersAvailableAccumulated ?? 0
+        );
+
         const financialStats = {
             totalIncome: Number(summary?.income || 0),
             totalExpenses: Number(summary?.expenses || 0),
@@ -77,7 +86,8 @@ export default function Socios() {
             withdrawals: Number(summary?.withdrawals || 0),
             totalPartnerAssigned: canonicalAssigned,
             totalPartnerWithdrawn: canonicalWithdrawn,
-            totalPartnerAvailable: canonicalAvailable
+            totalPartnerAvailable: canonicalAvailable,
+            totalPartnerAvailableReal
         };
 
         const summaryAvailabilityMap = new Map(
@@ -245,7 +255,7 @@ export default function Socios() {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
                 <StatCard
                     title="Ingresos Totales"
                     value={formatCLP(stats.totalIncome)}
@@ -266,13 +276,25 @@ export default function Socios() {
                     iconTone="bg-[hsl(var(--corporate-blue))]/12 text-[hsl(var(--corporate-blue))]"
                 />
                 <StatCard
-                    title="Total Disponible Socios"
+                    title="Utilidad del Período (Devengado)"
                     value={formatCLP(stats.totalPartnerAvailable)}
                     icon={PieChart}
                     trendColor="text-[hsl(var(--gold))]"
-                    subtitle={`Asignado ${formatCLP(stats.totalPartnerAssigned)} · Retirado ${formatCLP(stats.totalPartnerWithdrawn)}`}
+                    subtitle={`Asignado ${formatCLP(stats.totalPartnerAssigned)} · Retirado este mes ${formatCLP(stats.totalPartnerWithdrawn)}`}
                     iconTone="bg-[hsl(var(--gold))]/14 text-[hsl(var(--gold))]"
                 />
+                <StatCard
+                    title="Disponible Real para Retiro"
+                    value={formatCLP(stats.totalPartnerAvailableReal)}
+                    icon={Wallet}
+                    trendColor="text-[hsl(var(--emerald-premium))]"
+                    subtitle="Suma de lo que cada socio puede retirar hoy (caja)"
+                    iconTone="bg-[hsl(var(--emerald-premium))]/14 text-[hsl(var(--emerald-premium))]"
+                />
+            </div>
+
+            <div className="bg-secondary/30 border border-border/40 rounded-xl px-4 py-3 text-xs text-muted-foreground">
+                <strong className="text-foreground">¿Por qué hay dos números distintos?</strong> "Utilidad del Período" prorratea los costos anuales/trimestrales mes a mes (devengado) — es la foto contable del mes. "Disponible Real para Retiro" descuenta esos mismos costos de golpe el mes en que efectivamente se pagan (caja) — es lo que el sistema realmente te va a dejar retirar. En un mes con un pago grande (ej. hosting anual), el disponible real puede ser menor que la utilidad del período, aunque ambos números sean correctos.
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
