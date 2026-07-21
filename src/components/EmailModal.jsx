@@ -19,16 +19,24 @@ function fileToBase64(file) {
  * una promesa — así el modal no sabe (ni le importa) qué endpoint se usa.
  *
  * @param {object} proyecto - proyecto asociado (solo para el header y el email por defecto)
- * @param {{ subject: string, body: string, file?: File }} draft - contenido inicial editable
+ * @param {{ subject: string, body?: string, file?: File, htmlTemplate?: string, fields?: Array }} draft - contenido inicial editable.
+ *   Si trae `htmlTemplate` (HTML con tokens {{TOKEN}}), el modal muestra `fields` en vez del textarea de
+ *   mensaje y arma el HTML final reemplazando los tokens antes de enviar.
  * @param {string} title - título del modal (ej. "Bienvenida", "Enviar Factura")
  * @param {React.ComponentType} icon - ícono del header (default Mail)
  * @param {(payload: object) => Promise} onSend - función que efectivamente envía el correo
  * @param {() => void} onClose
  */
 export default function EmailModal({ proyecto, draft, title = 'Enviar correo', icon: TitleIcon = Mail, onSend, onClose }) {
+    const isHtmlMode = !!draft?.htmlTemplate;
     const [to, setTo]           = useState(proyecto?.email_cliente || '');
     const [subject, setSubject] = useState(draft?.subject || '');
     const [body, setBody]       = useState(draft?.body || '');
+    const [fieldValues, setFieldValues] = useState(() => {
+        const init = {};
+        (draft?.fields || []).forEach(f => { init[f.key] = f.defaultValue || ''; });
+        return init;
+    });
     const [sending, setSending] = useState(false);
     const [sent, setSent]       = useState(false);
     const [error, setError]     = useState('');
@@ -52,7 +60,16 @@ export default function EmailModal({ proyecto, draft, title = 'Enviar correo', i
                     name:    f.name,
                 }))
             );
-            await onSend({ to, subject, body, attachments });
+            const payload = isHtmlMode
+                ? {
+                    to, subject, attachments,
+                    html: Object.entries(fieldValues).reduce(
+                        (html, [key, val]) => html.replaceAll(`{{${key}}}`, val || ''),
+                        draft.htmlTemplate
+                    ),
+                }
+                : { to, subject, body, attachments };
+            await onSend(payload);
             setSent(true);
             setTimeout(onClose, 1500);
         } catch (e) {
@@ -104,15 +121,32 @@ export default function EmailModal({ proyecto, draft, title = 'Enviar correo', i
                                     className="w-full text-[13px] bg-input border border-border rounded-lg px-3 py-2 outline-none focus:border-violet-500 transition-colors"
                                 />
                             </div>
-                            <div>
-                                <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1 block">Mensaje</label>
-                                <textarea
-                                    value={body}
-                                    onChange={e => setBody(e.target.value)}
-                                    rows={10}
-                                    className="w-full text-[13px] bg-input border border-border rounded-lg px-3 py-2 outline-none focus:border-violet-500 transition-colors resize-none"
-                                />
-                            </div>
+                            {isHtmlMode ? (
+                                <div className="space-y-3">
+                                    <p className="text-[11px] text-muted-foreground">Este correo usa una plantilla HTML con diseño. Completa los datos que se insertarán en ella:</p>
+                                    {(draft?.fields || []).map(f => (
+                                        <div key={f.key}>
+                                            <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1 block">{f.label}</label>
+                                            <input
+                                                value={fieldValues[f.key] || ''}
+                                                onChange={e => setFieldValues(prev => ({ ...prev, [f.key]: e.target.value }))}
+                                                placeholder={f.placeholder || ''}
+                                                className="w-full text-[13px] bg-input border border-border rounded-lg px-3 py-2 outline-none focus:border-violet-500 transition-colors"
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div>
+                                    <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1 block">Mensaje</label>
+                                    <textarea
+                                        value={body}
+                                        onChange={e => setBody(e.target.value)}
+                                        rows={10}
+                                        className="w-full text-[13px] bg-input border border-border rounded-lg px-3 py-2 outline-none focus:border-violet-500 transition-colors resize-none"
+                                    />
+                                </div>
+                            )}
 
                             {/* Adjuntos */}
                             <div>

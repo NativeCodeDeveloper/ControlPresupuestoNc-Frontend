@@ -39,18 +39,94 @@ import EmailModal from '../../components/EmailModal';
 
 // ─── Templates de correo — Bienvenida / Solicitud de usuarios / Finalización ──
 
+const LOGO_NATIVECODE_URL = 'https://nativecode-finance.agendaclinicas.cl/logo-native-new.png';
+
+// Template HTML diseñado (hero oscuro + tarjeta de beneficios + CTA) para el correo de Bienvenida.
+// Tokens {{NOMBRE}}, {{LINK_ACCESO}} se reemplazan antes de enviar.
+const TEMPLATE_BIENVENIDA_HTML = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bienvenido a NativeCode</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#030712;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;}
+.wrapper{width:100%;padding:40px 20px;}
+.container{max-width:700px;margin:0 auto;}
+.hero{background:linear-gradient(180deg,rgba(3,7,18,.96) 0%,rgba(15,23,42,.98) 100%);border-radius:28px 28px 0 0;padding:80px 50px;text-align:center;}
+.logo{width:140px;margin-bottom:50px;}
+.badge{display:inline-block;padding:10px 20px;border:1px solid rgba(255,255,255,.12);border-radius:50px;color:#94A3B8;font-size:12px;letter-spacing:2px;text-transform:uppercase;}
+.title{color:#FFFFFF;font-size:52px;font-weight:700;line-height:1.1;margin-top:35px;}
+.subtitle{max-width:540px;margin:30px auto 0;color:#CBD5E1;font-size:20px;line-height:34px;font-weight:300;}
+.content{background:#FFFFFF;padding:60px;}
+.greeting{color:#0F172A;font-size:22px;font-weight:600;margin-bottom:30px;}
+.text{color:#475569;font-size:17px;line-height:34px;margin-bottom:25px;}
+.card{background:#F8FAFC;border:1px solid #E2E8F0;border-radius:20px;padding:35px;margin:50px 0;}
+.card-title{color:#0F172A;font-size:22px;font-weight:700;margin-bottom:25px;}
+.item{color:#334155;font-size:16px;line-height:32px;margin-bottom:12px;}
+.button-container{text-align:center;margin-top:50px;}
+.button{display:inline-block;background:#2563EB;color:white;text-decoration:none;padding:18px 38px;border-radius:14px;font-size:15px;font-weight:600;}
+.closing{margin-top:50px;text-align:center;}
+.closing-title{color:#0F172A;font-size:28px;font-weight:700;margin-bottom:15px;}
+.closing-text{color:#64748B;font-size:18px;line-height:32px;}
+.footer{background:#0F172A;border-radius:0 0 28px 28px;padding:50px;text-align:center;}
+.footer-logo{color:white;font-size:24px;font-weight:700;letter-spacing:4px;}
+.footer-text{color:#94A3B8;margin-top:20px;line-height:28px;font-size:15px;}
+@media(max-width:640px){.hero{padding:60px 30px;}.content{padding:40px 30px;}.title{font-size:38px;}.subtitle{font-size:18px;line-height:30px;}}
+</style>
+</head>
+<body>
+<div class="wrapper">
+<div class="container">
+    <div class="hero">
+        <img src="${LOGO_NATIVECODE_URL}" alt="NativeCode" class="logo">
+        <div class="badge">Bienvenido a NativeCode</div>
+        <h1 class="title">Nos alegra tenerte con nosotros.</h1>
+        <p class="subtitle">Gracias por confiar en NativeCode para acompañarte en la evolución tecnológica de tu organización.</p>
+    </div>
+    <div class="content">
+        <div class="greeting">Hola {{NOMBRE}},</div>
+        <p class="text">Queremos darte una cálida bienvenida y agradecer la confianza que has depositado en nuestro equipo.</p>
+        <p class="text">Cada nuevo cliente representa una relación que valoramos profundamente. Nuestro compromiso es acompañarte con cercanía, profesionalismo y soluciones que generen valor real para tu organización.</p>
+        <p class="text">Desde hoy cuentas con un equipo enfocado en ayudarte a avanzar con confianza, simplificar procesos y aprovechar al máximo las oportunidades que la tecnología puede ofrecer.</p>
+        <div class="card">
+            <div class="card-title">Lo que encontrarás en NativeCode</div>
+            <div class="item">✓ Atención cercana y personalizada.</div>
+            <div class="item">✓ Soluciones diseñadas pensando en tus necesidades.</div>
+            <div class="item">✓ Mejora continua y evolución constante.</div>
+            <div class="item">✓ Compromiso con la calidad en cada detalle.</div>
+            <div class="item">✓ Acompañamiento durante todo el proceso.</div>
+        </div>
+        <p class="text">Estamos convencidos de que las mejores soluciones nacen de grandes colaboraciones, y esperamos construir una relación sólida y duradera contigo.</p>
+        <div class="button-container">
+            <a href="{{LINK_ACCESO}}" class="button">Comenzar</a>
+        </div>
+        <div class="closing">
+            <div class="closing-title">Este es solo el comienzo.</div>
+            <div class="closing-text">Bienvenido a la experiencia NativeCode.</div>
+        </div>
+    </div>
+    <div class="footer">
+        <div class="footer-logo">NATIVECODE</div>
+        <div class="footer-text">
+            Ingeniería de Software<br>
+            Soluciones SaaS Empresariales<br><br>
+            ingenieria.software@nativecode.cl
+        </div>
+    </div>
+</div>
+</div>
+</body>
+</html>`;
+
 const templateBienvenida = (project) => ({
     subject: 'Bienvenido a NativeCode',
-    body: `Estimado/a ${project?.nombre_cliente || ''},
-
-Gracias por confiar en NativeCode.
-
-Para nosotros es un agrado tenerte aquí. Es por eso que, para que puedas operar de forma efectiva la plataforma, es fundamental que podamos agendar una capacitación. De esta manera, podremos revisar cada módulo y sus secciones para ver en detalle sus funciones.
-
-Pronto nos comunicaremos contigo vía WhatsApp para coordinar el día y la hora de la capacitación.
-
-Saludos cordiales,
-Equipo NativeCode`
+    htmlTemplate: TEMPLATE_BIENVENIDA_HTML,
+    fields: [
+        { key: 'NOMBRE',       label: 'Nombre del cliente', defaultValue: project?.nombre_cliente || '' },
+        { key: 'LINK_ACCESO',  label: 'Link de acceso',     defaultValue: project?.url_front || '', placeholder: 'https://...' },
+    ],
 });
 
 const templateSolicitudUsuarios = (project) => ({
@@ -70,34 +146,118 @@ Saludos cordiales,
 Equipo NativeCode`
 });
 
+// Template HTML diseñado (hero oscuro + accesos + credenciales) para el correo de Finalización.
+// Tokens {{NOMBRE}}, {{URL_WEB}}, {{URL_PANEL}}, {{USUARIO}} se reemplazan antes de enviar.
+const TEMPLATE_FINALIZACION_HTML = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tu plataforma está lista</title>
+<style>
+body{margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+.wrapper{width:100%;padding:40px 20px;}
+.container{max-width:720px;margin:0 auto;}
+.hero{background:linear-gradient(135deg,#050816 0%,#0b1023 50%,#140a2f 100%);padding:70px 50px;border-radius:28px 28px 0 0;text-align:center;}
+.logo{width:120px;margin-bottom:40px;}
+.badge{display:inline-block;padding:10px 18px;border:1px solid rgba(255,255,255,.15);border-radius:999px;color:#cbd5e1;font-size:12px;letter-spacing:2px;text-transform:uppercase;}
+.hero h1{color:white;font-size:48px;line-height:1.1;margin:30px 0 20px;}
+.hero p{color:#cbd5e1;font-size:20px;line-height:34px;max-width:550px;margin:auto;}
+.content{background:white;padding:60px;}
+.greeting{font-size:22px;font-weight:600;color:#0f172a;margin-bottom:25px;}
+.text{font-size:17px;line-height:32px;color:#475569;margin-bottom:25px;}
+.status{background:#f8fafc;border:1px solid #e2e8f0;border-radius:20px;padding:30px;margin:40px 0;}
+.status-badge{display:inline-block;background:#dcfce7;color:#166534;padding:8px 14px;border-radius:999px;font-size:13px;font-weight:600;margin-bottom:18px;}
+.status h2{margin:0;color:#0f172a;}
+.status p{color:#64748b;line-height:28px;}
+.section-title{font-size:28px;font-weight:700;color:#0f172a;margin-top:50px;margin-bottom:25px;}
+.access-card{border:1px solid #e2e8f0;border-radius:18px;padding:28px;margin-bottom:20px;}
+.access-title{font-size:22px;font-weight:700;color:#0f172a;}
+.access-desc{color:#64748b;margin-top:10px;margin-bottom:20px;line-height:28px;}
+.button{display:inline-block;background:linear-gradient(135deg,#7c3aed,#2563eb);color:white;text-decoration:none;padding:14px 24px;border-radius:12px;font-weight:600;}
+.credentials{background:#f8fafc;border-radius:18px;padding:30px;margin-top:40px;}
+.credentials h3{margin-top:0;}
+.credentials p{color:#475569;line-height:28px;}
+.user-box{background:white;border:1px solid #e2e8f0;padding:18px;border-radius:12px;margin-top:15px;font-weight:600;color:#0f172a;}
+.academy{margin-top:45px;padding:30px;border-radius:18px;background:#0f172a;}
+.academy h3{color:white;margin-top:0;}
+.academy p{color:#cbd5e1;line-height:30px;}
+.footer{background:#0b1023;padding:50px;text-align:center;border-radius:0 0 28px 28px;}
+.footer h3{color:white;margin-top:0;}
+.footer p{color:#94a3b8;line-height:30px;}
+.contact{margin-top:25px;}
+.contact a{color:white;text-decoration:none;}
+@media(max-width:640px){.hero{padding:50px 30px;}.hero h1{font-size:38px;}.content{padding:35px;}}
+</style>
+</head>
+<body>
+<div class="wrapper">
+<div class="container">
+    <div class="hero">
+        <img src="${LOGO_NATIVECODE_URL}" class="logo" alt="NativeCode">
+        <div class="badge">IMPLEMENTACIÓN COMPLETADA</div>
+        <h1>Tu plataforma está lista.</h1>
+        <p>Todo ha sido configurado correctamente y ya puedes comenzar a utilizar tu nueva solución digital.</p>
+    </div>
+    <div class="content">
+        <div class="greeting">Hola {{NOMBRE}},</div>
+        <p class="text">Nos complace informarte que la implementación de tu plataforma ha sido completada exitosamente.</p>
+        <p class="text">A partir de este momento ya puedes acceder a tu entorno de trabajo y comenzar a utilizar todas las funcionalidades disponibles.</p>
+        <div class="status">
+            <div class="status-badge">Plataforma Operativa</div>
+            <h2>Todo preparado para comenzar</h2>
+            <p>Tu entorno se encuentra activo, configurado y listo para su utilización.</p>
+        </div>
+        <div class="section-title">Accesos</div>
+        <div class="access-card">
+            <div class="access-title">Sitio Web</div>
+            <div class="access-desc">Acceso público a tu plataforma.</div>
+            <a href="{{URL_WEB}}" class="button">Abrir Sitio Web</a>
+        </div>
+        <div class="access-card">
+            <div class="access-title">Panel de Administración</div>
+            <div class="access-desc">Gestión completa de usuarios, contenidos y configuración.</div>
+            <a href="{{URL_PANEL}}" class="button">Ingresar al Panel</a>
+        </div>
+        <div class="credentials">
+            <h3>Credenciales iniciales</h3>
+            <p>Tus credenciales de acceso se encuentran en el documento adjunto protegido.</p>
+            <div class="user-box">Usuario: {{USUARIO}}</div>
+            <p style="margin-top:20px;">Por motivos de seguridad, recomendamos cambiar tu contraseña después del primer acceso.</p>
+        </div>
+        <div class="academy">
+            <h3>Centro de Aprendizaje</h3>
+            <p>Encontrarás tutoriales, documentación y material de apoyo para sacar el máximo provecho de tu plataforma desde el primer día.</p>
+        </div>
+        <div style="margin-top:50px; text-align:center;">
+            <h2 style="color:#0f172a;">Gracias por confiar en NativeCode.</h2>
+            <p class="text">Estamos comprometidos con acompañarte en cada etapa y ayudarte a obtener el máximo valor de tu solución tecnológica.</p>
+            <p style="font-size:24px;font-weight:700;color:#7c3aed;margin-top:30px;">Este es solo el comienzo.</p>
+        </div>
+    </div>
+    <div class="footer">
+        <h3>Soporte NativeCode</h3>
+        <p>Si necesitas ayuda o tienes cualquier consulta, nuestro equipo estará disponible para asistirte.</p>
+        <div class="contact">
+            <p><a href="mailto:ingenieria.software@nativecode.cl">ingenieria.software@nativecode.cl</a></p>
+            <p>+56 9 6609 1038</p>
+            <p>Tiempo de respuesta estimado: 24 horas hábiles.</p>
+        </div>
+    </div>
+</div>
+</div>
+</body>
+</html>`;
+
 const templateFinalizacion = (project) => ({
-    subject: 'Tu proyecto ha sido finalizado — ¡Ya está operativo!',
-    body: `Estimado/a ${project?.nombre_cliente || ''},
-
-Nos complace informarte que tu proyecto ha sido finalizado y se encuentra completamente operativo.
-
-A partir de este momento puedes acceder a tu plataforma mediante los siguientes enlaces:
-
-Acceso a tu página web: ${project?.url_front || '[completar link de acceso]'}
-Acceso al panel de administración: [completar link del dashboard]
-
-Credenciales iniciales
-Usuario: [completar]
-Contraseña temporal: [completar]
-
-(Por favor no compartas tus contraseñas, puede ser perjudicial para tus datos y los de tus pacientes)
-
-¿Qué puedes hacer ahora?
-• Gestionar contenido.
-• Administrar citas / pacientes / fichas clínicas.
-• Revisar información de usuarios.
-
-¡Ahora ya estás listo para gestionar tu consulta!
-
-Durante los próximos días estaremos atentos para apoyarte en cualquier duda o ajuste inicial.
-
-Saludos cordiales,
-Equipo NativeCode`
+    subject: 'Tu plataforma está lista',
+    htmlTemplate: TEMPLATE_FINALIZACION_HTML,
+    fields: [
+        { key: 'NOMBRE',    label: 'Nombre del cliente', defaultValue: project?.nombre_cliente || '' },
+        { key: 'URL_WEB',   label: 'URL del sitio web',  defaultValue: project?.url_front || '', placeholder: 'https://...' },
+        { key: 'URL_PANEL', label: 'URL del panel de administración', defaultValue: '', placeholder: 'https://...' },
+        { key: 'USUARIO',   label: 'Usuario de acceso',  defaultValue: '', placeholder: 'usuario@ejemplo.com' },
+    ],
 });
 
 const EMAIL_TEMPLATES = {
