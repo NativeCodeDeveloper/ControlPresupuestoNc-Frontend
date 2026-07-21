@@ -151,6 +151,9 @@ export default function Socios() {
             }
         } catch (error) {
             console.error('Error actualizando porcentaje:', error);
+            alert(error.message || 'No se pudo actualizar el porcentaje.');
+            // El input mostraba el valor rechazado sin guardarse — recarga para reflejar el valor real.
+            await loadAllData(parseInt(selectedMonth, 10), parseInt(selectedYear, 10));
         } finally {
             setIsLoading(false);
         }
