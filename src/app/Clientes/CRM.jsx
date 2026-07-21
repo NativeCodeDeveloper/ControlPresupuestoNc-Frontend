@@ -283,9 +283,10 @@ export default function CRM() {
                     {[
                         { label: 'Clientes', value: totalClientes,           cls: 'text-amber-400' },
                         { label: 'Proyectos', value: totalProyectos,          cls: 'text-foreground' },
-                        { label: 'Facturado total', value: fmt(totalFacturado), cls: 'text-emerald-400' },
+                        { label: 'Total Contratado', value: fmt(totalFacturado), cls: 'text-emerald-400',
+                          hint: 'Suma del monto acordado en todos los proyectos activos — no es lo mismo que lo efectivamente cobrado.' },
                     ].map(m => (
-                        <div key={m.label} className="bg-card border border-border rounded-xl px-4 py-2.5 min-w-[110px]">
+                        <div key={m.label} className="bg-card border border-border rounded-xl px-4 py-2.5 min-w-[110px]" title={m.hint}>
                             <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{m.label}</p>
                             <p className={cn('text-[14px] font-semibold tabular-nums', m.cls)}>{m.value}</p>
                         </div>
