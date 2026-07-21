@@ -629,6 +629,7 @@ export default function Ingresos() {
     // "Cerrado" real = Cancelado o Desactivado por no pago. "Entregado" NO es un cierre —
     // el cliente sigue usando el proyecto (ej. suscripción recurrente en curso).
     const closedStatuses = ['Cancelado', 'Desactivado por no pago'];
+    const countEntregados = allProjects.filter(p => p.estado_nombre === 'Entregado').length;
     const countEntregadosAlDia = allProjects.filter(p =>
         p.estado_nombre === 'Entregado' && p.estado_alerta_pago !== 'naranja' && p.estado_alerta_pago !== 'rojo'
     ).length;
@@ -851,8 +852,9 @@ export default function Ingresos() {
                     {/* Contadores resumen */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         <div className="bg-card border border-[hsl(var(--emerald-premium))]/30 rounded-xl p-3 text-center">
-                            <p className="text-2xl font-bold text-[hsl(var(--emerald-premium))]">{countEntregadosAlDia}</p>
-                            <p className="text-[11px] text-muted-foreground mt-0.5">Entregados al Día</p>
+                            <p className="text-2xl font-bold text-[hsl(var(--emerald-premium))]">{countEntregados}</p>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">Entregados</p>
+                            <p className="text-[10px] text-muted-foreground/70 mt-1">Al día: {countEntregadosAlDia}</p>
                         </div>
                         <div className="bg-card border border-destructive/30 rounded-xl p-3 text-center">
                             <p className="text-2xl font-bold text-destructive">{countCancelados}</p>
@@ -860,7 +862,8 @@ export default function Ingresos() {
                         </div>
                         <div className="bg-card border border-[hsl(var(--gold))]/30 rounded-xl p-3 text-center">
                             <p className="text-2xl font-bold text-[hsl(var(--gold))]">{countPorVencer}</p>
-                            <p className="text-[11px] text-muted-foreground mt-0.5">Por vencer / Vencidos</p>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">Por Vencer / Vencidos</p>
+                            <p className="text-[10px] text-muted-foreground/70 mt-1">Por vencer: {countNaranja} · Vencidos: {countRojo}</p>
                         </div>
                         <div className="bg-card border border-border rounded-xl p-3">
                             <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Por categoría</p>
