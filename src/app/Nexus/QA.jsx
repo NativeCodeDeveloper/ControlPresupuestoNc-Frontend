@@ -882,9 +882,9 @@ function VersionCard({ version, estados, onClick, onDelete }) {
              className="bg-card border border-border rounded-2xl p-5 cursor-grab active:cursor-grabbing hover:border-violet-500/40 hover:shadow-lg transition-all group">
             <div className="flex items-start justify-between gap-3 mb-3">
                 <div className="min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                        <FlaskConical size={14} className="text-violet-400 shrink-0" />
-                        <h3 className="font-semibold text-foreground truncate group-hover:text-violet-400 transition-colors">
+                    <div className="flex items-start gap-2 mb-1">
+                        <FlaskConical size={14} className="text-violet-400 shrink-0 mt-0.5" />
+                        <h3 className="text-[13px] font-semibold text-foreground leading-snug line-clamp-2 group-hover:text-violet-400 transition-colors" title={version.nombre}>
                             {version.nombre}
                         </h3>
                     </div>
