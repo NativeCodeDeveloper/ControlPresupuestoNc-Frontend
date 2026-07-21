@@ -14,13 +14,6 @@ import { getProjects } from '../../services/projectsService';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
-const VERSION_ESTADO_STYLE = {
-    Planificado:  'text-slate-400  bg-slate-500/10  border-slate-500/25',
-    'En Testing': 'text-sky-400    bg-sky-500/10    border-sky-500/25',
-    Aprobado:     'text-emerald-400 bg-emerald-500/10 border-emerald-500/25',
-    Rechazado:    'text-red-400    bg-red-500/10    border-red-500/25',
-};
-
 const ACTIVIDAD_ICON = {
     creacion:      <Circle size={10} className="text-sky-400 mt-0.5 shrink-0" />,
     comentario:    <MessageSquare size={10} className="text-slate-400 mt-0.5 shrink-0" />,
@@ -149,11 +142,12 @@ const CONTEXTO_BADGE = {
     'Nuevo Producto': 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
 };
 
-function VersionModal({ onClose, onCreated }) {
+function VersionModal({ versionEstados, onClose, onCreated }) {
     const [form, setForm] = useState({
         nombre: '', tipo_contexto: 'Actualizacion', nombre_producto: '',
         descripcion: '', id_proyecto: '', version_tag: '',
-        estado: 'Planificado', fecha_inicio: '', fecha_objetivo: ''
+        id_estado_version: versionEstados[0]?.id_estado_version ?? '',
+        fecha_inicio: '', fecha_objetivo: ''
     });
     const [proyectos,  setProyectos]  = useState([]);
     const [saving,     setSaving]     = useState(false);
@@ -179,6 +173,7 @@ function VersionModal({ onClose, onCreated }) {
                 ...form,
                 id_proyecto:     form.tipo_contexto === 'Actualizacion' && form.id_proyecto ? Number(form.id_proyecto) : null,
                 nombre_producto: form.tipo_contexto !== 'Actualizacion' ? form.nombre_producto.trim() : null,
+                id_estado_version: Number(form.id_estado_version),
                 fecha_inicio:    form.fecha_inicio   || null,
                 fecha_objetivo:  form.fecha_objetivo || null,
             };
@@ -281,9 +276,9 @@ function VersionModal({ onClose, onCreated }) {
                         </div>
                         <div>
                             <label className="text-[11px] text-muted-foreground mb-1 block">Estado</label>
-                            <select value={form.estado} onChange={e => set('estado', e.target.value)} className={inputCls}>
-                                {['Planificado','En Testing','Aprobado','Rechazado'].map(s =>
-                                    <option key={s} value={s}>{s}</option>
+                            <select value={form.id_estado_version} onChange={e => set('id_estado_version', e.target.value)} className={inputCls}>
+                                {versionEstados.map(ve =>
+                                    <option key={ve.id_estado_version} value={ve.id_estado_version}>{ve.nombre}</option>
                                 )}
                             </select>
                         </div>
@@ -865,16 +860,26 @@ function CasoListView({ casos, estados, onSelect, selected }) {
 
 // ─── Vista de versiones ───────────────────────────────────────────────────────
 
-function VersionCard({ version, onClick, onDelete }) {
+function VersionCard({ version, estados, onClick, onDelete }) {
     const total    = version.total_casos ?? 0;
     const aprobados = version.casos_aprobados ?? 0;
     const rechazados = version.casos_rechazados ?? 0;
     const progreso  = total > 0 ? Math.round((aprobados / total) * 100) : 0;
-    const estiloBadge = VERSION_ESTADO_STYLE[version.estado] ?? VERSION_ESTADO_STYLE.Planificado;
+    const estadoColor = version.estado_color || '#6b7280';
+
+    const distribucion = (version.casos_por_estado ?? [])
+        .map(d => ({ ...d, estado: (estados ?? []).find(e => e.id_estado === d.id_estado) }))
+        .filter(d => d.estado && d.cantidad > 0)
+        .sort((a, b) => (a.estado.orden ?? 0) - (b.estado.orden ?? 0));
 
     return (
         <div onClick={onClick}
-             className="bg-card border border-border rounded-2xl p-5 cursor-pointer hover:border-violet-500/40 hover:shadow-lg transition-all group">
+             draggable
+             onDragStart={e => {
+                 e.dataTransfer.setData('id_version', String(version.id_version));
+                 e.dataTransfer.effectAllowed = 'move';
+             }}
+             className="bg-card border border-border rounded-2xl p-5 cursor-grab active:cursor-grabbing hover:border-violet-500/40 hover:shadow-lg transition-all group">
             <div className="flex items-start justify-between gap-3 mb-3">
                 <div className="min-w-0">
                     <div className="flex items-center gap-2 mb-1">
@@ -888,8 +893,9 @@ function VersionCard({ version, onClick, onDelete }) {
                     )}
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full border font-semibold ${estiloBadge}`}>
-                        {version.estado}
+                    <span className="text-[10px] px-2 py-0.5 rounded-full border font-semibold"
+                          style={{ color: estadoColor, backgroundColor: `${estadoColor}1a`, borderColor: `${estadoColor}40` }}>
+                        {version.estado_nombre}
                     </span>
                     <button
                         onClick={e => { e.stopPropagation(); onDelete(version); }}
@@ -904,16 +910,29 @@ function VersionCard({ version, onClick, onDelete }) {
                 <p className="text-[12px] text-muted-foreground mb-3 line-clamp-2">{version.descripcion}</p>
             )}
 
-            {/* Barra de progreso */}
+            {/* Distribución por columna del tablero */}
             <div className="mb-3">
                 <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
-                    <span>{aprobados} / {total} aprobados</span>
+                    <span>{aprobados} / {total} terminados</span>
                     <span>{progreso}%</span>
                 </div>
-                <div className="h-1.5 bg-secondary/60 rounded-full overflow-hidden">
-                    <div className="h-full bg-emerald-500 rounded-full transition-all"
-                         style={{ width: `${progreso}%` }} />
+                <div className="h-1.5 w-full flex rounded-full overflow-hidden bg-secondary/60">
+                    {distribucion.map(d => (
+                        <div key={d.id_estado}
+                             title={`${d.estado.nombre}: ${d.cantidad}`}
+                             style={{ width: `${(d.cantidad / total) * 100}%`, background: d.estado.color_hex }} />
+                    ))}
                 </div>
+                {distribucion.length > 0 && (
+                    <div className="flex flex-wrap gap-x-2.5 gap-y-1 mt-1.5">
+                        {distribucion.map(d => (
+                            <span key={d.id_estado} className="flex items-center gap-1 text-[9.5px] text-muted-foreground">
+                                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: d.estado.color_hex }} />
+                                {d.estado.nombre} {d.cantidad}
+                            </span>
+                        ))}
+                    </div>
+                )}
             </div>
 
             {/* Contexto — producto/proyecto */}
@@ -950,6 +969,49 @@ function VersionCard({ version, onClick, onDelete }) {
     );
 }
 
+function VersionKanbanBoard({ versiones, versionEstados, estados, onSelect, onDelete, onMoveVersion }) {
+    const [dragOver, setDragOver] = useState(null);
+    return (
+        <div className="flex gap-4 h-full overflow-x-auto">
+            {versionEstados.map(ve => {
+                const cols   = versiones.filter(v => v.id_estado_version === ve.id_estado_version);
+                const isOver = dragOver === ve.id_estado_version;
+                return (
+                    <div
+                        key={ve.id_estado_version}
+                        onDragOver={e => { e.preventDefault(); setDragOver(ve.id_estado_version); }}
+                        onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget)) setDragOver(null); }}
+                        onDrop={e => {
+                            e.preventDefault();
+                            const id = parseInt(e.dataTransfer.getData('id_version'), 10);
+                            if (id) onMoveVersion(id, ve.id_estado_version);
+                            setDragOver(null);
+                        }}
+                        className={`flex-none w-[300px] flex flex-col rounded-xl transition-colors ${isOver ? 'bg-violet-500/6 ring-1 ring-inset ring-violet-500/30' : ''}`}
+                    >
+                        <div className="flex items-center gap-2 mb-3 px-1 shrink-0">
+                            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: ve.color_hex }} />
+                            <span className="text-[12px] font-semibold text-foreground flex-1 truncate">{ve.nombre}</span>
+                            <span className="text-[11px] text-muted-foreground bg-secondary/60 px-1.5 py-0.5 rounded-md">{cols.length}</span>
+                        </div>
+                        <div className="flex-1 overflow-y-auto space-y-3 min-h-[80px] pr-0.5">
+                            {cols.map(v => (
+                                <VersionCard key={v.id_version} version={v} estados={estados}
+                                            onClick={() => onSelect(v)} onDelete={onDelete} />
+                            ))}
+                            {cols.length === 0 && (
+                                <div className={`border-2 border-dashed rounded-xl h-16 flex items-center justify-center transition-colors ${isOver ? 'border-violet-500/40' : 'border-border/25'}`}>
+                                    <span className="text-[11px] text-muted-foreground/50">Sin versiones</span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                );
+            })}
+        </div>
+    );
+}
+
 // ─── Cache ────────────────────────────────────────────────────────────────────
 
 const QA_CACHE_KEY = 'ncf:qa:v1';
@@ -971,6 +1033,7 @@ function casosCacheSave(id_version, data) {
 export default function QA() {
     const [versiones,   setVersiones]   = useState([]);
     const [estados,     setEstados]     = useState([]);
+    const [versionEstados, setVersionEstados] = useState([]);
     const [tipos,       setTipos]       = useState([]);
     const [prioridades, setPrioridades] = useState([]);
     const [socios,      setSocios]      = useState([]);
@@ -1040,6 +1103,7 @@ export default function QA() {
             if (cached) {
                 setVersiones(cached.versiones ?? []);
                 setEstados(cached.estados ?? []);
+                setVersionEstados(cached.versionEstados ?? []);
                 setTipos(cached.tipos ?? []);
                 setPrioridades(cached.prioridades ?? []);
                 setSocios(cached.socios ?? []);
@@ -1049,24 +1113,27 @@ export default function QA() {
             }
         }
         try {
-            const [v, e, t, p, s] = await Promise.all([
+            const [v, e, ve, t, p, s] = await Promise.all([
                 qaService.getVersiones(),
                 qaService.getEstados(),
+                qaService.getVersionEstados(),
                 qaService.getTipos(),
                 qaService.getPrioridades(),
                 getPartners().catch(() => []),
             ]);
-            const versiones   = Array.isArray(v) ? v : [];
-            const estados     = Array.isArray(e) ? e : [];
-            const tipos       = Array.isArray(t) ? t : [];
-            const prioridades = Array.isArray(p) ? p : [];
-            const socios      = Array.isArray(s) ? s : [];
+            const versiones      = Array.isArray(v)  ? v  : [];
+            const estados        = Array.isArray(e)  ? e  : [];
+            const versionEstados = Array.isArray(ve) ? ve : [];
+            const tipos          = Array.isArray(t)  ? t  : [];
+            const prioridades    = Array.isArray(p)  ? p  : [];
+            const socios         = Array.isArray(s)  ? s  : [];
             setVersiones(versiones);
             setEstados(estados);
+            setVersionEstados(versionEstados);
             setTipos(tipos);
             setPrioridades(prioridades);
             setSocios(socios);
-            cacheSave({ versiones, estados, tipos, prioridades, socios });
+            cacheSave({ versiones, estados, versionEstados, tipos, prioridades, socios });
 
             const va      = versionActivaRef.current;
             const savedId = savedVersionIdRef.current;
@@ -1163,6 +1230,20 @@ export default function QA() {
         }
     };
 
+    const handleMoveVersion = async (id_version, id_estado_version) => {
+        const estadoTarget = versionEstados.find(ve => ve.id_estado_version === id_estado_version);
+        const patch = { id_estado_version, estado_nombre: estadoTarget?.nombre, estado_color: estadoTarget?.color_hex };
+        const previous = versiones;
+        setVersiones(prev => prev.map(v => v.id_version === id_version ? { ...v, ...patch } : v));
+        try {
+            await qaService.updateVersion(id_version, { id_estado_version });
+        } catch (e) {
+            console.error('[QA] Error moviendo versión', e);
+            setVersiones(previous);
+            alert('No se pudo cambiar el estado de la versión.');
+        }
+    };
+
     const handleMoveCaso = async (id_caso, id_estado) => {
         const estadoTarget = estados.find(e => e.id_estado === id_estado);
         const patch = { id_estado, estado_nombre: estadoTarget?.nombre, estado_color: estadoTarget?.color_hex };
@@ -1180,7 +1261,7 @@ export default function QA() {
     // ── Filtrado versiones ────────────────────────────────────────────────────
 
     const versionesFiltradas = versiones.filter(v => {
-        if (filtroVersionEstado   && v.estado         !== filtroVersionEstado)   return false;
+        if (filtroVersionEstado   && v.id_estado_version !== Number(filtroVersionEstado)) return false;
         if (filtroVersionContexto && v.tipo_contexto  !== filtroVersionContexto) return false;
         if (busquedaVersion) {
             const q = busquedaVersion.toLowerCase();
@@ -1246,8 +1327,8 @@ export default function QA() {
                     <select value={filtroVersionEstado} onChange={e => setFiltroVersionEstado(e.target.value)}
                             className={`${selectCls} min-w-0`}>
                         <option value="">Estado</option>
-                        {['Planificado','En Testing','Aprobado','Rechazado'].map(s =>
-                            <option key={s} value={s}>{s}</option>
+                        {versionEstados.map(ve =>
+                            <option key={ve.id_estado_version} value={ve.id_estado_version}>{ve.nombre}</option>
                         )}
                     </select>
                     <select value={filtroVersionContexto} onChange={e => setFiltroVersionContexto(e.target.value)}
@@ -1266,8 +1347,8 @@ export default function QA() {
                     </span>
                 </div>
 
-                {/* Grid de versiones */}
-                <div className="flex-1 overflow-y-auto p-5">
+                {/* Tablero de versiones — columnas por estado, arrastrables */}
+                <div className="flex-1 min-h-0 overflow-hidden p-5">
                     {loading && versiones.length === 0 && (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                             {[...Array(4)].map((_, i) => (
@@ -1289,18 +1370,14 @@ export default function QA() {
                         </div>
                     )}
                     {versionesFiltradas.length > 0 && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {versionesFiltradas.map(v => (
-                                <VersionCard key={v.id_version} version={v}
-                                            onClick={() => handleSeleccionarVersion(v)}
-                                            onDelete={handleDeleteVersion} />
-                            ))}
-                        </div>
+                        <VersionKanbanBoard versiones={versionesFiltradas} versionEstados={versionEstados} estados={estados}
+                                            onSelect={handleSeleccionarVersion} onDelete={handleDeleteVersion}
+                                            onMoveVersion={handleMoveVersion} />
                     )}
                 </div>
 
                 {showVersionModal && (
-                    <VersionModal onClose={() => setShowVersionModal(false)} onCreated={handleVersionCreada} />
+                    <VersionModal versionEstados={versionEstados} onClose={() => setShowVersionModal(false)} onCreated={handleVersionCreada} />
                 )}
             </div>
         );

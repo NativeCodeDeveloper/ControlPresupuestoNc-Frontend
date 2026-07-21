@@ -23,6 +23,12 @@ export const getEtiquetas   = ()        => apiClient.get('/api/qa/etiquetas');
 export const createEtiqueta = (data)    => apiClient.post('/api/qa/etiquetas', data);
 export const deleteEtiqueta = (id)      => apiClient.delete(`/api/qa/etiquetas/${id}`);
 
+// Estados de versión
+export const getVersionEstados     = ()         => apiClient.get('/api/qa/versiones/estados');
+export const createVersionEstado   = (data)     => apiClient.post('/api/qa/versiones/estados', data);
+export const deleteVersionEstado   = (id)       => apiClient.delete(`/api/qa/versiones/estados/${id}`);
+export const reorderVersionEstados = (ids)      => apiClient.patch('/api/qa/versiones/estados/reorder', { ids });
+
 // Versiones
 export const getVersiones    = ()         => apiClient.get('/api/qa/versiones');
 export const getVersion      = (id)       => apiClient.get(`/api/qa/versiones/${id}`);

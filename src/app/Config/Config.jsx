@@ -99,6 +99,8 @@ export default function Config() {
     const [newQaTipoForm, setNewQaTipoForm] = useState({ nombre: '', color_hex: '#6b7280' });
     const [qaPrioridades, setQaPrioridades] = useState([]);
     const [newQaPrioridadForm, setNewQaPrioridadForm] = useState({ nombre: '', color_hex: '#6b7280' });
+    const [qaVersionEstados, setQaVersionEstados] = useState([]);
+    const [newQaVersionEstadoForm, setNewQaVersionEstadoForm] = useState({ nombre: '', color_hex: '#6b7280' });
 
     // Normalizar socio del backend
     const normalizePartner = (p) => ({
@@ -111,7 +113,7 @@ export default function Config() {
     useEffect(() => {
         const loadData = async () => {
             try {
-                const [types, statuses, services, costTypes, config, partners, synEstados, synEtiquetas, synTeams, srtEstados, actEsts, qaEsts, qaTps, qaPrios] = await Promise.all([
+                const [types, statuses, services, costTypes, config, partners, synEstados, synEtiquetas, synTeams, srtEstados, actEsts, qaEsts, qaTps, qaPrios, qaVerEsts] = await Promise.all([
                     configService.getProjectTypes(),
                     configService.getProjectStatuses(),
                     costsService.getServices(),
@@ -126,6 +128,7 @@ export default function Config() {
                     qaService.getEstados().catch(() => []),
                     qaService.getTipos().catch(() => []),
                     qaService.getPrioridades().catch(() => []),
+                    qaService.getVersionEstados().catch(() => []),
                 ]);
                 if (synEstados && Array.isArray(synEstados)) setSynapseEstados(synEstados);
                 if (synEtiquetas && Array.isArray(synEtiquetas)) setSynapseEtiquetas(synEtiquetas);
@@ -135,6 +138,7 @@ export default function Config() {
                 if (qaEsts && Array.isArray(qaEsts)) setQaEstados(qaEsts);
                 if (qaTps && Array.isArray(qaTps)) setQaTipos(qaTps);
                 if (qaPrios && Array.isArray(qaPrios)) setQaPrioridades(qaPrios);
+                if (qaVerEsts && Array.isArray(qaVerEsts)) setQaVersionEstados(qaVerEsts);
 
                 if (types && Array.isArray(types)) setProjectTypesData(types);
                 if (statuses && Array.isArray(statuses)) setProjectStatusesData(statuses);
@@ -726,6 +730,52 @@ export default function Config() {
         } catch (e) {
             console.error('Error reordenando prioridades D.Q.T.:', e);
             setQaPrioridades(previous);
+            alert('No se pudo guardar el nuevo orden.');
+        }
+    };
+
+    // === D.Q.T.: ESTADOS DE VERSIÓN ===
+    const handleAddQaVersionEstado = async () => {
+        if (!newQaVersionEstadoForm.nombre.trim()) return;
+        setIsLoading(true);
+        try {
+            const { estados } = await qaService.createVersionEstado(newQaVersionEstadoForm);
+            if (Array.isArray(estados)) setQaVersionEstados(estados);
+            setNewQaVersionEstadoForm({ nombre: '', color_hex: '#6b7280' });
+        } catch (e) {
+            console.error('Error creando estado de versión D.Q.T.:', e);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleDeleteQaVersionEstado = async (id) => {
+        setIsLoading(true);
+        try {
+            const { estados } = await qaService.deleteVersionEstado(id);
+            if (Array.isArray(estados)) setQaVersionEstados(estados);
+        } catch (e) {
+            console.error('Error eliminando estado de versión D.Q.T.:', e);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleMoveQaVersionEstado = async (id, direction) => {
+        const idx = qaVersionEstados.findIndex(e => e.id_estado_version === id);
+        const targetIdx = idx + direction;
+        if (idx === -1 || targetIdx < 0 || targetIdx >= qaVersionEstados.length) return;
+
+        const reordered = [...qaVersionEstados];
+        [reordered[idx], reordered[targetIdx]] = [reordered[targetIdx], reordered[idx]];
+        const previous = qaVersionEstados;
+        setQaVersionEstados(reordered);
+
+        try {
+            await qaService.reorderVersionEstados(reordered.map(e => e.id_estado_version));
+        } catch (e) {
+            console.error('Error reordenando estados de versión D.Q.T.:', e);
+            setQaVersionEstados(previous);
             alert('No se pudo guardar el nuevo orden.');
         }
     };
@@ -1702,6 +1752,84 @@ export default function Config() {
                         <button
                             onClick={handleAddQaPrioridad}
                             disabled={isLoading || !newQaPrioridadForm.nombre.trim()}
+                            className="flex items-center gap-1.5 bg-violet-500 hover:bg-violet-600 disabled:opacity-40 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                        >
+                            <Plus size={14} /> Agregar
+                        </button>
+                    </div>
+                </Section>
+
+                {/* ── D.Q.T.: Estados de versión ── */}
+                <Section title="D.Q.T. — Estados de Versión" icon={FlaskConical}>
+                    <p className="text-sm text-muted-foreground mb-5">
+                        Estados disponibles al crear o filtrar una versión (Planificado, En Testing, etc), en orden.
+                    </p>
+                    <div className="space-y-2 mb-5">
+                        {qaVersionEstados.map((ve, idx) => (
+                            <div key={ve.id_estado_version} className="flex items-center gap-3 bg-secondary/40 border border-border/40 rounded-xl px-4 py-3">
+                                <div className="flex flex-col -my-1 shrink-0">
+                                    <button
+                                        onClick={() => handleMoveQaVersionEstado(ve.id_estado_version, -1)}
+                                        disabled={isLoading || idx === 0}
+                                        className="text-muted-foreground hover:text-foreground transition-colors disabled:opacity-25 disabled:cursor-not-allowed"
+                                        title="Mover antes"
+                                    >
+                                        <ChevronUp size={14} />
+                                    </button>
+                                    <button
+                                        onClick={() => handleMoveQaVersionEstado(ve.id_estado_version, 1)}
+                                        disabled={isLoading || idx === qaVersionEstados.length - 1}
+                                        className="text-muted-foreground hover:text-foreground transition-colors disabled:opacity-25 disabled:cursor-not-allowed"
+                                        title="Mover después"
+                                    >
+                                        <ChevronDown size={14} />
+                                    </button>
+                                </div>
+                                <span className="w-3 h-3 rounded-full shrink-0" style={{ background: ve.color_hex }} />
+                                <span className="text-sm font-medium text-foreground flex-1">{ve.nombre}</span>
+                                {ve.es_aprobado ? (
+                                    <span className="flex items-center gap-1 text-[11px] text-emerald-400 font-medium">
+                                        <CheckCircle2 size={11} /> Aprobado
+                                    </span>
+                                ) : ve.es_rechazo ? (
+                                    <span className="flex items-center gap-1 text-[11px] text-red-400 font-medium">
+                                        <Circle size={11} /> Rechazo
+                                    </span>
+                                ) : null}
+                                <button
+                                    onClick={() => handleDeleteQaVersionEstado(ve.id_estado_version)}
+                                    disabled={isLoading}
+                                    className="text-muted-foreground hover:text-red-400 transition-colors p-1.5 rounded-lg hover:bg-red-500/8 disabled:opacity-40"
+                                >
+                                    <Trash2 size={14} />
+                                </button>
+                            </div>
+                        ))}
+                        {!qaVersionEstados.length && (
+                            <p className="text-sm text-muted-foreground text-center py-4">No hay estados de versión configurados aún.</p>
+                        )}
+                    </div>
+                    <div className="flex flex-wrap gap-2 items-end">
+                        <input
+                            type="text"
+                            placeholder="Nombre del estado..."
+                            value={newQaVersionEstadoForm.nombre}
+                            onChange={(e) => setNewQaVersionEstadoForm(f => ({ ...f, nombre: e.target.value }))}
+                            onKeyDown={(e) => { if (e.key === 'Enter') handleAddQaVersionEstado(); }}
+                            className="flex-1 min-w-36 bg-secondary/50 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/30 transition-all"
+                        />
+                        <div className="flex items-center gap-2">
+                            <label className="text-xs text-muted-foreground">Color</label>
+                            <input
+                                type="color"
+                                value={newQaVersionEstadoForm.color_hex}
+                                onChange={(e) => setNewQaVersionEstadoForm(f => ({ ...f, color_hex: e.target.value }))}
+                                className="w-8 h-8 rounded-lg border border-border cursor-pointer"
+                            />
+                        </div>
+                        <button
+                            onClick={handleAddQaVersionEstado}
+                            disabled={isLoading || !newQaVersionEstadoForm.nombre.trim()}
                             className="flex items-center gap-1.5 bg-violet-500 hover:bg-violet-600 disabled:opacity-40 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
                         >
                             <Plus size={14} /> Agregar
