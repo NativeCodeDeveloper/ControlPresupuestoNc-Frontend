@@ -24,7 +24,10 @@ import {
     Mail,
     ExternalLink,
     CheckCircle2,
-    FileText
+    FileText,
+    LayoutGrid,
+    List,
+    Loader2
 } from 'lucide-react';
 import { cn, normalizeRut } from '../../lib/utils';
 import { Input, Select } from '../../components/ui/FormElements';
@@ -33,6 +36,7 @@ import * as dteService from '../../services/dteService';
 
 export default function Ingresos() {
     const [activeTab, setActiveTab]       = usePersistedState('ingresos:activeTab', 'projects');
+    const [projectsView, setProjectsView] = usePersistedState('ingresos:projectsView', 'cards');
     const [searchTerm, setSearchTerm]     = usePersistedState('ingresos:search', '');
     const [filterType, setFilterType]     = usePersistedState('ingresos:filterType', 'Todos');
     const [filterStatus, setFilterStatus] = usePersistedState('ingresos:filterStatus', 'Todos');
@@ -932,11 +936,83 @@ export default function Ingresos() {
                         </div>
                     )}
 
+                    <div className="flex justify-end mb-2">
+                        <div className="flex bg-secondary p-1 rounded-lg">
+                            <button onClick={() => setProjectsView('cards')}
+                                className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all",
+                                    projectsView === 'cards' ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
+                                <LayoutGrid size={13} /> Tarjetas
+                            </button>
+                            <button onClick={() => setProjectsView('list')}
+                                className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all",
+                                    projectsView === 'list' ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
+                                <List size={13} /> Listado
+                            </button>
+                        </div>
+                    </div>
+
                     {filteredProjects.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-64 text-muted-foreground text-center border border-border border-dashed rounded-xl bg-muted/20">
                             <Briefcase size={32} className="mb-4 opacity-50" />
                             <p className="font-medium">No se encontraron proyectos</p>
                             <p className="text-sm">Intenta con otra búsqueda o crea uno nuevo.</p>
+                        </div>
+                    ) : projectsView === 'list' ? (
+                        <div className="overflow-x-auto border border-border rounded-xl">
+                            <table className="w-full text-[13px]">
+                                <thead className="bg-secondary/40 border-b border-border">
+                                    <tr>
+                                        <th className="text-left px-4 py-2.5 font-semibold text-muted-foreground text-[11px] uppercase tracking-wide">Proyecto</th>
+                                        <th className="text-right px-4 py-2.5 font-semibold text-muted-foreground text-[11px] uppercase tracking-wide">Monto</th>
+                                        <th className="text-left px-4 py-2.5 font-semibold text-muted-foreground text-[11px] uppercase tracking-wide">Fecha de Pago</th>
+                                        <th className="text-left px-4 py-2.5 font-semibold text-muted-foreground text-[11px] uppercase tracking-wide">Estado</th>
+                                        <th className="text-right px-4 py-2.5 font-semibold text-muted-foreground text-[11px] uppercase tracking-wide">Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-border/60">
+                                    {filteredProjects.map(project => {
+                                        const badge = getPaymentAlertBadge(project.estado_alerta_pago);
+                                        const esRecurrente = project.ciclo_facturacion && project.ciclo_facturacion !== 'Unico';
+                                        const puedeMarcarPagado = esRecurrente && (project.estado_alerta_pago === 'naranja' || project.estado_alerta_pago === 'rojo');
+                                        return (
+                                            <tr key={project.id} className="hover:bg-secondary/20 transition-colors">
+                                                <td className="px-4 py-2.5">
+                                                    <p className="font-medium text-foreground">{project.nombre}</p>
+                                                    <p className="text-[11px] text-muted-foreground">{project.nombre_cliente}</p>
+                                                </td>
+                                                <td className="px-4 py-2.5 text-right font-medium text-foreground whitespace-nowrap">
+                                                    ${Math.round(parseFloat(project.monto_acordado || 0)).toLocaleString('es-CL')}
+                                                </td>
+                                                <td className="px-4 py-2.5 text-muted-foreground whitespace-nowrap">
+                                                    {esRecurrente ? fmtDate(project.fecha_proximo_pago) : '—'}
+                                                </td>
+                                                <td className="px-4 py-2.5">
+                                                    {badge ? (
+                                                        <span className={`text-[11px] px-2 py-0.5 rounded-full border font-medium ${badge.cls}`}>{badge.label}</span>
+                                                    ) : (
+                                                        <span className="text-[11px] text-muted-foreground">—</span>
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-2.5 text-right">
+                                                    {puedeMarcarPagado ? (
+                                                        <button
+                                                            onClick={() => handleQuickPago(project)}
+                                                            disabled={quickPayLoadingId === project.id}
+                                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[hsl(var(--emerald-premium))]/40 bg-[hsl(var(--emerald-premium))]/10 text-[hsl(var(--emerald-premium))] text-[11px] font-medium hover:bg-[hsl(var(--emerald-premium))]/20 transition-colors disabled:opacity-50">
+                                                            {quickPayLoadingId === project.id
+                                                                ? <Loader2 size={12} className="animate-spin" />
+                                                                : <CheckCircle2 size={12} />}
+                                                            {quickPayLoadingId === project.id ? 'Registrando...' : 'Marcar Pagado'}
+                                                        </button>
+                                                    ) : (
+                                                        <span className="text-[11px] text-muted-foreground/60">—</span>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
