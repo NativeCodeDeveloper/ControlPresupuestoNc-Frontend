@@ -80,7 +80,7 @@ const MODULES = [
         items: [
             { icon: Hammer,       label: 'Tickets de Soporte',          path: '/nexus',                  tone: 'text-sky-400',    activeBg: 'bg-sky-500/14'    },
             { icon: Rss,          label: 'Actualizaciones del Sistema', path: '/nexus/actualizaciones',  tone: 'text-sky-400',    activeBg: 'bg-sky-500/14'    },
-            { icon: FlaskConical, label: 'Q.A. & Testing',              path: '/nexus/qa',               tone: 'text-violet-400', activeBg: 'bg-violet-500/14' },
+            { icon: FlaskConical, label: 'D.Q.T.',                      path: '/nexus/qa',               tone: 'text-violet-400', activeBg: 'bg-violet-500/14' },
         ],
     },
 ];

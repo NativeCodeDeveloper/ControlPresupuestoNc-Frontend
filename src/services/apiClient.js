@@ -52,8 +52,8 @@ let tokenGetter = null;
 /** Registrar la función que retorna el JWT de Clerk (llamar desde el provider) */
 export const setTokenGetter = (fn) => { tokenGetter = fn; };
 
-const getToken = async () => {
-    if (tokenGetter) return await tokenGetter();
+const getToken = async (opts) => {
+    if (tokenGetter) return await tokenGetter(opts);
     return null;
 };
 
@@ -94,8 +94,8 @@ const buildApiError = async (response) => {
  * 
  * AHORA: Llamadas reales a backend
  */
-const buildHeaders = async () => {
-    const token = await getToken();
+const buildHeaders = async (opts) => {
+    const token = await getToken(opts);
     return {
         'Content-Type': 'application/json',
         ...(token && { 'Authorization': `Bearer ${token}` }),
@@ -117,15 +117,28 @@ export const fetchWithAuth = async (endpoint, options = {}) => {
     });
 };
 
+// Ejecuta el fetch y, si el backend responde 401, reintenta una vez forzando
+// un token fresco (skipCache) — cubre el caso donde el JWT cacheado de Clerk
+// venció justo antes del refresco automático en segundo plano.
+const requestWithRetry = async (method, endpoint, data) => {
+    const doFetch = async (opts) => fetch(`${API_URL}${endpoint}`, {
+        method,
+        headers: await buildHeaders(opts),
+        ...(data !== undefined && { body: JSON.stringify(data) }),
+    });
+
+    let response = await doFetch();
+    if (response.status === 401) {
+        response = await doFetch({ skipCache: true });
+    }
+    if (!response.ok) throw await buildApiError(response);
+    return await response.json();
+};
+
 const apiClient = {
     get: async (endpoint) => {
         try {
-            const response = await fetch(`${API_URL}${endpoint}`, {
-                method: 'GET',
-                headers: await buildHeaders(),
-            });
-            if (!response.ok) throw await buildApiError(response);
-            return await response.json();
+            return await requestWithRetry('GET', endpoint);
         } catch (error) {
             console.error(`[API ERROR] GET ${endpoint}:`, error.message);
             throw error;
@@ -134,13 +147,7 @@ const apiClient = {
 
     post: async (endpoint, data) => {
         try {
-            const response = await fetch(`${API_URL}${endpoint}`, {
-                method: 'POST',
-                headers: await buildHeaders(),
-                body: JSON.stringify(data),
-            });
-            if (!response.ok) throw await buildApiError(response);
-            return await response.json();
+            return await requestWithRetry('POST', endpoint, data);
         } catch (error) {
             console.error(`[API ERROR] POST ${endpoint}:`, error.message);
             throw error;
@@ -149,13 +156,7 @@ const apiClient = {
 
     put: async (endpoint, data) => {
         try {
-            const response = await fetch(`${API_URL}${endpoint}`, {
-                method: 'PUT',
-                headers: await buildHeaders(),
-                body: JSON.stringify(data),
-            });
-            if (!response.ok) throw await buildApiError(response);
-            return await response.json();
+            return await requestWithRetry('PUT', endpoint, data);
         } catch (error) {
             console.error(`[API ERROR] PUT ${endpoint}:`, error.message);
             throw error;
@@ -164,13 +165,7 @@ const apiClient = {
 
     patch: async (endpoint, data) => {
         try {
-            const response = await fetch(`${API_URL}${endpoint}`, {
-                method: 'PATCH',
-                headers: await buildHeaders(),
-                body: JSON.stringify(data),
-            });
-            if (!response.ok) throw await buildApiError(response);
-            return await response.json();
+            return await requestWithRetry('PATCH', endpoint, data);
         } catch (error) {
             console.error(`[API ERROR] PATCH ${endpoint}:`, error.message);
             throw error;
@@ -179,12 +174,7 @@ const apiClient = {
 
     delete: async (endpoint) => {
         try {
-            const response = await fetch(`${API_URL}${endpoint}`, {
-                method: 'DELETE',
-                headers: await buildHeaders(),
-            });
-            if (!response.ok) throw await buildApiError(response);
-            return await response.json();
+            return await requestWithRetry('DELETE', endpoint);
         } catch (error) {
             console.error(`[API ERROR] DELETE ${endpoint}:`, error.message);
             throw error;

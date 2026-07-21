@@ -7,6 +7,7 @@ import * as costsService from '../../services/costsService';
 import * as synapseService from '../../services/synapseService';
 import * as soporteService from '../../services/soporteService';
 import * as actualizacionesService from '../../services/actualizacionesService';
+import * as qaService from '../../services/qaService';
 import apiClient from '../../services/apiClient';
 import { normalizeRut } from '../../lib/utils';
 import {
@@ -30,7 +31,8 @@ import {
     Rss,
     ChevronUp,
     ChevronDown,
-    Building2
+    Building2,
+    FlaskConical
 } from 'lucide-react';
 
 const Section = ({ title, icon, children }) => (
@@ -90,6 +92,14 @@ export default function Config() {
     const [actEstados, setActEstados] = useState([]);
     const [newActEstadoForm, setNewActEstadoForm] = useState({ nombre: '', color_hex: '#0ea5e9' });
 
+    // D.Q.T. — columnas del tablero, tipos y prioridades de caso
+    const [qaEstados, setQaEstados] = useState([]);
+    const [newQaEstadoForm, setNewQaEstadoForm] = useState({ nombre: '', color_hex: '#6b7280' });
+    const [qaTipos, setQaTipos] = useState([]);
+    const [newQaTipoForm, setNewQaTipoForm] = useState({ nombre: '', color_hex: '#6b7280' });
+    const [qaPrioridades, setQaPrioridades] = useState([]);
+    const [newQaPrioridadForm, setNewQaPrioridadForm] = useState({ nombre: '', color_hex: '#6b7280' });
+
     // Normalizar socio del backend
     const normalizePartner = (p) => ({
         ...p,
@@ -101,7 +111,7 @@ export default function Config() {
     useEffect(() => {
         const loadData = async () => {
             try {
-                const [types, statuses, services, costTypes, config, partners, synEstados, synEtiquetas, synTeams, srtEstados, actEsts] = await Promise.all([
+                const [types, statuses, services, costTypes, config, partners, synEstados, synEtiquetas, synTeams, srtEstados, actEsts, qaEsts, qaTps, qaPrios] = await Promise.all([
                     configService.getProjectTypes(),
                     configService.getProjectStatuses(),
                     costsService.getServices(),
@@ -113,12 +123,18 @@ export default function Config() {
                     synapseService.getTeams(),
                     soporteService.getEstados().catch(() => []),
                     actualizacionesService.getEstados().catch(() => []),
+                    qaService.getEstados().catch(() => []),
+                    qaService.getTipos().catch(() => []),
+                    qaService.getPrioridades().catch(() => []),
                 ]);
                 if (synEstados && Array.isArray(synEstados)) setSynapseEstados(synEstados);
                 if (synEtiquetas && Array.isArray(synEtiquetas)) setSynapseEtiquetas(synEtiquetas);
                 if (synTeams && Array.isArray(synTeams)) setSynapseTeams(synTeams);
                 if (srtEstados && Array.isArray(srtEstados)) setSoporteEstados(srtEstados);
                 if (actEsts && Array.isArray(actEsts)) setActEstados(actEsts);
+                if (qaEsts && Array.isArray(qaEsts)) setQaEstados(qaEsts);
+                if (qaTps && Array.isArray(qaTps)) setQaTipos(qaTps);
+                if (qaPrios && Array.isArray(qaPrios)) setQaPrioridades(qaPrios);
 
                 if (types && Array.isArray(types)) setProjectTypesData(types);
                 if (statuses && Array.isArray(statuses)) setProjectStatusesData(statuses);
@@ -573,6 +589,144 @@ export default function Config() {
             console.error('Error eliminando estado de actualización:', e);
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    // === D.Q.T.: COLUMNAS DEL TABLERO ===
+    const handleAddQaEstado = async () => {
+        if (!newQaEstadoForm.nombre.trim()) return;
+        setIsLoading(true);
+        try {
+            const { estados } = await qaService.createEstado(newQaEstadoForm);
+            if (Array.isArray(estados)) setQaEstados(estados);
+            setNewQaEstadoForm({ nombre: '', color_hex: '#6b7280' });
+        } catch (e) {
+            console.error('Error creando columna D.Q.T.:', e);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleDeleteQaEstado = async (id) => {
+        setIsLoading(true);
+        try {
+            const { estados } = await qaService.deleteEstado(id);
+            if (Array.isArray(estados)) setQaEstados(estados);
+        } catch (e) {
+            console.error('Error eliminando columna D.Q.T.:', e);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleMoveQaEstado = async (id, direction) => {
+        const idx = qaEstados.findIndex(e => e.id_estado === id);
+        const targetIdx = idx + direction;
+        if (idx === -1 || targetIdx < 0 || targetIdx >= qaEstados.length) return;
+
+        const reordered = [...qaEstados];
+        [reordered[idx], reordered[targetIdx]] = [reordered[targetIdx], reordered[idx]];
+        const previous = qaEstados;
+        setQaEstados(reordered);
+
+        try {
+            await qaService.reorderEstados(reordered.map(e => e.id_estado));
+        } catch (e) {
+            console.error('Error reordenando columnas D.Q.T.:', e);
+            setQaEstados(previous);
+            alert('No se pudo guardar el nuevo orden.');
+        }
+    };
+
+    // === D.Q.T.: TIPOS DE CASO ===
+    const handleAddQaTipo = async () => {
+        if (!newQaTipoForm.nombre.trim()) return;
+        setIsLoading(true);
+        try {
+            const { tipos } = await qaService.createTipo(newQaTipoForm);
+            if (Array.isArray(tipos)) setQaTipos(tipos);
+            setNewQaTipoForm({ nombre: '', color_hex: '#6b7280' });
+        } catch (e) {
+            console.error('Error creando tipo D.Q.T.:', e);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleDeleteQaTipo = async (id) => {
+        setIsLoading(true);
+        try {
+            const { tipos } = await qaService.deleteTipo(id);
+            if (Array.isArray(tipos)) setQaTipos(tipos);
+        } catch (e) {
+            console.error('Error eliminando tipo D.Q.T.:', e);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleMoveQaTipo = async (id, direction) => {
+        const idx = qaTipos.findIndex(t => t.id_tipo === id);
+        const targetIdx = idx + direction;
+        if (idx === -1 || targetIdx < 0 || targetIdx >= qaTipos.length) return;
+
+        const reordered = [...qaTipos];
+        [reordered[idx], reordered[targetIdx]] = [reordered[targetIdx], reordered[idx]];
+        const previous = qaTipos;
+        setQaTipos(reordered);
+
+        try {
+            await qaService.reorderTipos(reordered.map(t => t.id_tipo));
+        } catch (e) {
+            console.error('Error reordenando tipos D.Q.T.:', e);
+            setQaTipos(previous);
+            alert('No se pudo guardar el nuevo orden.');
+        }
+    };
+
+    // === D.Q.T.: PRIORIDADES ===
+    const handleAddQaPrioridad = async () => {
+        if (!newQaPrioridadForm.nombre.trim()) return;
+        setIsLoading(true);
+        try {
+            const { prioridades } = await qaService.createPrioridad(newQaPrioridadForm);
+            if (Array.isArray(prioridades)) setQaPrioridades(prioridades);
+            setNewQaPrioridadForm({ nombre: '', color_hex: '#6b7280' });
+        } catch (e) {
+            console.error('Error creando prioridad D.Q.T.:', e);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleDeleteQaPrioridad = async (id) => {
+        setIsLoading(true);
+        try {
+            const { prioridades } = await qaService.deletePrioridad(id);
+            if (Array.isArray(prioridades)) setQaPrioridades(prioridades);
+        } catch (e) {
+            console.error('Error eliminando prioridad D.Q.T.:', e);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleMoveQaPrioridad = async (id, direction) => {
+        const idx = qaPrioridades.findIndex(p => p.id_prioridad === id);
+        const targetIdx = idx + direction;
+        if (idx === -1 || targetIdx < 0 || targetIdx >= qaPrioridades.length) return;
+
+        const reordered = [...qaPrioridades];
+        [reordered[idx], reordered[targetIdx]] = [reordered[targetIdx], reordered[idx]];
+        const previous = qaPrioridades;
+        setQaPrioridades(reordered);
+
+        try {
+            await qaService.reorderPrioridades(reordered.map(p => p.id_prioridad));
+        } catch (e) {
+            console.error('Error reordenando prioridades D.Q.T.:', e);
+            setQaPrioridades(previous);
+            alert('No se pudo guardar el nuevo orden.');
         }
     };
 
@@ -1334,6 +1488,222 @@ export default function Config() {
                         </div>
                         <button onClick={handleAddActEstado} disabled={isLoading || !newActEstadoForm.nombre.trim()}
                                 className="flex items-center gap-1.5 bg-sky-500 hover:bg-sky-600 disabled:opacity-40 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+                            <Plus size={14} /> Agregar
+                        </button>
+                    </div>
+                </Section>
+
+                {/* ── D.Q.T.: Columnas del tablero ── */}
+                <Section title="D.Q.T. — Columnas del Tablero" icon={FlaskConical}>
+                    <p className="text-sm text-muted-foreground mb-5">
+                        Columnas del tablero Scrumban de Desarrollo, QA y Testing. El orden aquí define el orden de las columnas en <strong>/nexus/qa</strong>.
+                    </p>
+                    <div className="space-y-2 mb-5">
+                        {qaEstados.map((est, idx) => (
+                            <div key={est.id_estado} className="flex items-center gap-3 bg-secondary/40 border border-border/40 rounded-xl px-4 py-3">
+                                <div className="flex flex-col -my-1 shrink-0">
+                                    <button
+                                        onClick={() => handleMoveQaEstado(est.id_estado, -1)}
+                                        disabled={isLoading || idx === 0}
+                                        className="text-muted-foreground hover:text-foreground transition-colors disabled:opacity-25 disabled:cursor-not-allowed"
+                                        title="Mover antes"
+                                    >
+                                        <ChevronUp size={14} />
+                                    </button>
+                                    <button
+                                        onClick={() => handleMoveQaEstado(est.id_estado, 1)}
+                                        disabled={isLoading || idx === qaEstados.length - 1}
+                                        className="text-muted-foreground hover:text-foreground transition-colors disabled:opacity-25 disabled:cursor-not-allowed"
+                                        title="Mover después"
+                                    >
+                                        <ChevronDown size={14} />
+                                    </button>
+                                </div>
+                                <span className="w-3 h-3 rounded-full shrink-0" style={{ background: est.color_hex }} />
+                                <span className="text-sm font-medium text-foreground flex-1">{est.nombre}</span>
+                                {est.es_aprobado ? (
+                                    <span className="flex items-center gap-1 text-[11px] text-emerald-400 font-medium">
+                                        <CheckCircle2 size={11} /> Terminado
+                                    </span>
+                                ) : est.es_rechazo ? (
+                                    <span className="flex items-center gap-1 text-[11px] text-red-400 font-medium">
+                                        <Circle size={11} /> Bloqueo
+                                    </span>
+                                ) : null}
+                                <button
+                                    onClick={() => handleDeleteQaEstado(est.id_estado)}
+                                    disabled={isLoading}
+                                    className="text-muted-foreground hover:text-red-400 transition-colors p-1.5 rounded-lg hover:bg-red-500/8 disabled:opacity-40"
+                                >
+                                    <Trash2 size={14} />
+                                </button>
+                            </div>
+                        ))}
+                        {!qaEstados.length && (
+                            <p className="text-sm text-muted-foreground text-center py-4">No hay columnas configuradas aún.</p>
+                        )}
+                    </div>
+                    <div className="flex flex-wrap gap-2 items-end">
+                        <input
+                            type="text"
+                            placeholder="Nombre de la columna..."
+                            value={newQaEstadoForm.nombre}
+                            onChange={(e) => setNewQaEstadoForm(f => ({ ...f, nombre: e.target.value }))}
+                            onKeyDown={(e) => { if (e.key === 'Enter') handleAddQaEstado(); }}
+                            className="flex-1 min-w-36 bg-secondary/50 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/30 transition-all"
+                        />
+                        <div className="flex items-center gap-2">
+                            <label className="text-xs text-muted-foreground">Color</label>
+                            <input
+                                type="color"
+                                value={newQaEstadoForm.color_hex}
+                                onChange={(e) => setNewQaEstadoForm(f => ({ ...f, color_hex: e.target.value }))}
+                                className="w-8 h-8 rounded-lg border border-border cursor-pointer"
+                            />
+                        </div>
+                        <button
+                            onClick={handleAddQaEstado}
+                            disabled={isLoading || !newQaEstadoForm.nombre.trim()}
+                            className="flex items-center gap-1.5 bg-violet-500 hover:bg-violet-600 disabled:opacity-40 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                        >
+                            <Plus size={14} /> Agregar
+                        </button>
+                    </div>
+                </Section>
+
+                {/* ── D.Q.T.: Tipos de caso ── */}
+                <Section title="D.Q.T. — Tipos de Caso" icon={FlaskConical}>
+                    <p className="text-sm text-muted-foreground mb-5">
+                        Tipos disponibles al crear un caso de prueba (Funcional, Regresión, UI, etc).
+                    </p>
+                    <div className="space-y-2 mb-5">
+                        {qaTipos.map((t, idx) => (
+                            <div key={t.id_tipo} className="flex items-center gap-3 bg-secondary/40 border border-border/40 rounded-xl px-4 py-3">
+                                <div className="flex flex-col -my-1 shrink-0">
+                                    <button
+                                        onClick={() => handleMoveQaTipo(t.id_tipo, -1)}
+                                        disabled={isLoading || idx === 0}
+                                        className="text-muted-foreground hover:text-foreground transition-colors disabled:opacity-25 disabled:cursor-not-allowed"
+                                        title="Mover antes"
+                                    >
+                                        <ChevronUp size={14} />
+                                    </button>
+                                    <button
+                                        onClick={() => handleMoveQaTipo(t.id_tipo, 1)}
+                                        disabled={isLoading || idx === qaTipos.length - 1}
+                                        className="text-muted-foreground hover:text-foreground transition-colors disabled:opacity-25 disabled:cursor-not-allowed"
+                                        title="Mover después"
+                                    >
+                                        <ChevronDown size={14} />
+                                    </button>
+                                </div>
+                                <span className="w-3 h-3 rounded-full shrink-0" style={{ background: t.color_hex }} />
+                                <span className="text-sm font-medium text-foreground flex-1">{t.nombre}</span>
+                                <button
+                                    onClick={() => handleDeleteQaTipo(t.id_tipo)}
+                                    disabled={isLoading}
+                                    className="text-muted-foreground hover:text-red-400 transition-colors p-1.5 rounded-lg hover:bg-red-500/8 disabled:opacity-40"
+                                >
+                                    <Trash2 size={14} />
+                                </button>
+                            </div>
+                        ))}
+                        {!qaTipos.length && (
+                            <p className="text-sm text-muted-foreground text-center py-4">No hay tipos configurados aún.</p>
+                        )}
+                    </div>
+                    <div className="flex flex-wrap gap-2 items-end">
+                        <input
+                            type="text"
+                            placeholder="Nombre del tipo..."
+                            value={newQaTipoForm.nombre}
+                            onChange={(e) => setNewQaTipoForm(f => ({ ...f, nombre: e.target.value }))}
+                            onKeyDown={(e) => { if (e.key === 'Enter') handleAddQaTipo(); }}
+                            className="flex-1 min-w-36 bg-secondary/50 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/30 transition-all"
+                        />
+                        <div className="flex items-center gap-2">
+                            <label className="text-xs text-muted-foreground">Color</label>
+                            <input
+                                type="color"
+                                value={newQaTipoForm.color_hex}
+                                onChange={(e) => setNewQaTipoForm(f => ({ ...f, color_hex: e.target.value }))}
+                                className="w-8 h-8 rounded-lg border border-border cursor-pointer"
+                            />
+                        </div>
+                        <button
+                            onClick={handleAddQaTipo}
+                            disabled={isLoading || !newQaTipoForm.nombre.trim()}
+                            className="flex items-center gap-1.5 bg-violet-500 hover:bg-violet-600 disabled:opacity-40 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                        >
+                            <Plus size={14} /> Agregar
+                        </button>
+                    </div>
+                </Section>
+
+                {/* ── D.Q.T.: Prioridades ── */}
+                <Section title="D.Q.T. — Prioridades" icon={FlaskConical}>
+                    <p className="text-sm text-muted-foreground mb-5">
+                        Prioridades disponibles para un caso de prueba, en orden de severidad.
+                    </p>
+                    <div className="space-y-2 mb-5">
+                        {qaPrioridades.map((p, idx) => (
+                            <div key={p.id_prioridad} className="flex items-center gap-3 bg-secondary/40 border border-border/40 rounded-xl px-4 py-3">
+                                <div className="flex flex-col -my-1 shrink-0">
+                                    <button
+                                        onClick={() => handleMoveQaPrioridad(p.id_prioridad, -1)}
+                                        disabled={isLoading || idx === 0}
+                                        className="text-muted-foreground hover:text-foreground transition-colors disabled:opacity-25 disabled:cursor-not-allowed"
+                                        title="Mover antes"
+                                    >
+                                        <ChevronUp size={14} />
+                                    </button>
+                                    <button
+                                        onClick={() => handleMoveQaPrioridad(p.id_prioridad, 1)}
+                                        disabled={isLoading || idx === qaPrioridades.length - 1}
+                                        className="text-muted-foreground hover:text-foreground transition-colors disabled:opacity-25 disabled:cursor-not-allowed"
+                                        title="Mover después"
+                                    >
+                                        <ChevronDown size={14} />
+                                    </button>
+                                </div>
+                                <span className="w-3 h-3 rounded-full shrink-0" style={{ background: p.color_hex }} />
+                                <span className="text-sm font-medium text-foreground flex-1">{p.nombre}</span>
+                                <button
+                                    onClick={() => handleDeleteQaPrioridad(p.id_prioridad)}
+                                    disabled={isLoading}
+                                    className="text-muted-foreground hover:text-red-400 transition-colors p-1.5 rounded-lg hover:bg-red-500/8 disabled:opacity-40"
+                                >
+                                    <Trash2 size={14} />
+                                </button>
+                            </div>
+                        ))}
+                        {!qaPrioridades.length && (
+                            <p className="text-sm text-muted-foreground text-center py-4">No hay prioridades configuradas aún.</p>
+                        )}
+                    </div>
+                    <div className="flex flex-wrap gap-2 items-end">
+                        <input
+                            type="text"
+                            placeholder="Nombre de la prioridad..."
+                            value={newQaPrioridadForm.nombre}
+                            onChange={(e) => setNewQaPrioridadForm(f => ({ ...f, nombre: e.target.value }))}
+                            onKeyDown={(e) => { if (e.key === 'Enter') handleAddQaPrioridad(); }}
+                            className="flex-1 min-w-36 bg-secondary/50 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/30 transition-all"
+                        />
+                        <div className="flex items-center gap-2">
+                            <label className="text-xs text-muted-foreground">Color</label>
+                            <input
+                                type="color"
+                                value={newQaPrioridadForm.color_hex}
+                                onChange={(e) => setNewQaPrioridadForm(f => ({ ...f, color_hex: e.target.value }))}
+                                className="w-8 h-8 rounded-lg border border-border cursor-pointer"
+                            />
+                        </div>
+                        <button
+                            onClick={handleAddQaPrioridad}
+                            disabled={isLoading || !newQaPrioridadForm.nombre.trim()}
+                            className="flex items-center gap-1.5 bg-violet-500 hover:bg-violet-600 disabled:opacity-40 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                        >
                             <Plus size={14} /> Agregar
                         </button>
                     </div>

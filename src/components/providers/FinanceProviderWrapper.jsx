@@ -9,7 +9,7 @@ import { setTokenGetter } from '../../services/apiClient';
 function ClerkTokenBridge() {
     const { getToken } = useAuth();
     useEffect(() => {
-        setTokenGetter(() => getToken());
+        setTokenGetter((opts) => getToken(opts));
         return () => setTokenGetter(null);
     }, [getToken]);
     return null;

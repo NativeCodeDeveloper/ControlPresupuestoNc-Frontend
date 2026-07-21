@@ -14,24 +14,6 @@ import { getProjects } from '../../services/projectsService';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
-const PRIORIDAD = {
-    baja:    { label: 'Baja',    color: 'text-slate-400',  bg: 'bg-slate-500/15',  border: 'border-slate-500/30' },
-    media:   { label: 'Media',   color: 'text-amber-400',  bg: 'bg-amber-500/15',  border: 'border-amber-500/30' },
-    alta:    { label: 'Alta',    color: 'text-orange-400', bg: 'bg-orange-500/15', border: 'border-orange-500/30' },
-    critica: { label: 'Crítica', color: 'text-red-400',    bg: 'bg-red-500/15',    border: 'border-red-500/30' },
-};
-
-const TIPO_OPTS = ['Funcional','Regresion','Integracion','UI','Rendimiento','Seguridad'];
-
-const TIPO_COLOR = {
-    Funcional:   'text-sky-400    bg-sky-500/10    border-sky-500/20',
-    Regresion:   'text-violet-400 bg-violet-500/10 border-violet-500/20',
-    Integracion: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
-    UI:          'text-pink-400   bg-pink-500/10   border-pink-500/20',
-    Rendimiento: 'text-amber-400  bg-amber-500/10  border-amber-500/20',
-    Seguridad:   'text-red-400    bg-red-500/10    border-red-500/20',
-};
-
 const VERSION_ESTADO_STYLE = {
     Planificado:  'text-slate-400  bg-slate-500/10  border-slate-500/25',
     'En Testing': 'text-sky-400    bg-sky-500/10    border-sky-500/25',
@@ -101,11 +83,13 @@ function MarkdownPreview({ content }) {
 
 // ─── Badges ───────────────────────────────────────────────────────────────────
 
-function PrioridadBadge({ prioridad }) {
-    const p = PRIORIDAD[prioridad] ?? PRIORIDAD.media;
+function PrioridadBadge({ nombre, color }) {
+    if (!nombre) return null;
+    const c = color || '#94a3b8';
     return (
-        <span className={`text-[10px] px-2 py-0.5 rounded-full border font-semibold uppercase tracking-wide ${p.color} ${p.bg} ${p.border}`}>
-            {p.label}
+        <span className="text-[10px] px-2 py-0.5 rounded-full border font-semibold uppercase tracking-wide"
+              style={{ color: c, backgroundColor: `${c}20`, borderColor: `${c}4d` }}>
+            {nombre}
         </span>
     );
 }
@@ -119,11 +103,13 @@ function EstadoBadge({ nombre, color }) {
     );
 }
 
-function TipoBadge({ tipo }) {
-    const cls = TIPO_COLOR[tipo] ?? 'text-slate-400 bg-slate-500/10 border-slate-500/20';
+function TipoBadge({ nombre, color }) {
+    if (!nombre) return null;
+    const c = color || '#94a3b8';
     return (
-        <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${cls}`}>
-            {tipo}
+        <span className="text-[10px] px-2 py-0.5 rounded-full border font-medium"
+              style={{ color: c, backgroundColor: `${c}1a`, borderColor: `${c}33` }}>
+            {nombre}
         </span>
     );
 }
@@ -350,9 +336,11 @@ function VersionModal({ onClose, onCreated }) {
 
 // ─── Modal nuevo caso ─────────────────────────────────────────────────────────
 
-function CasoModal({ version, estados, socios, onClose, onCreated }) {
+function CasoModal({ version, estados, socios, tipos, prioridades, onClose, onCreated }) {
     const [form, setForm] = useState({
-        titulo: '', tipo: 'Funcional', prioridad: 'media',
+        titulo: '',
+        id_tipo: tipos[0]?.id_tipo ?? '',
+        id_prioridad: prioridades[0]?.id_prioridad ?? '',
         id_estado: estados[0]?.id_estado ?? '',
         id_responsable: '',
         descripcion: '', pasos: '', resultado_esperado: '',
@@ -373,6 +361,8 @@ function CasoModal({ version, estados, socios, onClose, onCreated }) {
                 ...form,
                 id_version:    version.id_version,
                 id_estado:     Number(form.id_estado),
+                id_tipo:       Number(form.id_tipo),
+                id_prioridad:  Number(form.id_prioridad),
                 id_responsable: form.id_responsable ? Number(form.id_responsable) : null,
             });
             onCreated(data.caso);
@@ -408,14 +398,14 @@ function CasoModal({ version, estados, socios, onClose, onCreated }) {
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                         <div>
                             <label className="text-[11px] text-muted-foreground mb-1 block">Tipo</label>
-                            <select value={form.tipo} onChange={e => set('tipo', e.target.value)} className={inputCls}>
-                                {TIPO_OPTS.map(t => <option key={t} value={t}>{t}</option>)}
+                            <select value={form.id_tipo} onChange={e => set('id_tipo', e.target.value)} className={inputCls}>
+                                {tipos.map(t => <option key={t.id_tipo} value={t.id_tipo}>{t.nombre}</option>)}
                             </select>
                         </div>
                         <div>
                             <label className="text-[11px] text-muted-foreground mb-1 block">Prioridad</label>
-                            <select value={form.prioridad} onChange={e => set('prioridad', e.target.value)} className={inputCls}>
-                                {Object.entries(PRIORIDAD).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                            <select value={form.id_prioridad} onChange={e => set('id_prioridad', e.target.value)} className={inputCls}>
+                                {prioridades.map(p => <option key={p.id_prioridad} value={p.id_prioridad}>{p.nombre}</option>)}
                             </select>
                         </div>
                         <div>
@@ -602,8 +592,8 @@ function CasoDetalle({ caso, estados, socios, onClose, onUpdated, onDeleted }) {
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
                 {/* Badges */}
                 <div className="flex flex-wrap gap-2">
-                    <PrioridadBadge prioridad={caso.prioridad} />
-                    <TipoBadge tipo={caso.tipo} />
+                    <PrioridadBadge nombre={caso.prioridad_nombre} color={caso.prioridad_color} />
+                    <TipoBadge nombre={caso.tipo_nombre} color={caso.tipo_color} />
                     {caso.estado_nombre && <EstadoBadge nombre={caso.estado_nombre} color={caso.estado_color} />}
                 </div>
 
@@ -750,7 +740,6 @@ function CasoDetalle({ caso, estados, socios, onClose, onUpdated, onDeleted }) {
 // ─── Kanban de casos ──────────────────────────────────────────────────────────
 
 function CasoKanbanCard({ caso, onSelect, isSelected }) {
-    const p = PRIORIDAD[caso.prioridad] ?? PRIORIDAD.media;
     return (
         <div
             draggable
@@ -766,12 +755,12 @@ function CasoKanbanCard({ caso, onSelect, isSelected }) {
             }`}
         >
             <div className="flex items-center justify-between gap-2 mb-2">
-                <TipoBadge tipo={caso.tipo} />
+                <TipoBadge nombre={caso.tipo_nombre} color={caso.tipo_color} />
                 <span className="text-[10px] font-mono text-violet-400/70">{caso.numero_caso}</span>
             </div>
             <p className="text-[13px] font-medium text-foreground leading-snug mb-2 line-clamp-2">{caso.titulo}</p>
             <div className="flex items-center justify-between gap-2 mt-1">
-                <PrioridadBadge prioridad={caso.prioridad} />
+                <PrioridadBadge nombre={caso.prioridad_nombre} color={caso.prioridad_color} />
                 {caso.responsable_nombre && (
                     <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
                         <User size={9} /> {caso.responsable_nombre}
@@ -856,9 +845,9 @@ function CasoListView({ casos, estados, onSelect, selected }) {
                                          isSelected ? 'border-violet-500/50 bg-violet-500/8' : 'bg-card border-border/40 hover:border-violet-500/30 hover:bg-secondary/20'
                                      }`}>
                                     <span className="text-[10px] font-mono text-violet-400 shrink-0 w-24">{c.numero_caso}</span>
-                                    <TipoBadge tipo={c.tipo} />
+                                    <TipoBadge nombre={c.tipo_nombre} color={c.tipo_color} />
                                     <span className="flex-1 text-sm font-medium text-foreground truncate">{c.titulo}</span>
-                                    <PrioridadBadge prioridad={c.prioridad} />
+                                    <PrioridadBadge nombre={c.prioridad_nombre} color={c.prioridad_color} />
                                     {c.responsable_nombre && (
                                         <span className="hidden md:flex items-center gap-1 text-[11px] text-muted-foreground shrink-0">
                                             <User size={10} /> {c.responsable_nombre}
@@ -982,6 +971,8 @@ function casosCacheSave(id_version, data) {
 export default function QA() {
     const [versiones,   setVersiones]   = useState([]);
     const [estados,     setEstados]     = useState([]);
+    const [tipos,       setTipos]       = useState([]);
+    const [prioridades, setPrioridades] = useState([]);
     const [socios,      setSocios]      = useState([]);
     const [loading,     setLoading]     = useState(true);
 
@@ -1049,6 +1040,8 @@ export default function QA() {
             if (cached) {
                 setVersiones(cached.versiones ?? []);
                 setEstados(cached.estados ?? []);
+                setTipos(cached.tipos ?? []);
+                setPrioridades(cached.prioridades ?? []);
                 setSocios(cached.socios ?? []);
                 setLoading(false);
             } else {
@@ -1056,18 +1049,24 @@ export default function QA() {
             }
         }
         try {
-            const [v, e, s] = await Promise.all([
+            const [v, e, t, p, s] = await Promise.all([
                 qaService.getVersiones(),
                 qaService.getEstados(),
+                qaService.getTipos(),
+                qaService.getPrioridades(),
                 getPartners().catch(() => []),
             ]);
-            const versiones = Array.isArray(v) ? v : [];
-            const estados   = Array.isArray(e) ? e : [];
-            const socios    = Array.isArray(s) ? s : [];
+            const versiones   = Array.isArray(v) ? v : [];
+            const estados     = Array.isArray(e) ? e : [];
+            const tipos       = Array.isArray(t) ? t : [];
+            const prioridades = Array.isArray(p) ? p : [];
+            const socios      = Array.isArray(s) ? s : [];
             setVersiones(versiones);
             setEstados(estados);
+            setTipos(tipos);
+            setPrioridades(prioridades);
             setSocios(socios);
-            cacheSave({ versiones, estados, socios });
+            cacheSave({ versiones, estados, tipos, prioridades, socios });
 
             const va      = versionActivaRef.current;
             const savedId = savedVersionIdRef.current;
@@ -1196,9 +1195,9 @@ export default function QA() {
     // ── Filtrado casos ────────────────────────────────────────────────────────
 
     const casosFiltrados = casos.filter(c => {
-        if (filtroEstado    && c.id_estado !== Number(filtroEstado)) return false;
-        if (filtroPrioridad && c.prioridad !== filtroPrioridad)      return false;
-        if (filtroTipo      && c.tipo      !== filtroTipo)           return false;
+        if (filtroEstado    && c.id_estado    !== Number(filtroEstado))    return false;
+        if (filtroPrioridad && c.id_prioridad !== Number(filtroPrioridad)) return false;
+        if (filtroTipo      && c.id_tipo      !== Number(filtroTipo))      return false;
         if (busqueda) {
             const q = busqueda.toLowerCase();
             if (!c.numero_caso?.toLowerCase().includes(q) &&
@@ -1220,7 +1219,7 @@ export default function QA() {
                     <div className="flex items-center gap-2 min-w-0">
                         <FlaskConical size={18} className="text-violet-400 shrink-0" />
                         <div>
-                            <h1 className="text-base font-bold text-foreground">Nexus — Q.A. & Testing</h1>
+                            <h1 className="text-base font-bold text-foreground">D.Q.T. — Desarrollo, QA y Testing</h1>
                             <p className="text-[11px] text-muted-foreground">Control de pruebas y versiones</p>
                         </div>
                     </div>
@@ -1356,11 +1355,11 @@ export default function QA() {
                     </select>
                     <select value={filtroPrioridad} onChange={e => setFiltroPrioridad(e.target.value)} className={`${selectCls} min-w-0`}>
                         <option value="">Prioridad</option>
-                        {Object.entries(PRIORIDAD).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+                        {prioridades.map(p => <option key={p.id_prioridad} value={p.id_prioridad}>{p.nombre}</option>)}
                     </select>
                     <select value={filtroTipo} onChange={e => setFiltroTipo(e.target.value)} className={`${selectCls} min-w-0`}>
                         <option value="">Tipo</option>
-                        {TIPO_OPTS.map(t => <option key={t} value={t}>{t}</option>)}
+                        {tipos.map(t => <option key={t.id_tipo} value={t.id_tipo}>{t.nombre}</option>)}
                     </select>
                     {hayFiltrosCasos && (
                         <button onClick={() => { setBusqueda(''); setFiltroEstado(''); setFiltroPrioridad(''); setFiltroTipo(''); }}
@@ -1427,6 +1426,7 @@ export default function QA() {
 
             {showCasoModal && (
                 <CasoModal version={versionActiva} estados={estados} socios={socios}
+                           tipos={tipos} prioridades={prioridades}
                            onClose={() => setShowCasoModal(false)}
                            onCreated={handleCasoCreado} />
             )}

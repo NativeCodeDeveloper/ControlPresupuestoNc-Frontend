@@ -1,9 +1,22 @@
 import apiClient from './apiClient';
 
 // Estados
-export const getEstados    = ()         => apiClient.get('/api/qa/estados');
-export const createEstado  = (data)     => apiClient.post('/api/qa/estados', data);
-export const deleteEstado  = (id)       => apiClient.delete(`/api/qa/estados/${id}`);
+export const getEstados      = ()         => apiClient.get('/api/qa/estados');
+export const createEstado    = (data)     => apiClient.post('/api/qa/estados', data);
+export const deleteEstado    = (id)       => apiClient.delete(`/api/qa/estados/${id}`);
+export const reorderEstados  = (ids)      => apiClient.patch('/api/qa/estados/reorder', { ids });
+
+// Tipos de caso
+export const getTipos      = ()         => apiClient.get('/api/qa/tipos');
+export const createTipo    = (data)     => apiClient.post('/api/qa/tipos', data);
+export const deleteTipo    = (id)       => apiClient.delete(`/api/qa/tipos/${id}`);
+export const reorderTipos  = (ids)      => apiClient.patch('/api/qa/tipos/reorder', { ids });
+
+// Prioridades
+export const getPrioridades     = ()         => apiClient.get('/api/qa/prioridades');
+export const createPrioridad    = (data)     => apiClient.post('/api/qa/prioridades', data);
+export const deletePrioridad    = (id)       => apiClient.delete(`/api/qa/prioridades/${id}`);
+export const reorderPrioridades = (ids)      => apiClient.patch('/api/qa/prioridades/reorder', { ids });
 
 // Etiquetas
 export const getEtiquetas   = ()        => apiClient.get('/api/qa/etiquetas');
