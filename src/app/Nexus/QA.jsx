@@ -1202,6 +1202,7 @@ export default function QA() {
     const handleCasoUpdated = (caso) => {
         setCasos(prev => prev.map(c => c.id_caso === caso.id_caso ? caso : c));
         setSelected(caso);
+        load(true); // refresca el desglose por columna de la tarjeta de versión
     };
 
     const handleDeleteCaso = (id_caso) => {

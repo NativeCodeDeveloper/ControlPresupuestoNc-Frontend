@@ -618,6 +618,7 @@ export default function Config() {
             if (Array.isArray(estados)) setQaEstados(estados);
         } catch (e) {
             console.error('Error eliminando columna D.Q.T.:', e);
+            alert(e.message || 'No se pudo eliminar la columna.');
         } finally {
             setIsLoading(false);
         }
@@ -664,6 +665,7 @@ export default function Config() {
             if (Array.isArray(tipos)) setQaTipos(tipos);
         } catch (e) {
             console.error('Error eliminando tipo D.Q.T.:', e);
+            alert(e.message || 'No se pudo eliminar el tipo.');
         } finally {
             setIsLoading(false);
         }
@@ -710,6 +712,7 @@ export default function Config() {
             if (Array.isArray(prioridades)) setQaPrioridades(prioridades);
         } catch (e) {
             console.error('Error eliminando prioridad D.Q.T.:', e);
+            alert(e.message || 'No se pudo eliminar la prioridad.');
         } finally {
             setIsLoading(false);
         }
@@ -756,6 +759,7 @@ export default function Config() {
             if (Array.isArray(estados)) setQaVersionEstados(estados);
         } catch (e) {
             console.error('Error eliminando estado de versión D.Q.T.:', e);
+            alert(e.message || 'No se pudo eliminar el estado de versión.');
         } finally {
             setIsLoading(false);
         }
