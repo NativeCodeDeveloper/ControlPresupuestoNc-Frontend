@@ -886,7 +886,7 @@ function VersionCard({ version, estados, onClick, onDelete }) {
                         <div className="h-6 w-6 rounded-lg bg-violet-500/10 flex items-center justify-center shrink-0 group-hover:bg-violet-500/20 transition-colors">
                             <FlaskConical size={12} className="text-violet-400" />
                         </div>
-                        <h3 className="text-[13px] font-semibold text-foreground leading-snug line-clamp-2 pt-0.5 group-hover:text-violet-400 transition-colors" title={version.nombre}>
+                        <h3 className="text-[13px] font-semibold text-foreground leading-snug pt-0.5 group-hover:text-violet-400 transition-colors">
                             {version.nombre}
                         </h3>
                     </div>
