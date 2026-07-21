@@ -879,21 +879,26 @@ function VersionCard({ version, estados, onClick, onDelete }) {
                  e.dataTransfer.setData('id_version', String(version.id_version));
                  e.dataTransfer.effectAllowed = 'move';
              }}
-             className="bg-card border border-border rounded-2xl p-5 cursor-grab active:cursor-grabbing hover:border-violet-500/40 hover:shadow-lg transition-all group">
+             className="relative overflow-hidden bg-card border border-border/60 rounded-2xl pl-6 pr-5 py-5 cursor-grab active:cursor-grabbing hover:border-violet-500/40 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 group">
+            {/* Acento de color según la columna del tablero */}
+            <div className="absolute inset-y-0 left-0 w-1.5" style={{ background: estadoColor }} />
+
             <div className="flex items-start justify-between gap-3 mb-3">
-                <div className="min-w-0">
+                <div className="flex-1 min-w-0">
                     <div className="flex items-start gap-2 mb-1">
-                        <FlaskConical size={14} className="text-violet-400 shrink-0 mt-0.5" />
-                        <h3 className="text-[13px] font-semibold text-foreground leading-snug line-clamp-2 group-hover:text-violet-400 transition-colors" title={version.nombre}>
+                        <div className="h-6 w-6 rounded-lg bg-violet-500/10 flex items-center justify-center shrink-0 group-hover:bg-violet-500/20 transition-colors">
+                            <FlaskConical size={12} className="text-violet-400" />
+                        </div>
+                        <h3 className="text-[13px] font-semibold text-foreground leading-snug line-clamp-2 pt-0.5 group-hover:text-violet-400 transition-colors" title={version.nombre}>
                             {version.nombre}
                         </h3>
                     </div>
                     {version.version_tag && (
-                        <code className="text-[11px] text-muted-foreground font-mono">{version.version_tag}</code>
+                        <code className="text-[11px] text-muted-foreground font-mono ml-8">{version.version_tag}</code>
                     )}
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
-                    <span className="text-[10px] px-2 py-0.5 rounded-full border font-semibold"
+                    <span className="text-[10px] px-2 py-0.5 rounded-full border font-semibold whitespace-nowrap"
                           style={{ color: estadoColor, backgroundColor: `${estadoColor}1a`, borderColor: `${estadoColor}40` }}>
                         {version.estado_nombre}
                     </span>
@@ -907,7 +912,7 @@ function VersionCard({ version, estados, onClick, onDelete }) {
             </div>
 
             {version.descripcion && (
-                <p className="text-[12px] text-muted-foreground mb-3 line-clamp-2">{version.descripcion}</p>
+                <p className="text-[12px] text-muted-foreground mb-3 line-clamp-2 ml-8">{version.descripcion}</p>
             )}
 
             {/* Distribución por columna del tablero */}
