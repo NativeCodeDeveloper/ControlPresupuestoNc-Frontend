@@ -53,7 +53,8 @@ const EMPTY_STATS = {
     partnersAvailable: 0,
     totalFixedCosts: 0,
     totalFixedCostsCommitted: 0,
-    totalVariableCosts: 0
+    totalVariableCosts: 0,
+    ivaAPagar: 0
 };
 
 const calcChange = (current, previous) => {
@@ -114,12 +115,13 @@ export default function Dashboard() {
                 const currentYear = parseInt(selectedYear, 10);
                 const previous = new Date(currentYear, currentMonth - 1, 1);
 
-                const [currentSummary, previousSummary] = await Promise.all([
+                const [currentSummary, previousSummary, currentF29] = await Promise.all([
                     financeService.getFinancialSummary(currentMonth, currentYear),
-                    financeService.getFinancialSummary(previous.getMonth(), previous.getFullYear())
+                    financeService.getFinancialSummary(previous.getMonth(), previous.getFullYear()),
+                    financeService.getF29(currentMonth, currentYear)
                 ]);
 
-                const currentStats = mapSummaryToStats(currentSummary);
+                const currentStats = { ...mapSummaryToStats(currentSummary), ivaAPagar: Number(currentF29?.iva_neto || 0) };
                 const previousStats = mapSummaryToStats(previousSummary);
 
                 setStats(currentStats);
@@ -174,8 +176,11 @@ export default function Dashboard() {
     useRealtime(useCallback(() => {
         const currentMonth = parseInt(selectedMonth, 10);
         const currentYear  = parseInt(selectedYear, 10);
-        financeService.getFinancialSummary(currentMonth, currentYear)
-            .then(s => { if (s) setStats(mapSummaryToStats(s)); })
+        Promise.all([
+            financeService.getFinancialSummary(currentMonth, currentYear),
+            financeService.getF29(currentMonth, currentYear)
+        ])
+            .then(([s, f29]) => { if (s) setStats({ ...mapSummaryToStats(s), ivaAPagar: Number(f29?.iva_neto || 0) }); })
             .catch(() => {});
     }, [selectedMonth, selectedYear]));
 
@@ -276,6 +281,10 @@ export default function Dashboard() {
                             <div className="flex justify-between text-sm mt-4">
                                 <span className="text-muted-foreground">Fijos Vigentes (Compromiso)</span>
                                 <span className="font-medium text-[hsl(var(--corporate-blue))]">{formatCLP(stats.totalFixedCostsCommitted)}</span>
+                            </div>
+                            <div className="flex justify-between text-sm mt-4 pt-4 border-t border-border/50">
+                                <span className="text-muted-foreground">IVA a Pagar (F29)</span>
+                                <span className="font-medium text-[hsl(var(--purple-premium))]">{formatCLP(stats.ivaAPagar)}</span>
                             </div>
                         </div>
                     ) : (

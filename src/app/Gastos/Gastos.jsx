@@ -19,9 +19,11 @@ import {
     BellRing,
     Pencil,
     X,
-    CheckCircle2
+    CheckCircle2,
+    Activity,
+    Receipt
 } from 'lucide-react';
-import { cn } from '../../lib/utils';
+import { cn, formatCLP } from '../../lib/utils';
 import { Input, Select } from '../../components/ui/FormElements';
 import AdjuntosPanel from '../../components/AdjuntosPanel';
 
@@ -34,6 +36,8 @@ export default function Gastos() {
     const [variableTypesFromBD, setVariableTypesFromBD] = useState([]);
     const [projectsFromBD, setProjectsFromBD] = useState([]);
     const [dueAlerts, setDueAlerts] = useState([]);
+    const [summary, setSummary] = useState(null);
+    const [f29, setF29] = useState(null);
 
     const [editFixed, setEditFixed] = useState(null);
     const [editFixedForm, setEditFixedForm] = useState({});
@@ -80,13 +84,15 @@ export default function Gastos() {
 
     const loadData = async () => {
         try {
-            const [fixedData, variableData, services, types, projects, dueData] = await Promise.all([
+            const [fixedData, variableData, services, types, projects, dueData, summaryData, f29Data] = await Promise.all([
                 costsService.getFixedCosts(),
                 costsService.getVariableCosts(),
                 costsService.getServices(),
                 costsService.getVariableCostTypes(),
                 projectsService.getProjects(),
-                financeService.getDueAlerts(10)
+                financeService.getDueAlerts(10),
+                financeService.getFinancialSummary(),
+                financeService.getF29()
             ]);
             if (fixedData && Array.isArray(fixedData)) setFixedCostsData(fixedData);
             if (variableData && Array.isArray(variableData)) setVariableCostsData(variableData);
@@ -94,6 +100,8 @@ export default function Gastos() {
             if (types && Array.isArray(types) && types.length > 0) setVariableTypesFromBD(types);
             if (projects && Array.isArray(projects)) setProjectsFromBD(projects);
             if (dueData?.items && Array.isArray(dueData.items)) setDueAlerts(dueData.items);
+            setSummary(summaryData);
+            setF29(f29Data);
         } catch (error) {
             console.error('Error cargando datos de gastos:', error);
         }
@@ -565,6 +573,42 @@ export default function Gastos() {
                             activeTab === 'variable' ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
                         Costos Variables
                     </button>
+                </div>
+            </div>
+
+            {/* Resumen del mes: costos fijos, variables e IVA a pagar (F29) */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-card border border-border rounded-xl p-5 shadow-sm">
+                    <div className="flex items-center justify-between mb-3">
+                        <span className="text-sm font-medium text-muted-foreground">Costos Fijos</span>
+                        <div className="p-2 rounded-lg bg-[hsl(var(--copper))]/10 text-[hsl(var(--copper))]">
+                            <Repeat size={16} />
+                        </div>
+                    </div>
+                    <h3 className="text-2xl font-bold tracking-tight text-foreground">{formatCLP(summary?.fixedCosts || 0)}</h3>
+                    <p className="text-xs text-muted-foreground mt-1">Este mes</p>
+                </div>
+                <div className="bg-card border border-border rounded-xl p-5 shadow-sm">
+                    <div className="flex items-center justify-between mb-3">
+                        <span className="text-sm font-medium text-muted-foreground">Costos Variables</span>
+                        <div className="p-2 rounded-lg bg-foreground/10 text-foreground">
+                            <Activity size={16} />
+                        </div>
+                    </div>
+                    <h3 className="text-2xl font-bold tracking-tight text-foreground">{formatCLP(summary?.variableCosts || 0)}</h3>
+                    <p className="text-xs text-muted-foreground mt-1">Este mes</p>
+                </div>
+                <div className="bg-card border border-[hsl(var(--purple-premium))]/30 rounded-xl p-5 shadow-sm">
+                    <div className="flex items-center justify-between mb-3">
+                        <span className="text-sm font-medium text-muted-foreground">IVA a Pagar (F29)</span>
+                        <div className="p-2 rounded-lg bg-[hsl(var(--purple-premium))]/10 text-[hsl(var(--purple-premium))]">
+                            <Receipt size={16} />
+                        </div>
+                    </div>
+                    <h3 className="text-2xl font-bold tracking-tight text-foreground">{formatCLP(f29?.iva_neto || 0)}</h3>
+                    <p className="text-xs text-muted-foreground mt-1">
+                        Débito {formatCLP(f29?.debito_fiscal?.iva || 0)} − Crédito {formatCLP(f29?.credito_fiscal?.total || 0)}
+                    </p>
                 </div>
             </div>
 
