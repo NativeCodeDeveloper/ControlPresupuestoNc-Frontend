@@ -212,14 +212,14 @@ export default function Socios() {
     };
 
     const StatCard = ({ title, value, icon, trendColor, subtitle, iconTone = 'bg-secondary text-foreground' }) => (
-        <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-                <span className="text-sm font-medium text-muted-foreground">{title}</span>
-                <div className={`p-2 rounded-lg ${iconTone}`}>
+        <div className="bg-card border border-border rounded-xl p-6 shadow-sm flex flex-col h-full">
+            <div className="flex items-start justify-between gap-2 mb-4">
+                <span className="text-sm font-medium text-muted-foreground leading-snug min-h-[2.5rem] flex items-center">{title}</span>
+                <div className={`p-2 rounded-lg shrink-0 ${iconTone}`}>
                     {icon ? createElement(icon, { size: 16 }) : null}
                 </div>
             </div>
-            <div className="space-y-1">
+            <div className="space-y-1 mt-auto">
                 <h3 className={cn('text-2xl font-bold tracking-tight text-foreground', trendColor)}>{value}</h3>
                 {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
             </div>
