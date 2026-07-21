@@ -959,7 +959,7 @@ export default function Ingresos() {
                         </div>
                     ) : projectsView === 'list' ? (
                         <div className="overflow-x-auto border border-border rounded-xl">
-                            <table className="w-full text-[13px]">
+                            <table className="w-full min-w-[640px] text-[13px]">
                                 <thead className="bg-secondary/40 border-b border-border">
                                     <tr>
                                         <th className="text-left px-4 py-2.5 font-semibold text-muted-foreground text-[11px] uppercase tracking-wide">Proyecto</th>
@@ -988,7 +988,7 @@ export default function Ingresos() {
                                                 </td>
                                                 <td className="px-4 py-2.5">
                                                     {badge ? (
-                                                        <span className={`text-[11px] px-2 py-0.5 rounded-full border font-medium ${badge.cls}`}>{badge.label}</span>
+                                                        <span className={`text-[11px] px-2 py-0.5 rounded-full border font-medium whitespace-nowrap ${badge.cls}`}>{badge.label}</span>
                                                     ) : (
                                                         <span className="text-[11px] text-muted-foreground">—</span>
                                                     )}
