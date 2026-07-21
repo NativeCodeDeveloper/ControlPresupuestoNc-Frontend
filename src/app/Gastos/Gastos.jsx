@@ -38,6 +38,7 @@ export default function Gastos() {
     const [dueAlerts, setDueAlerts] = useState([]);
     const [summary, setSummary] = useState(null);
     const [f29, setF29] = useState(null);
+    const [recentlyPaidId, setRecentlyPaidId] = useState(null);
 
     const [editFixed, setEditFixed] = useState(null);
     const [editFixedForm, setEditFixedForm] = useState({});
@@ -366,6 +367,8 @@ export default function Gastos() {
             ]);
             if (freshData) setFixedCostsData(freshData);
             if (dueData?.items) setDueAlerts(dueData.items);
+            setRecentlyPaidId(cost.id);
+            setTimeout(() => setRecentlyPaidId((current) => (current === cost.id ? null : current)), 5000);
         } catch (err) {
             console.error('Error registrando pago:', err);
             alert('Error al registrar el pago');
@@ -840,12 +843,18 @@ export default function Gastos() {
                                                 </div>
                                             </div>
                                         </div>
-                                        <button
-                                            onClick={() => handleRegistrarPagoFijo(cost)}
-                                            disabled={isLoading}
-                                            className="mt-3 w-full flex items-center justify-center gap-2 text-xs font-medium py-2 rounded-lg border border-[hsl(var(--emerald-premium))]/40 text-[hsl(var(--emerald-premium))] bg-[hsl(var(--emerald-premium))]/5 hover:bg-[hsl(var(--emerald-premium))]/15 transition-colors disabled:opacity-40">
-                                            <CheckCircle2 size={13} /> Registrar Pago
-                                        </button>
+                                        {recentlyPaidId === cost.id ? (
+                                            <div className="mt-3 w-full flex items-center justify-center gap-2 text-xs font-semibold py-2 rounded-lg border border-[hsl(var(--emerald-premium))]/50 text-white bg-[hsl(var(--emerald-premium))]">
+                                                <CheckCircle2 size={13} /> Pago registrado hoy
+                                            </div>
+                                        ) : (
+                                            <button
+                                                onClick={() => handleRegistrarPagoFijo(cost)}
+                                                disabled={isLoading}
+                                                className="mt-3 w-full flex items-center justify-center gap-2 text-xs font-medium py-2 rounded-lg border border-[hsl(var(--emerald-premium))]/40 text-[hsl(var(--emerald-premium))] bg-[hsl(var(--emerald-premium))]/5 hover:bg-[hsl(var(--emerald-premium))]/15 transition-colors disabled:opacity-40">
+                                                <CheckCircle2 size={13} /> Registrar Pago
+                                            </button>
+                                        )}
                                         <div className="mt-2">
                                             <AdjuntosPanel entidad="costo_fijo" idEntidad={cost.id} compact label="Facturas" />
                                         </div>
