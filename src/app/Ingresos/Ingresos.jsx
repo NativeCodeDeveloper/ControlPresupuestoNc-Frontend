@@ -27,12 +27,84 @@ import {
     FileText,
     LayoutGrid,
     List,
-    Loader2
+    Loader2,
+    Sparkles,
+    UserPlus
 } from 'lucide-react';
 import { cn, normalizeRut } from '../../lib/utils';
 import { Input, Select } from '../../components/ui/FormElements';
 import { generateDtePreview, computeDteTotals as computeDteTotalsShared } from '../../lib/dtePdfGenerator';
 import * as dteService from '../../services/dteService';
+import EmailModal from '../../components/EmailModal';
+
+// ─── Templates de correo — Bienvenida / Solicitud de usuarios / Finalización ──
+
+const templateBienvenida = (project) => ({
+    subject: 'Bienvenido a NativeCode',
+    body: `Estimado/a ${project?.nombre_cliente || ''},
+
+Gracias por confiar en NativeCode.
+
+Para nosotros es un agrado tenerte aquí. Es por eso que, para que puedas operar de forma efectiva la plataforma, es fundamental que podamos agendar una capacitación. De esta manera, podremos revisar cada módulo y sus secciones para ver en detalle sus funciones.
+
+Pronto nos comunicaremos contigo vía WhatsApp para coordinar el día y la hora de la capacitación.
+
+Saludos cordiales,
+Equipo NativeCode`
+});
+
+const templateSolicitudUsuarios = (project) => ({
+    subject: `Configuración de accesos — ${project?.nombre || 'tu proyecto'}`,
+    body: `Estimado/a ${project?.nombre_cliente || ''},
+
+Para dejar tu plataforma lista y configurar los accesos de tu equipo, necesitamos que nos envíes la siguiente información por cada usuario que necesite ingresar al sistema:
+
+• Nombre completo
+• Especialidad (si corresponde)
+• Tipo de usuario: Administrador / Secretaria / Recepcionista (elige uno — si no aplica, déjalo en blanco)
+• Accesos o módulos que necesita ver dentro de la plataforma
+
+Puedes responder este mismo correo con la lista de tus usuarios y sus datos, y comenzaremos a configurar sus accesos.
+
+Saludos cordiales,
+Equipo NativeCode`
+});
+
+const templateFinalizacion = (project) => ({
+    subject: 'Tu proyecto ha sido finalizado — ¡Ya está operativo!',
+    body: `Estimado/a ${project?.nombre_cliente || ''},
+
+Nos complace informarte que tu proyecto ha sido finalizado y se encuentra completamente operativo.
+
+A partir de este momento puedes acceder a tu plataforma mediante los siguientes enlaces:
+
+Acceso a tu página web: ${project?.url_front || '[completar link de acceso]'}
+Acceso al panel de administración: [completar link del dashboard]
+
+Credenciales iniciales
+Usuario: [completar]
+Contraseña temporal: [completar]
+
+(Por favor no compartas tus contraseñas, puede ser perjudicial para tus datos y los de tus pacientes)
+
+¿Qué puedes hacer ahora?
+• Gestionar contenido.
+• Administrar citas / pacientes / fichas clínicas.
+• Revisar información de usuarios.
+
+¡Ahora ya estás listo para gestionar tu consulta!
+
+Durante los próximos días estaremos atentos para apoyarte en cualquier duda o ajuste inicial.
+
+Saludos cordiales,
+Equipo NativeCode`
+});
+
+const EMAIL_TEMPLATES = {
+    bienvenida:   { title: 'Bienvenida',            icon: Sparkles,     generator: templateBienvenida },
+    usuarios:     { title: 'Solicitud de Usuarios', icon: UserPlus,     generator: templateSolicitudUsuarios },
+    finalizacion: { title: 'Finalización',          icon: CheckCircle2, generator: templateFinalizacion },
+};
 
 export default function Ingresos() {
     const [activeTab, setActiveTab]       = usePersistedState('ingresos:activeTab', 'projects');
@@ -96,6 +168,9 @@ export default function Ingresos() {
     const [ultimoDocumento, setUltimoDocumento] = useState(null);
     const [isEmitiendo, setIsEmitiendo] = useState(false);
     const [emisionResultado, setEmisionResultado] = useState(null);
+
+    const [emailMenuOpenId, setEmailMenuOpenId] = useState(null);
+    const [emailModalState, setEmailModalState] = useState(null); // { project, type }
 
     const fmtPreview = (val) => {
         const n = Math.round(parseFloat(val) || 0);
@@ -1120,6 +1195,30 @@ export default function Ingresos() {
                                                     </select>
                                                 </div>
                                                 <div className="flex items-center gap-1">
+                                                    <div className="relative">
+                                                        <button onClick={() => setEmailMenuOpenId(emailMenuOpenId === project.id ? null : project.id)}
+                                                            className="text-muted-foreground hover:text-violet-400 transition-colors p-1" title="Enviar correo (Bienvenida / Solicitud de Usuarios / Finalización)">
+                                                            <Mail size={14} />
+                                                        </button>
+                                                        {emailMenuOpenId === project.id && (
+                                                            <>
+                                                                <div className="fixed inset-0 z-10" onClick={() => setEmailMenuOpenId(null)} />
+                                                                <div className="absolute right-0 top-full mt-1 z-20 w-48 bg-card border border-border rounded-lg shadow-xl py-1">
+                                                                    {Object.entries(EMAIL_TEMPLATES).map(([key, tpl]) => {
+                                                                        const TplIcon = tpl.icon;
+                                                                        return (
+                                                                            <button key={key}
+                                                                                onClick={() => { setEmailModalState({ project, type: key }); setEmailMenuOpenId(null); }}
+                                                                                className="w-full flex items-center gap-2 px-3 py-2 text-[12.5px] text-left hover:bg-foreground/5 transition-colors">
+                                                                                <TplIcon size={13} className="text-violet-400" />
+                                                                                {tpl.title}
+                                                                            </button>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            </>
+                                                        )}
+                                                    </div>
                                                     <button onClick={() => handleDteOpen(project)}
                                                         className="text-muted-foreground hover:text-[hsl(var(--purple-premium))] transition-colors p-1" title="Emitir Documento Tributario (borrador)">
                                                         <FileText size={14} />
@@ -1578,6 +1677,20 @@ export default function Ingresos() {
                         </div>
                     </div>
                 </div>
+            );
+        })()}
+
+        {emailModalState && (() => {
+            const tpl = EMAIL_TEMPLATES[emailModalState.type];
+            return (
+                <EmailModal
+                    proyecto={emailModalState.project}
+                    draft={tpl.generator(emailModalState.project)}
+                    title={tpl.title}
+                    icon={tpl.icon}
+                    onSend={(payload) => projectsService.sendProjectEmail(emailModalState.project.id, payload)}
+                    onClose={() => setEmailModalState(null)}
+                />
             );
         })()}
         </div>

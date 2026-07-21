@@ -303,6 +303,17 @@ export const updateProjectPayment = async (projectId, paymentId, data) => {
 };
 
 /**
+ * sendProjectEmail - Envía un correo relacionado al proyecto (bienvenida,
+ * solicitud de usuarios, finalización, etc).
+ *
+ * @param {number|string} projectId
+ * @param {{ to: string, subject: string, body: string, attachments?: Array }} data
+ */
+export const sendProjectEmail = async (projectId, data) => {
+    return apiClient.post(`/api/proyectos/${projectId}/email/enviar`, data);
+};
+
+/**
  * Catálogos de proyectos
  * (tipos de proyecto, estados, etc)
  */
