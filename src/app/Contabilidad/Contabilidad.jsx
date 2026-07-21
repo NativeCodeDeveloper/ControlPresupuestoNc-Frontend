@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRealtime } from '../../hooks/useRealtime';
-import { getFinancialSummary, getFlujoCaja, getF29 } from '../../services/financeService';
+import { getFinancialSummary, getFlujoCaja, getF29, getF29Historial, marcarF29Pagado, desmarcarF29Pagado } from '../../services/financeService';
 import {
     BookOpen,
     Scale,
@@ -11,7 +11,10 @@ import {
     RefreshCw,
     Info,
     ArrowRight,
-    Receipt
+    Receipt,
+    CheckCircle2,
+    Circle,
+    Undo2
 } from 'lucide-react';
 import {
     LineChart,
@@ -98,6 +101,8 @@ export default function Contabilidad() {
     const [summary, setSummary] = useState(null);
     const [flujoCaja, setFlujoCaja] = useState(null);
     const [f29Data, setF29Data] = useState(null);
+    const [f29Historial, setF29Historial] = useState([]);
+    const [marcandoPagado, setMarcandoPagado] = useState(null); // `${anio}-${mes}` en curso
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -105,20 +110,49 @@ export default function Contabilidad() {
         if (!silent) setLoading(true);
         if (!silent) setError(null);
         try {
-            const [sum, flujo, f29] = await Promise.all([
+            const [sum, flujo, f29, historial] = await Promise.all([
                 getFinancialSummary(month, year),
                 getFlujoCaja(year),
-                getF29(month, year).catch(() => null)
+                getF29(month, year).catch(() => null),
+                getF29Historial(12)
             ]);
             setSummary(sum);
             setFlujoCaja(flujo);
             setF29Data(f29);
+            setF29Historial(historial);
         } catch (e) {
             if (!silent) setError(e.message || 'Error al cargar datos contables');
         } finally {
             if (!silent) setLoading(false);
         }
     }, [month, year]);
+
+    const handleMarcarPagado = async (mes, anio) => {
+        const key = `${anio}-${mes}`;
+        setMarcandoPagado(key);
+        try {
+            await marcarF29Pagado(mes, anio);
+            await load(true);
+        } catch (e) {
+            alert(e.message || 'No se pudo marcar el período como pagado.');
+        } finally {
+            setMarcandoPagado(null);
+        }
+    };
+
+    const handleDesmarcarPagado = async (mes, anio) => {
+        if (!window.confirm(`¿Quitar la marca de pagado de ${MESES_FULL[mes - 1]} ${anio}? Volverá a mostrarse como pendiente (con el cálculo en vivo actual).`)) return;
+        const key = `${anio}-${mes}`;
+        setMarcandoPagado(key);
+        try {
+            await desmarcarF29Pagado(anio, mes);
+            await load(true);
+        } catch (e) {
+            alert(e.message || 'No se pudo desmarcar el período.');
+        } finally {
+            setMarcandoPagado(null);
+        }
+    };
 
     const loadSilent = useCallback(() => load(true), [load]);
     useRealtime(loadSilent);
@@ -347,11 +381,33 @@ export default function Contabilidad() {
                                     IVA débito, crédito fiscal y PPM de {MESES_FULL[month]} {year}
                                 </p>
                             </div>
-                            {f29Data?.vencimiento && (
-                                <span className="text-[11px] px-2.5 py-1 rounded-full bg-[hsl(var(--purple-premium))]/10 border border-[hsl(var(--purple-premium))]/25 text-[hsl(var(--purple-premium))] font-medium">
-                                    Vence {new Date(f29Data.vencimiento + 'T12:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'long' })}
-                                </span>
-                            )}
+                            <div className="flex items-center gap-2">
+                                {f29Data?.vencimiento && (
+                                    <span className="text-[11px] px-2.5 py-1 rounded-full bg-[hsl(var(--purple-premium))]/10 border border-[hsl(var(--purple-premium))]/25 text-[hsl(var(--purple-premium))] font-medium">
+                                        Vence {new Date(f29Data.vencimiento + 'T12:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'long' })}
+                                    </span>
+                                )}
+                                {(() => {
+                                    const periodoActual = f29Historial.find((h) => h.mes === month + 1 && h.anio === year);
+                                    if (periodoActual?.pagado) {
+                                        return (
+                                            <span className="flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-full bg-[hsl(var(--emerald-premium))]/10 border border-[hsl(var(--emerald-premium))]/25 text-[hsl(var(--emerald-premium))] font-medium">
+                                                <CheckCircle2 size={12} /> Pagado
+                                            </span>
+                                        );
+                                    }
+                                    return (
+                                        <button
+                                            onClick={() => handleMarcarPagado(month + 1, year)}
+                                            disabled={marcandoPagado === `${year}-${month + 1}` || !f29Data}
+                                            className="flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-full bg-[hsl(var(--emerald-premium))] hover:bg-[hsl(var(--emerald-premium))]/90 text-white font-medium disabled:opacity-50 transition-colors"
+                                        >
+                                            <CheckCircle2 size={12} />
+                                            {marcandoPagado === `${year}-${month + 1}` ? 'Marcando...' : 'Marcar como pagado'}
+                                        </button>
+                                    );
+                                })()}
+                            </div>
                         </div>
 
                         {!f29Data ? (
@@ -391,6 +447,81 @@ export default function Contabilidad() {
                                 </div>
                             </>
                         )}
+                    </div>
+
+                    {/* Historial de pagos F29 */}
+                    <div className="bg-card border border-border rounded-xl p-5 shadow-sm">
+                        <h2 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-1">
+                            <Receipt size={15} className="text-[hsl(var(--purple-premium))]" />
+                            Historial de Pagos IVA (F29)
+                        </h2>
+                        <p className="text-[11px] text-muted-foreground mb-4">
+                            Últimos 12 períodos. Los pendientes muestran el cálculo en vivo (pueden cambiar hasta que los marques como pagados).
+                        </p>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-[12px]">
+                                <thead>
+                                    <tr className="border-b border-border/50 text-left text-muted-foreground">
+                                        <th className="py-2 pr-3 font-medium">Período</th>
+                                        <th className="py-2 px-3 font-medium text-right">IVA Neto</th>
+                                        <th className="py-2 px-3 font-medium text-right">Total F29</th>
+                                        <th className="py-2 px-3 font-medium">Vencimiento</th>
+                                        <th className="py-2 px-3 font-medium">Estado</th>
+                                        <th className="py-2 pl-3 font-medium text-right">Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {f29Historial.map((h) => {
+                                        const key = `${h.anio}-${h.mes}`;
+                                        const isCurrentAction = marcandoPagado === key;
+                                        return (
+                                            <tr key={key} className="border-b border-border/30 last:border-0">
+                                                <td className="py-2.5 pr-3 text-foreground font-medium whitespace-nowrap">{MESES_FULL[h.mes - 1]} {h.anio}</td>
+                                                <td className="py-2.5 px-3 text-right tabular-nums text-foreground">{fmt(h.iva_neto)}</td>
+                                                <td className="py-2.5 px-3 text-right tabular-nums text-muted-foreground">{fmt(h.total_f29)}</td>
+                                                <td className="py-2.5 px-3 text-muted-foreground whitespace-nowrap">
+                                                    {h.fecha_vencimiento ? new Date(String(h.fecha_vencimiento).slice(0, 10) + 'T12:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'short' }) : '—'}
+                                                </td>
+                                                <td className="py-2.5 px-3">
+                                                    {h.pagado ? (
+                                                        <span className="flex items-center gap-1 text-[11px] text-[hsl(var(--emerald-premium))] font-medium">
+                                                            <CheckCircle2 size={11} /> Pagado
+                                                        </span>
+                                                    ) : (
+                                                        <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                                                            <Circle size={11} /> {h.calculado ? 'Pendiente (estimado)' : 'Pendiente'}
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="py-2.5 pl-3 text-right">
+                                                    {h.pagado ? (
+                                                        <button
+                                                            onClick={() => handleDesmarcarPagado(h.mes, h.anio)}
+                                                            disabled={isCurrentAction}
+                                                            title="Quitar marca de pagado"
+                                                            className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-rose-500 disabled:opacity-50 transition-colors"
+                                                        >
+                                                            <Undo2 size={12} /> Desmarcar
+                                                        </button>
+                                                    ) : (
+                                                        <button
+                                                            onClick={() => handleMarcarPagado(h.mes, h.anio)}
+                                                            disabled={isCurrentAction}
+                                                            className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg bg-[hsl(var(--emerald-premium))]/10 hover:bg-[hsl(var(--emerald-premium))]/20 text-[hsl(var(--emerald-premium))] font-medium disabled:opacity-50 transition-colors"
+                                                        >
+                                                            <CheckCircle2 size={12} /> {isCurrentAction ? 'Marcando...' : 'Marcar pagado'}
+                                                        </button>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                    {!f29Historial.length && (
+                                        <tr><td colSpan={6} className="py-6 text-center text-muted-foreground">Sin historial disponible.</td></tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
 
                     {/* Nota conceptual */}
