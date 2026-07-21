@@ -5,6 +5,7 @@ import { io } from 'socket.io-client';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || '';
 const POLL_INTERVAL = 45_000; // 45 segundos
+const DEBOUNCE_MS = 1_500; // colapsa ráfagas de eventos (varias escrituras seguidas) en un solo reload
 
 let sharedSocket = null;
 let socketRefCount = 0;
@@ -35,7 +36,13 @@ export function useRealtime(onUpdate, events = ['ncf:update']) {
     onUpdateRef.current = onUpdate;
 
     useEffect(() => {
-        const fire = () => onUpdateRef.current?.();
+        let debounceTimer = null;
+        // Colapsa varios disparos seguidos (ej: 3 escrituras en 2s) en un solo reload,
+        // en vez de recargar una vez por cada evento recibido.
+        const fire = () => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => onUpdateRef.current?.(), DEBOUNCE_MS);
+        };
 
         // ── 1. Socket.io ──────────────────────────────────────────────
         const socket = getSocket();
@@ -45,13 +52,17 @@ export function useRealtime(onUpdate, events = ['ncf:update']) {
         // ── 2. Polling cada 45s ───────────────────────────────────────
         const pollTimer = setInterval(fire, POLL_INTERVAL);
 
-        // ── 3. Refresca al volver al tab ──────────────────────────────
+        // ── 3. Refresca al volver al tab — inmediato, sin debounce ─────
         const handleVisibility = () => {
-            if (document.visibilityState === 'visible') fire();
+            if (document.visibilityState === 'visible') {
+                clearTimeout(debounceTimer);
+                onUpdateRef.current?.();
+            }
         };
         document.addEventListener('visibilitychange', handleVisibility);
 
         return () => {
+            clearTimeout(debounceTimer);
             events.forEach(ev => socket.off(ev, fire));
             clearInterval(pollTimer);
             document.removeEventListener('visibilitychange', handleVisibility);
