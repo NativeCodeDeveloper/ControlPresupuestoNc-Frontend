@@ -43,9 +43,10 @@ const LOGO_WHITE_URL = 'https://nativecode-finance.agendaclinicas.cl/logo_templa
 const LOGO_BLACK_URL = 'https://nativecode-finance.agendaclinicas.cl/logo_template_negro.png'; // sobre fondos claros
 const ACADEMIA_AGENDA_CLINICA_URL = 'https://academia.agendaclinicas.cl/dashboard';
 
-// Genera el HTML de una fila de credencial (usuario + contraseña con toggle de visibilidad
-// vía checkbox/CSS — funciona en Apple Mail/Outlook.com/Yahoo; en Gmail el toggle no es
-// interactivo por sus restricciones de seguridad y la contraseña queda oculta por defecto).
+// Genera el HTML de una fila de credencial (usuario + contraseña en texto plano).
+// Gmail elimina <input>/<form> de los correos recibidos, así que cualquier truco de
+// mostrar/ocultar con checkbox no es confiable — se muestra directo para garantizar
+// que el cliente pueda leer sus credenciales en cualquier proveedor de correo.
 function credencialRowHtml({ usuario, password }, idx) {
     if (!usuario && !password) return '';
     const esc = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -54,14 +55,7 @@ function credencialRowHtml({ usuario, password }, idx) {
             <div style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Usuario</div>
             <div style="font-weight:600;color:#0f172a;margin-bottom:14px;">${esc(usuario)}</div>
             <div style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Contraseña</div>
-            <div style="display:flex;align-items:center;gap:8px;">
-                <input type="checkbox" id="pw-toggle-${idx}" class="pw-check">
-                <span class="pw-mask" style="font-family:monospace;letter-spacing:3px;font-weight:600;color:#0f172a;">••••••••</span>
-                <span class="pw-real" style="font-family:monospace;font-weight:600;color:#0f172a;">${esc(password)}</span>
-                <label for="pw-toggle-${idx}" class="pw-eye" style="cursor:pointer;display:inline-flex;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                </label>
-            </div>
+            <div style="font-family:monospace;font-weight:600;color:#0f172a;">${esc(password)}</div>
         </div>`;
 }
 
@@ -209,10 +203,6 @@ body{margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSys
 .credentials{background:#f8fafc;border-radius:18px;padding:30px;margin-top:40px;}
 .credentials h3{margin-top:0;}
 .credentials p{color:#475569;line-height:28px;}
-.pw-check{position:absolute;opacity:0;width:1px;height:1px;}
-.pw-real{display:none;}
-.pw-check:checked ~ .pw-real{display:inline;}
-.pw-check:checked ~ .pw-mask{display:none;}
 .academy{margin-top:45px;padding:30px;border-radius:18px;background:#0f172a;text-align:center;}
 .academy h3{color:white;margin-top:0;}
 .academy p{color:#cbd5e1;line-height:30px;}
