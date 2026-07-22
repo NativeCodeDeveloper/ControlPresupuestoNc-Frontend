@@ -58,7 +58,9 @@ function credencialRowHtml({ usuario, password }, idx) {
                 <input type="checkbox" id="pw-toggle-${idx}" class="pw-check">
                 <span class="pw-mask" style="font-family:monospace;letter-spacing:3px;font-weight:600;color:#0f172a;">••••••••</span>
                 <span class="pw-real" style="font-family:monospace;font-weight:600;color:#0f172a;">${esc(password)}</span>
-                <label for="pw-toggle-${idx}" class="pw-eye" style="cursor:pointer;">👁</label>
+                <label for="pw-toggle-${idx}" class="pw-eye" style="cursor:pointer;display:inline-flex;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </label>
             </div>
         </div>`;
 }
@@ -77,7 +79,7 @@ body{background:#030712;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',
 .wrapper{width:100%;padding:40px 20px;}
 .container{max-width:700px;margin:0 auto;}
 .hero{background:linear-gradient(180deg,rgba(3,7,18,.96) 0%,rgba(15,23,42,.98) 100%);border-radius:28px 28px 0 0;padding:80px 50px;text-align:center;}
-.logo{width:180px;display:block;margin:0 auto 50px;}
+.logo{width:220px;display:block;margin:0 auto 50px;}
 .badge{display:inline-block;padding:10px 20px;border:1px solid rgba(255,255,255,.12);border-radius:50px;color:#94A3B8;font-size:12px;letter-spacing:2px;text-transform:uppercase;}
 .title{color:#FFFFFF;font-size:52px;font-weight:700;line-height:1.1;margin-top:35px;}
 .subtitle{max-width:540px;margin:30px auto 0;color:#CBD5E1;font-size:20px;line-height:34px;font-weight:300;}
@@ -88,12 +90,12 @@ body{background:#030712;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',
 .card-title{color:#0F172A;font-size:22px;font-weight:700;margin-bottom:25px;}
 .item{color:#334155;font-size:16px;line-height:32px;margin-bottom:12px;}
 .button-container{text-align:center;margin-top:50px;}
-.button{display:inline-block;background:#334155;color:#60A5FA;text-decoration:none;padding:18px 38px;border-radius:14px;font-size:15px;font-weight:600;}
+.button{display:inline-block;background:#F2F2F7;color:#2563EB !important;border:1px solid #E2E8F0;text-decoration:none;padding:18px 38px;border-radius:14px;font-size:15px;font-weight:600;}
 .closing{margin-top:50px;text-align:center;}
 .closing-title{color:#0F172A;font-size:28px;font-weight:700;margin-bottom:15px;}
 .closing-text{color:#64748B;font-size:18px;line-height:32px;}
 .footer{background:#0F172A;border-radius:0 0 28px 28px;padding:50px;text-align:center;}
-.footer-logo{width:150px;margin:0 auto;}
+.footer-logo{width:180px;margin:0 auto;}
 .footer-text{color:#94A3B8;margin-top:24px;line-height:28px;font-size:15px;}
 .footer-text a{color:#94A3B8;text-decoration:none;}
 @media(max-width:640px){.hero{padding:60px 30px;}.content{padding:40px 30px;}.title{font-size:38px;}.subtitle{font-size:18px;line-height:30px;}}
@@ -123,7 +125,7 @@ body{background:#030712;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',
         </div>
         <p class="text">Estamos convencidos de que las mejores soluciones nacen de grandes colaboraciones, y esperamos construir una relación sólida y duradera contigo.</p>
         <div class="button-container">
-            <a href="{{LINK_ACCESO}}" class="button">Comenzar</a>
+            <a href="{{LINK_ACCESO}}" class="button" style="color:#2563EB !important;">Comenzar</a>
         </div>
         <div class="closing">
             <div class="closing-title">Este es solo el comienzo.</div>
@@ -188,7 +190,7 @@ body{margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSys
 .wrapper{width:100%;padding:40px 20px;}
 .container{max-width:720px;margin:0 auto;}
 .hero{background:linear-gradient(135deg,#050816 0%,#0b1023 50%,#140a2f 100%);padding:70px 50px;border-radius:28px 28px 0 0;text-align:center;}
-.logo{width:160px;display:block;margin:0 auto 40px;}
+.logo{width:200px;display:block;margin:0 auto 40px;}
 .badge{display:inline-block;padding:10px 18px;border:1px solid rgba(255,255,255,.15);border-radius:999px;color:#cbd5e1;font-size:12px;letter-spacing:2px;text-transform:uppercase;}
 .hero h1{color:white;font-size:48px;line-height:1.1;margin:30px 0 20px;}
 .hero p{color:#cbd5e1;font-size:20px;line-height:34px;max-width:550px;margin:auto;}
@@ -203,7 +205,7 @@ body{margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSys
 .access-card{border:1px solid #e2e8f0;border-radius:18px;padding:28px;margin-bottom:20px;}
 .access-title{font-size:22px;font-weight:700;color:#0f172a;}
 .access-desc{color:#64748b;margin-top:10px;margin-bottom:20px;line-height:28px;}
-.button{display:inline-block;background:linear-gradient(135deg,#7c3aed,#2563eb);color:white;text-decoration:none;padding:14px 24px;border-radius:12px;font-weight:600;}
+.button{display:inline-block;background:linear-gradient(135deg,#7c3aed,#2563eb);color:#ffffff !important;text-decoration:none;padding:14px 24px;border-radius:12px;font-weight:700;}
 .credentials{background:#f8fafc;border-radius:18px;padding:30px;margin-top:40px;}
 .credentials h3{margin-top:0;}
 .credentials p{color:#475569;line-height:28px;}
@@ -215,7 +217,7 @@ body{margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSys
 .academy h3{color:white;margin-top:0;}
 .academy p{color:#cbd5e1;line-height:30px;}
 .footer{background:#0b1023;padding:50px;text-align:center;border-radius:0 0 28px 28px;}
-.footer-logo{width:140px;margin:0 auto 24px;}
+.footer-logo{width:170px;margin:0 auto 24px;}
 .footer h3{color:white;margin-top:0;}
 .footer p{color:#94a3b8;line-height:30px;}
 .contact{margin-top:25px;}
@@ -245,12 +247,12 @@ body{margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSys
         <div class="access-card">
             <div class="access-title">Tu Sitio Web Agenda Clínica</div>
             <div class="access-desc">Acceso público a tu plataforma de agenda clínica.</div>
-            <a href="{{URL_WEB}}" class="button">Abrir Sitio Web</a>
+            <a href="{{URL_WEB}}" class="button" style="color:#ffffff !important;">Abrir Sitio Web</a>
         </div>
         <div class="access-card">
             <div class="access-title">Panel de Administración</div>
             <div class="access-desc">Gestión completa de usuarios, contenidos y configuración.</div>
-            <a href="{{URL_PANEL}}" class="button">Ingresar al Panel</a>
+            <a href="{{URL_PANEL}}" class="button" style="color:#ffffff !important;">Ingresar al Panel</a>
         </div>
         <div class="credentials">
             <h3>Credenciales de acceso</h3>
@@ -260,7 +262,7 @@ body{margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSys
         <div class="academy">
             <h3>Academia Agenda Clínica</h3>
             <p>Encontrarás tutoriales, documentación y material de apoyo para sacar el máximo provecho de tu plataforma desde el primer día.</p>
-            <a href="${ACADEMIA_AGENDA_CLINICA_URL}" class="button" style="margin-top:20px;">Ir a la Academia</a>
+            <a href="${ACADEMIA_AGENDA_CLINICA_URL}" class="button" style="margin-top:20px;color:#ffffff !important;">Ir a la Academia</a>
         </div>
         <div style="margin-top:50px; text-align:center;">
             <h2 style="color:#0f172a;">Gracias por confiar en NativeCode.</h2>
