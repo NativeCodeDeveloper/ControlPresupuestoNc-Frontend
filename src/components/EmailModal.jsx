@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { Mail, X, CheckCircle2, Paperclip, Trash2, Loader2 } from 'lucide-react';
+import { Mail, X, CheckCircle2, Paperclip, Trash2, Loader2, Plus } from 'lucide-react';
 
 function fileToBase64(file) {
     return new Promise((resolve, reject) => {
@@ -34,7 +34,9 @@ export default function EmailModal({ proyecto, draft, title = 'Enviar correo', i
     const [body, setBody]       = useState(draft?.body || '');
     const [fieldValues, setFieldValues] = useState(() => {
         const init = {};
-        (draft?.fields || []).forEach(f => { init[f.key] = f.defaultValue || ''; });
+        (draft?.fields || []).forEach(f => {
+            init[f.key] = f.type === 'credentials-list' ? [{ usuario: '', password: '' }] : (f.defaultValue || '');
+        });
         return init;
     });
     const [sending, setSending] = useState(false);
@@ -60,13 +62,15 @@ export default function EmailModal({ proyecto, draft, title = 'Enviar correo', i
                     name:    f.name,
                 }))
             );
+            const fieldsByKey = Object.fromEntries((draft?.fields || []).map(f => [f.key, f]));
             const payload = isHtmlMode
                 ? {
                     to, subject, attachments,
-                    html: Object.entries(fieldValues).reduce(
-                        (html, [key, val]) => html.replaceAll(`{{${key}}}`, val || ''),
-                        draft.htmlTemplate
-                    ),
+                    html: Object.entries(fieldValues).reduce((html, [key, val]) => {
+                        const f = fieldsByKey[key];
+                        const replacement = f?.type === 'credentials-list' ? f.buildHtml(val) : (val || '');
+                        return html.replaceAll(`{{${key}}}`, replacement);
+                    }, draft.htmlTemplate),
                 }
                 : { to, subject, body, attachments };
             await onSend(payload);
@@ -124,7 +128,48 @@ export default function EmailModal({ proyecto, draft, title = 'Enviar correo', i
                             {isHtmlMode ? (
                                 <div className="space-y-3">
                                     <p className="text-[11px] text-muted-foreground">Este correo usa una plantilla HTML con diseño. Completa los datos que se insertarán en ella:</p>
-                                    {(draft?.fields || []).map(f => (
+                                    {(draft?.fields || []).map(f => f.type === 'credentials-list' ? (
+                                        <div key={f.key}>
+                                            <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1 block">{f.label}</label>
+                                            <div className="space-y-2">
+                                                {(fieldValues[f.key] || []).map((row, i) => (
+                                                    <div key={i} className="flex items-center gap-2">
+                                                        <input
+                                                            value={row.usuario}
+                                                            onChange={e => setFieldValues(prev => ({
+                                                                ...prev,
+                                                                [f.key]: prev[f.key].map((r, j) => j === i ? { ...r, usuario: e.target.value } : r),
+                                                            }))}
+                                                            placeholder="Usuario"
+                                                            className="flex-1 text-[13px] bg-input border border-border rounded-lg px-3 py-2 outline-none focus:border-violet-500 transition-colors"
+                                                        />
+                                                        <input
+                                                            value={row.password}
+                                                            onChange={e => setFieldValues(prev => ({
+                                                                ...prev,
+                                                                [f.key]: prev[f.key].map((r, j) => j === i ? { ...r, password: e.target.value } : r),
+                                                            }))}
+                                                            placeholder="Contraseña"
+                                                            className="flex-1 text-[13px] bg-input border border-border rounded-lg px-3 py-2 outline-none focus:border-violet-500 transition-colors"
+                                                        />
+                                                        <button
+                                                            onClick={() => setFieldValues(prev => ({ ...prev, [f.key]: prev[f.key].filter((_, j) => j !== i) }))}
+                                                            disabled={fieldValues[f.key].length <= 1}
+                                                            className="text-muted-foreground hover:text-destructive transition-colors p-1 disabled:opacity-30"
+                                                        >
+                                                            <Trash2 size={13} />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <button
+                                                onClick={() => setFieldValues(prev => ({ ...prev, [f.key]: [...prev[f.key], { usuario: '', password: '' }] }))}
+                                                className="mt-2 flex items-center gap-1 text-[12px] text-violet-400 hover:text-violet-300 transition-colors"
+                                            >
+                                                <Plus size={12} /> Agregar usuario
+                                            </button>
+                                        </div>
+                                    ) : (
                                         <div key={f.key}>
                                             <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1 block">{f.label}</label>
                                             <input

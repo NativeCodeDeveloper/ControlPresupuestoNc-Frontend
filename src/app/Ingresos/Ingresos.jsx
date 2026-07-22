@@ -39,7 +39,29 @@ import EmailModal from '../../components/EmailModal';
 
 // ─── Templates de correo — Bienvenida / Solicitud de usuarios / Finalización ──
 
-const LOGO_NATIVECODE_URL = 'https://nativecode-finance.agendaclinicas.cl/logo-native-new.png';
+const LOGO_WHITE_URL = 'https://nativecode-finance.agendaclinicas.cl/logo_template.png'; // sobre fondos oscuros
+const LOGO_BLACK_URL = 'https://nativecode-finance.agendaclinicas.cl/logo_template_negro.png'; // sobre fondos claros
+const ACADEMIA_AGENDA_CLINICA_URL = 'https://academia.agendaclinicas.cl/dashboard';
+
+// Genera el HTML de una fila de credencial (usuario + contraseña con toggle de visibilidad
+// vía checkbox/CSS — funciona en Apple Mail/Outlook.com/Yahoo; en Gmail el toggle no es
+// interactivo por sus restricciones de seguridad y la contraseña queda oculta por defecto).
+function credencialRowHtml({ usuario, password }, idx) {
+    if (!usuario && !password) return '';
+    const esc = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return `
+        <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:18px;margin-top:15px;">
+            <div style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Usuario</div>
+            <div style="font-weight:600;color:#0f172a;margin-bottom:14px;">${esc(usuario)}</div>
+            <div style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Contraseña</div>
+            <div style="display:flex;align-items:center;gap:8px;">
+                <input type="checkbox" id="pw-toggle-${idx}" class="pw-check">
+                <span class="pw-mask" style="font-family:monospace;letter-spacing:3px;font-weight:600;color:#0f172a;">••••••••</span>
+                <span class="pw-real" style="font-family:monospace;font-weight:600;color:#0f172a;">${esc(password)}</span>
+                <label for="pw-toggle-${idx}" class="pw-eye" style="cursor:pointer;">👁</label>
+            </div>
+        </div>`;
+}
 
 // Template HTML diseñado (hero oscuro + tarjeta de beneficios + CTA) para el correo de Bienvenida.
 // Tokens {{NOMBRE}}, {{LINK_ACCESO}} se reemplazan antes de enviar.
@@ -55,7 +77,7 @@ body{background:#030712;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',
 .wrapper{width:100%;padding:40px 20px;}
 .container{max-width:700px;margin:0 auto;}
 .hero{background:linear-gradient(180deg,rgba(3,7,18,.96) 0%,rgba(15,23,42,.98) 100%);border-radius:28px 28px 0 0;padding:80px 50px;text-align:center;}
-.logo{width:140px;margin-bottom:50px;}
+.logo{width:180px;display:block;margin:0 auto 50px;}
 .badge{display:inline-block;padding:10px 20px;border:1px solid rgba(255,255,255,.12);border-radius:50px;color:#94A3B8;font-size:12px;letter-spacing:2px;text-transform:uppercase;}
 .title{color:#FFFFFF;font-size:52px;font-weight:700;line-height:1.1;margin-top:35px;}
 .subtitle{max-width:540px;margin:30px auto 0;color:#CBD5E1;font-size:20px;line-height:34px;font-weight:300;}
@@ -66,13 +88,14 @@ body{background:#030712;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',
 .card-title{color:#0F172A;font-size:22px;font-weight:700;margin-bottom:25px;}
 .item{color:#334155;font-size:16px;line-height:32px;margin-bottom:12px;}
 .button-container{text-align:center;margin-top:50px;}
-.button{display:inline-block;background:#2563EB;color:white;text-decoration:none;padding:18px 38px;border-radius:14px;font-size:15px;font-weight:600;}
+.button{display:inline-block;background:#334155;color:#60A5FA;text-decoration:none;padding:18px 38px;border-radius:14px;font-size:15px;font-weight:600;}
 .closing{margin-top:50px;text-align:center;}
 .closing-title{color:#0F172A;font-size:28px;font-weight:700;margin-bottom:15px;}
 .closing-text{color:#64748B;font-size:18px;line-height:32px;}
 .footer{background:#0F172A;border-radius:0 0 28px 28px;padding:50px;text-align:center;}
-.footer-logo{color:white;font-size:24px;font-weight:700;letter-spacing:4px;}
-.footer-text{color:#94A3B8;margin-top:20px;line-height:28px;font-size:15px;}
+.footer-logo{width:150px;margin:0 auto;}
+.footer-text{color:#94A3B8;margin-top:24px;line-height:28px;font-size:15px;}
+.footer-text a{color:#94A3B8;text-decoration:none;}
 @media(max-width:640px){.hero{padding:60px 30px;}.content{padding:40px 30px;}.title{font-size:38px;}.subtitle{font-size:18px;line-height:30px;}}
 </style>
 </head>
@@ -80,7 +103,7 @@ body{background:#030712;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',
 <div class="wrapper">
 <div class="container">
     <div class="hero">
-        <img src="${LOGO_NATIVECODE_URL}" alt="NativeCode" class="logo">
+        <img src="${LOGO_WHITE_URL}" alt="NativeCode" class="logo">
         <div class="badge">Bienvenido a NativeCode</div>
         <h1 class="title">Nos alegra tenerte con nosotros.</h1>
         <p class="subtitle">Gracias por confiar en NativeCode para acompañarte en la evolución tecnológica de tu organización.</p>
@@ -88,7 +111,7 @@ body{background:#030712;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',
     <div class="content">
         <div class="greeting">Hola {{NOMBRE}},</div>
         <p class="text">Queremos darte una cálida bienvenida y agradecer la confianza que has depositado en nuestro equipo.</p>
-        <p class="text">Cada nuevo cliente representa una relación que valoramos profundamente. Nuestro compromiso es acompañarte con cercanía, profesionalismo y soluciones que generen valor real para tu organización.</p>
+        <p class="text">Sabemos que confiaste en nosotros para implementar tu plataforma de Agenda Clínica, y estamos aquí para acompañarte con cercanía, profesionalismo y soluciones que generen valor real para tu organización.</p>
         <p class="text">Desde hoy cuentas con un equipo enfocado en ayudarte a avanzar con confianza, simplificar procesos y aprovechar al máximo las oportunidades que la tecnología puede ofrecer.</p>
         <div class="card">
             <div class="card-title">Lo que encontrarás en NativeCode</div>
@@ -108,11 +131,13 @@ body{background:#030712;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',
         </div>
     </div>
     <div class="footer">
-        <div class="footer-logo">NATIVECODE</div>
+        <img src="${LOGO_WHITE_URL}" alt="NativeCode" class="footer-logo">
         <div class="footer-text">
             Ingeniería de Software<br>
-            Soluciones SaaS Empresariales<br><br>
-            ingenieria.software@nativecode.cl
+            Soluciones de alto valor empresarial<br><br>
+            Correo soporte NativeCode:<br>
+            <a href="mailto:ingenieria.software@nativecode.cl">ingenieria.software@nativecode.cl</a><br>
+            +56 9 6609 1038
         </div>
     </div>
 </div>
@@ -137,17 +162,21 @@ Para dejar tu plataforma lista y configurar los accesos de tu equipo, necesitamo
 
 • Nombre completo
 • Especialidad (si corresponde)
+• Perfil profesional
 • Tipo de usuario: Administrador / Secretaria / Recepcionista (elige uno — si no aplica, déjalo en blanco)
 • Accesos o módulos que necesita ver dentro de la plataforma
 
-Puedes responder este mismo correo con la lista de tus usuarios y sus datos, y comenzaremos a configurar sus accesos.
+Si son varios profesionales, por favor envía la misma información de forma individual por cada uno de ellos.
+
+Envía esta información respondiendo a ingenieria.software@nativecode.cl y comenzaremos a configurar los accesos.
 
 Saludos cordiales,
 Equipo NativeCode`
 });
 
 // Template HTML diseñado (hero oscuro + accesos + credenciales) para el correo de Finalización.
-// Tokens {{NOMBRE}}, {{URL_WEB}}, {{URL_PANEL}}, {{USUARIO}} se reemplazan antes de enviar.
+// Tokens {{NOMBRE}}, {{URL_WEB}}, {{URL_PANEL}}, {{CREDENCIALES}} se reemplazan antes de enviar.
+// {{CREDENCIALES}} se arma en el frontend a partir de una lista de usuario/contraseña (credencialRowHtml).
 const TEMPLATE_FINALIZACION_HTML = `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -159,7 +188,7 @@ body{margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSys
 .wrapper{width:100%;padding:40px 20px;}
 .container{max-width:720px;margin:0 auto;}
 .hero{background:linear-gradient(135deg,#050816 0%,#0b1023 50%,#140a2f 100%);padding:70px 50px;border-radius:28px 28px 0 0;text-align:center;}
-.logo{width:120px;margin-bottom:40px;}
+.logo{width:160px;display:block;margin:0 auto 40px;}
 .badge{display:inline-block;padding:10px 18px;border:1px solid rgba(255,255,255,.15);border-radius:999px;color:#cbd5e1;font-size:12px;letter-spacing:2px;text-transform:uppercase;}
 .hero h1{color:white;font-size:48px;line-height:1.1;margin:30px 0 20px;}
 .hero p{color:#cbd5e1;font-size:20px;line-height:34px;max-width:550px;margin:auto;}
@@ -167,7 +196,7 @@ body{margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSys
 .greeting{font-size:22px;font-weight:600;color:#0f172a;margin-bottom:25px;}
 .text{font-size:17px;line-height:32px;color:#475569;margin-bottom:25px;}
 .status{background:#f8fafc;border:1px solid #e2e8f0;border-radius:20px;padding:30px;margin:40px 0;}
-.status-badge{display:inline-block;background:#dcfce7;color:#166534;padding:8px 14px;border-radius:999px;font-size:13px;font-weight:600;margin-bottom:18px;}
+.status-badge{display:inline-block;background:#ede9fe;color:#6d28d9;padding:8px 14px;border-radius:999px;font-size:13px;font-weight:600;margin-bottom:18px;}
 .status h2{margin:0;color:#0f172a;}
 .status p{color:#64748b;line-height:28px;}
 .section-title{font-size:28px;font-weight:700;color:#0f172a;margin-top:50px;margin-bottom:25px;}
@@ -178,11 +207,15 @@ body{margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSys
 .credentials{background:#f8fafc;border-radius:18px;padding:30px;margin-top:40px;}
 .credentials h3{margin-top:0;}
 .credentials p{color:#475569;line-height:28px;}
-.user-box{background:white;border:1px solid #e2e8f0;padding:18px;border-radius:12px;margin-top:15px;font-weight:600;color:#0f172a;}
-.academy{margin-top:45px;padding:30px;border-radius:18px;background:#0f172a;}
+.pw-check{position:absolute;opacity:0;width:1px;height:1px;}
+.pw-real{display:none;}
+.pw-check:checked ~ .pw-real{display:inline;}
+.pw-check:checked ~ .pw-mask{display:none;}
+.academy{margin-top:45px;padding:30px;border-radius:18px;background:#0f172a;text-align:center;}
 .academy h3{color:white;margin-top:0;}
 .academy p{color:#cbd5e1;line-height:30px;}
 .footer{background:#0b1023;padding:50px;text-align:center;border-radius:0 0 28px 28px;}
+.footer-logo{width:140px;margin:0 auto 24px;}
 .footer h3{color:white;margin-top:0;}
 .footer p{color:#94a3b8;line-height:30px;}
 .contact{margin-top:25px;}
@@ -194,7 +227,7 @@ body{margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSys
 <div class="wrapper">
 <div class="container">
     <div class="hero">
-        <img src="${LOGO_NATIVECODE_URL}" class="logo" alt="NativeCode">
+        <img src="${LOGO_WHITE_URL}" class="logo" alt="NativeCode">
         <div class="badge">IMPLEMENTACIÓN COMPLETADA</div>
         <h1>Tu plataforma está lista.</h1>
         <p>Todo ha sido configurado correctamente y ya puedes comenzar a utilizar tu nueva solución digital.</p>
@@ -210,8 +243,8 @@ body{margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSys
         </div>
         <div class="section-title">Accesos</div>
         <div class="access-card">
-            <div class="access-title">Sitio Web</div>
-            <div class="access-desc">Acceso público a tu plataforma.</div>
+            <div class="access-title">Tu Sitio Web Agenda Clínica</div>
+            <div class="access-desc">Acceso público a tu plataforma de agenda clínica.</div>
             <a href="{{URL_WEB}}" class="button">Abrir Sitio Web</a>
         </div>
         <div class="access-card">
@@ -220,14 +253,14 @@ body{margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSys
             <a href="{{URL_PANEL}}" class="button">Ingresar al Panel</a>
         </div>
         <div class="credentials">
-            <h3>Credenciales iniciales</h3>
-            <p>Tus credenciales de acceso se encuentran en el documento adjunto protegido.</p>
-            <div class="user-box">Usuario: {{USUARIO}}</div>
-            <p style="margin-top:20px;">Por motivos de seguridad, recomendamos cambiar tu contraseña después del primer acceso.</p>
+            <h3>Credenciales de acceso</h3>
+            <p>Tus datos de acceso se detallan a continuación. Por motivos de seguridad, recomendamos cambiar la contraseña después del primer ingreso.</p>
+            {{CREDENCIALES}}
         </div>
         <div class="academy">
-            <h3>Centro de Aprendizaje</h3>
+            <h3>Academia Agenda Clínica</h3>
             <p>Encontrarás tutoriales, documentación y material de apoyo para sacar el máximo provecho de tu plataforma desde el primer día.</p>
+            <a href="${ACADEMIA_AGENDA_CLINICA_URL}" class="button" style="margin-top:20px;">Ir a la Academia</a>
         </div>
         <div style="margin-top:50px; text-align:center;">
             <h2 style="color:#0f172a;">Gracias por confiar en NativeCode.</h2>
@@ -236,6 +269,7 @@ body{margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSys
         </div>
     </div>
     <div class="footer">
+        <img src="${LOGO_WHITE_URL}" alt="NativeCode" class="footer-logo">
         <h3>Soporte NativeCode</h3>
         <p>Si necesitas ayuda o tienes cualquier consulta, nuestro equipo estará disponible para asistirte.</p>
         <div class="contact">
@@ -253,10 +287,10 @@ const templateFinalizacion = (project) => ({
     subject: 'Tu plataforma está lista',
     htmlTemplate: TEMPLATE_FINALIZACION_HTML,
     fields: [
-        { key: 'NOMBRE',    label: 'Nombre del cliente', defaultValue: project?.nombre_cliente || '' },
-        { key: 'URL_WEB',   label: 'URL del sitio web',  defaultValue: project?.url_front || '', placeholder: 'https://...' },
-        { key: 'URL_PANEL', label: 'URL del panel de administración', defaultValue: '', placeholder: 'https://...' },
-        { key: 'USUARIO',   label: 'Usuario de acceso',  defaultValue: '', placeholder: 'usuario@ejemplo.com' },
+        { key: 'NOMBRE',       label: 'Nombre del cliente', defaultValue: project?.nombre_cliente || '' },
+        { key: 'URL_WEB',      label: 'URL del sitio web',  defaultValue: project?.url_front || '', placeholder: 'https://...' },
+        { key: 'URL_PANEL',    label: 'URL del panel de administración', defaultValue: '', placeholder: 'https://...' },
+        { key: 'CREDENCIALES', type: 'credentials-list', label: 'Credenciales de acceso (usuario + contraseña)', buildHtml: (rows) => rows.map(credencialRowHtml).join('') },
     ],
 });
 
