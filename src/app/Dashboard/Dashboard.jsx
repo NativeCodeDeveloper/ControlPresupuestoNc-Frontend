@@ -1,6 +1,7 @@
 'use client';
 
 import { createElement, useState, useEffect, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import * as financeService from '../../services/financeService';
 import { useRealtime } from '../../hooks/useRealtime';
 import { formatCLP } from '../../lib/utils';
@@ -11,16 +12,11 @@ import {
     ArrowUpRight,
     ArrowDownRight
 } from 'lucide-react';
-import {
-    BarChart,
-    Bar,
-    XAxis,
-    YAxis,
-    CartesianGrid,
-    Tooltip,
-    ResponsiveContainer
-} from 'recharts';
 import { Select } from '../../components/ui/FormElements';
+
+const CashFlowChart = dynamic(() => import('./CashFlowChart'), { ssr: false, loading: () => (
+    <div className="h-full w-full rounded-lg bg-foreground/2 animate-pulse" />
+) });
 
 const StatCard = ({ title, value, icon, color, change }) => (
     <div className="bg-card border border-border rounded-xl p-6 shadow-sm hover:border-border/80 transition-colors duration-200">
@@ -236,16 +232,7 @@ export default function Dashboard() {
                 <div className="lg:col-span-2 bg-card border border-border rounded-xl p-6 shadow-sm">
                     <h3 className="text-lg font-semibold text-foreground mb-6">Flujo de Caja</h3>
                     <div className="h-80 w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={cashFlowData}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} dy={10} />
-                                <YAxis axisLine={false} tickLine={false} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} dx={-10} tickFormatter={(value) => `$${value}`} />
-                                <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '8px' }} itemStyle={{ color: 'hsl(var(--foreground))' }} />
-                                <Bar dataKey="income" name="Ingresos" fill="hsl(var(--emerald-premium))" radius={[4, 4, 0, 0]} maxBarSize={40} />
-                                <Bar dataKey="expenses" name="Gastos" fill="hsl(var(--copper))" radius={[4, 4, 0, 0]} maxBarSize={40} />
-                            </BarChart>
-                        </ResponsiveContainer>
+                        <CashFlowChart data={cashFlowData} />
                     </div>
                 </div>
 

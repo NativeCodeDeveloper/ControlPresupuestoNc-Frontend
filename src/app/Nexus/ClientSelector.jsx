@@ -1,6 +1,6 @@
 'use client';
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { Search, X } from 'lucide-react';
+import { Search, X, Pencil } from 'lucide-react';
 
 /**
  * ClientSelector — buscador de proyectos/clientes reutilizable
@@ -89,6 +89,37 @@ export default function ClientSelector({ proyectos = [], mode = 'multi', selecte
     };
 
     const fieldCls = "flex-1 bg-secondary/50 border border-border/60 rounded-md px-2 py-1 text-[11px] text-foreground focus:outline-none focus:border-sky-500/50 min-w-0";
+
+    // Modo single con selección hecha: colapsar a una tarjeta compacta en vez de
+    // seguir mostrando la lista completa (evita que las filas se reordenen/oculten
+    // detrás del scroll y deja claro cómo elegir otro proyecto).
+    if (mode === 'single' && selected) {
+        return (
+            <div className="rounded-xl border border-sky-500/50 bg-sky-500/8 px-3 py-2.5 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-medium text-foreground truncate">{selected.nombre || 'Sin nombre'}</p>
+                    <button type="button" onClick={() => onChange(null)}
+                            className="flex items-center gap-1 text-[11px] text-sky-400 hover:text-sky-300 font-medium shrink-0">
+                        <Pencil size={11} /> Cambiar
+                    </button>
+                </div>
+                <div className="space-y-1.5">
+                    <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-muted-foreground w-14 shrink-0">Nombre</span>
+                        <input type="text" value={selected.nombre ?? ''}
+                               onChange={e => onChange({ ...selected, nombre: e.target.value })}
+                               className={fieldCls} placeholder="Nombre del cliente" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-muted-foreground w-14 shrink-0">Email</span>
+                        <input type="email" value={selected.email ?? ''}
+                               onChange={e => onChange({ ...selected, email: e.target.value })}
+                               className={fieldCls} placeholder="email@cliente.com" />
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-2">

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { usePersistedState } from '../../hooks/usePersistedState';
 import { useRealtime } from '../../hooks/useRealtime';
 import * as projectsService from '../../services/projectsService';
@@ -383,15 +383,9 @@ export default function Ingresos() {
 
                 if (projectsResult && Array.isArray(projectsResult)) {
                     setProjects(projectsResult);
-                    const paymentsResults = await Promise.all(
-                        projectsResult.map(p => projectsService.getProjectPayments(p.id))
+                    const paymentsMap = await projectsService.getProjectPaymentsBatch(
+                        projectsResult.map(p => p.id)
                     );
-                    const paymentsMap = {};
-                    projectsResult.forEach((p, i) => {
-                        if (paymentsResults[i] && Array.isArray(paymentsResults[i])) {
-                            paymentsMap[p.id] = paymentsResults[i];
-                        }
-                    });
                     setProjectPayments(paymentsMap);
                 }
                 if (typesResult && Array.isArray(typesResult) && typesResult.length > 0) setProjectTypesData(typesResult);
@@ -407,15 +401,9 @@ export default function Ingresos() {
         const updatedProjects = await projectsService.getProjects();
         if (updatedProjects && Array.isArray(updatedProjects)) {
             setProjects(updatedProjects);
-            const paymentsResults = await Promise.all(
-                updatedProjects.map(p => projectsService.getProjectPayments(p.id))
+            const paymentsMap = await projectsService.getProjectPaymentsBatch(
+                updatedProjects.map(p => p.id)
             );
-            const paymentsMap = {};
-            updatedProjects.forEach((p, i) => {
-                if (paymentsResults[i] && Array.isArray(paymentsResults[i])) {
-                    paymentsMap[p.id] = paymentsResults[i];
-                }
-            });
             setProjectPayments(paymentsMap);
         }
     };
@@ -894,20 +882,25 @@ export default function Ingresos() {
     // "Cerrado" real = Cancelado o Desactivado por no pago. "Entregado" NO es un cierre —
     // el cliente sigue usando el proyecto (ej. suscripción recurrente en curso).
     const closedStatuses = ['Cancelado', 'Desactivado por no pago'];
-    const countEntregados = allProjects.filter(p => p.estado_nombre === 'Entregado').length;
-    const countEntregadosAlDia = allProjects.filter(p =>
-        p.estado_nombre === 'Entregado' && p.estado_alerta_pago !== 'naranja' && p.estado_alerta_pago !== 'rojo'
-    ).length;
-    const countCancelados = allProjects.filter(p => closedStatuses.includes(p.estado_nombre)).length;
-    const countPorVencer = allProjects.filter(p => p.estado_alerta_pago === 'naranja' || p.estado_alerta_pago === 'rojo').length;
-    const countAlDia    = allProjects.filter(p => p.estado_alerta_pago === 'verde').length;
-    const countNaranja  = allProjects.filter(p => p.estado_alerta_pago === 'naranja').length;
-    const countRojo     = allProjects.filter(p => p.estado_alerta_pago === 'rojo').length;
-    const countByType = allProjects.reduce((acc, p) => {
-        const tipo = p.tipo_nombre || 'Sin tipo';
-        acc[tipo] = (acc[tipo] || 0) + 1;
-        return acc;
-    }, {});
+    const {
+        countEntregados, countEntregadosAlDia, countCancelados,
+        countPorVencer, countAlDia, countNaranja, countRojo, countByType
+    } = useMemo(() => ({
+        countEntregados: allProjects.filter(p => p.estado_nombre === 'Entregado').length,
+        countEntregadosAlDia: allProjects.filter(p =>
+            p.estado_nombre === 'Entregado' && p.estado_alerta_pago !== 'naranja' && p.estado_alerta_pago !== 'rojo'
+        ).length,
+        countCancelados: allProjects.filter(p => closedStatuses.includes(p.estado_nombre)).length,
+        countPorVencer: allProjects.filter(p => p.estado_alerta_pago === 'naranja' || p.estado_alerta_pago === 'rojo').length,
+        countAlDia: allProjects.filter(p => p.estado_alerta_pago === 'verde').length,
+        countNaranja: allProjects.filter(p => p.estado_alerta_pago === 'naranja').length,
+        countRojo: allProjects.filter(p => p.estado_alerta_pago === 'rojo').length,
+        countByType: allProjects.reduce((acc, p) => {
+            const tipo = p.tipo_nombre || 'Sin tipo';
+            acc[tipo] = (acc[tipo] || 0) + 1;
+            return acc;
+        }, {})
+    }), [allProjects]);
 
     const getPaymentAlertBadge = (alerta) => {
         switch (alerta) {
@@ -918,7 +911,7 @@ export default function Ingresos() {
         }
     };
 
-    const filteredProjects = (projects || []).filter(p => {
+    const filteredProjects = useMemo(() => (projects || []).filter(p => {
         const nombre = p.nombre || '';
         const codigo = p.codigo_interno || '';
         const tipo = p.tipo_nombre || '';
@@ -941,7 +934,7 @@ export default function Ingresos() {
         const matchesPago = filterPago === 'Todos' || p.estado_alerta_pago === filterPago;
 
         return matchesSearch && matchesType && matchesStatus && matchesMonth && matchesPago;
-    });
+    }), [projects, searchTerm, filterType, filterStatus, filterMonth, filterPago]);
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">

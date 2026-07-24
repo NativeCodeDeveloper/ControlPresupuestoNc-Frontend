@@ -5,10 +5,24 @@ import { useRealtime } from './useRealtime';
 
 const BASE = '/api/calendario';
 
+// Registra el Service Worker sin depender del permiso de notificaciones —
+// necesario para que la PWA tenga cache de assets y sea instalable incluso
+// si el usuario nunca acepta push.
+async function registerServiceWorker() {
+    if (!('serviceWorker' in navigator)) return null;
+    try {
+        return await navigator.serviceWorker.register('/sw.js');
+    } catch (e) {
+        console.warn('[SW]', e);
+        return null;
+    }
+}
+
 async function subscribeToPush() {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
 
-    const reg = await navigator.serviceWorker.register('/sw.js');
+    const reg = await registerServiceWorker();
+    if (!reg) return;
     const { key } = await apiClient.get(`${BASE}/vapid-key`);
     if (!key) return;
 
@@ -70,6 +84,7 @@ export function useNotificaciones() {
     }
 
     useEffect(() => {
+        registerServiceWorker();
         if ('Notification' in window) {
             setPermiso(Notification.permission);
             if (Notification.permission === 'granted') {

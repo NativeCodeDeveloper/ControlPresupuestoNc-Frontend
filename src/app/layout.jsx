@@ -10,6 +10,17 @@ export const metadata = {
         icon: '/logonuevoblanco.png',
         apple: '/apple-touch-icon.png',
     },
+    appleWebApp: {
+        capable: true,
+        statusBarStyle: 'black-translucent',
+        title: 'NC Finance',
+    },
+};
+
+export const viewport = {
+    width: 'device-width',
+    initialScale: 1,
+    themeColor: '#09090b',
 };
 
 export default function RootLayout({ children }) {

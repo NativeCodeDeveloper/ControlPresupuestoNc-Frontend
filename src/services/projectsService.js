@@ -218,6 +218,24 @@ export const getProjectPayments = async (id, params = {}) => {
 };
 
 /**
+ * getProjectPaymentsBatch - Pagos de varios proyectos en una sola petición
+ * (evita pedir uno por uno cuando se necesita el histórico de una lista completa).
+ *
+ * @param {Array<number|string>} ids - IDs de proyectos
+ * @returns {Promise<Object>} - Mapa { [id_proyecto]: Array<pago> }
+ */
+export const getProjectPaymentsBatch = async (ids = []) => {
+    if (!ids.length) return {};
+    try {
+        const data = await apiClient.get(`/api/proyectos/pagos-batch?ids=${ids.join(',')}`);
+        return data && typeof data === 'object' ? data : {};
+    } catch (error) {
+        console.error('Error obteniendo pagos en batch:', error);
+        return {};
+    }
+};
+
+/**
  * addProjectPayment - Registrar pago recibido del proyecto
  * 
  * @param {number|string} projectId - ID del proyecto
