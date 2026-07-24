@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { usePersistedState } from '../../hooks/usePersistedState';
 import {
     Hammer, Plus, RefreshCw, X, ChevronRight,
@@ -144,6 +144,7 @@ function TicketModal({ estados, socios, onClose, onCreated }) {
     });
     const [proyectos,      setProyectos]      = useState([]);
     const [proyectoSearch, setProyectoSearch] = useState('');
+    const [proyectoElegido, setProyectoElegido] = useState(false); // colapsa la lista tras elegir
     const [saving, setSaving] = useState(false);
     const [error, setError]   = useState('');
 
@@ -165,7 +166,26 @@ function TicketModal({ estados, socios, onClose, onCreated }) {
         } else {
             // Al limpiar el proyecto, no borramos lo que ya escribió el usuario
         }
+        setProyectoElegido(true);
+        setProyectoSearch('');
     };
+
+    const proyectosFiltrados = useMemo(() => {
+        const q = proyectoSearch.toLowerCase();
+        if (!q) return proyectos;
+        return proyectos.filter(p =>
+            p.nombre.toLowerCase().includes(q) ||
+            (p.nombre_cliente || '').toLowerCase().includes(q) ||
+            (p.email_cliente  || '').toLowerCase().includes(q)
+        );
+    }, [proyectos, proyectoSearch]);
+
+    const proyectoSeleccionado = form.id_proyecto
+        ? proyectos.find(p => String(p.id_proyecto) === String(form.id_proyecto))
+        : null;
+    const proyectoLabel = form.id_proyecto
+        ? (proyectoSeleccionado ? `${proyectoSeleccionado.nombre}${proyectoSeleccionado.nombre_cliente ? ` — ${proyectoSeleccionado.nombre_cliente}` : ''}` : '—')
+        : 'Ticket interno (sin proyecto)';
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -204,30 +224,46 @@ function TicketModal({ estados, socios, onClose, onCreated }) {
                     {/* Proyecto con buscador */}
                     <div>
                         <label className="text-[11px] text-muted-foreground mb-1 block">Proyecto asociado</label>
-                        <div className="relative mb-1">
-                            <input
-                                type="text"
-                                value={proyectoSearch}
-                                onChange={e => setProyectoSearch(e.target.value)}
-                                placeholder="Buscar proyecto..."
-                                className="w-full bg-secondary/40 border border-border rounded-lg px-3 py-1.5 text-[12px] text-foreground focus:outline-none focus:ring-1 focus:ring-sky-500/50 pr-6"
-                            />
-                            {proyectoSearch && (
-                                <button type="button" onClick={() => setProyectoSearch('')}
-                                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-[10px]">✕</button>
-                            )}
-                        </div>
-                        <select value={form.id_proyecto} onChange={e => handleProyecto(e.target.value)} className={inputCls} size={Math.min(5, 1 + proyectos.filter(p => !proyectoSearch || p.nombre.toLowerCase().includes(proyectoSearch.toLowerCase()) || (p.nombre_cliente||'').toLowerCase().includes(proyectoSearch.toLowerCase())).length)}>
-                            <option value="">— Ticket interno (sin proyecto) —</option>
-                            {proyectos
-                                .filter(p => !proyectoSearch ||
-                                    p.nombre.toLowerCase().includes(proyectoSearch.toLowerCase()) ||
-                                    (p.nombre_cliente || '').toLowerCase().includes(proyectoSearch.toLowerCase()) ||
-                                    (p.email_cliente  || '').toLowerCase().includes(proyectoSearch.toLowerCase())
-                                )
-                                .map(p => <option key={p.id_proyecto} value={p.id_proyecto}>{p.nombre}{p.nombre_cliente ? ` — ${p.nombre_cliente}` : ''}</option>)
-                            }
-                        </select>
+                        {proyectoElegido ? (
+                            <div className="flex items-center justify-between gap-2 rounded-lg border border-sky-500/50 bg-sky-500/8 px-3 py-2">
+                                <span className="text-[12px] text-foreground truncate">{proyectoLabel}</span>
+                                <button type="button" onClick={() => setProyectoElegido(false)}
+                                        className="text-[11px] text-sky-400 hover:text-sky-300 font-medium shrink-0">
+                                    Cambiar
+                                </button>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="relative mb-1">
+                                    <input
+                                        type="text"
+                                        value={proyectoSearch}
+                                        onChange={e => setProyectoSearch(e.target.value)}
+                                        placeholder="Buscar proyecto..."
+                                        className="w-full bg-secondary/40 border border-border rounded-lg px-3 py-1.5 text-[12px] text-foreground focus:outline-none focus:ring-1 focus:ring-sky-500/50 pr-6"
+                                    />
+                                    {proyectoSearch && (
+                                        <button type="button" onClick={() => setProyectoSearch('')}
+                                                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-[10px]">✕</button>
+                                    )}
+                                </div>
+                                <div className="max-h-40 overflow-y-auto rounded-lg border border-border divide-y divide-border/60">
+                                    <button type="button" onClick={() => handleProyecto('')}
+                                            className="w-full text-left px-3 py-1.5 text-[12px] text-muted-foreground hover:bg-secondary/40 transition-colors">
+                                        — Ticket interno (sin proyecto) —
+                                    </button>
+                                    {proyectosFiltrados.map(p => (
+                                        <button type="button" key={p.id_proyecto} onClick={() => handleProyecto(String(p.id_proyecto))}
+                                                className="w-full text-left px-3 py-1.5 text-[12px] text-foreground hover:bg-secondary/40 transition-colors truncate">
+                                            {p.nombre}{p.nombre_cliente ? ` — ${p.nombre_cliente}` : ''}
+                                        </button>
+                                    ))}
+                                    {proyectosFiltrados.length === 0 && (
+                                        <p className="px-3 py-2 text-[12px] text-muted-foreground">Sin resultados</p>
+                                    )}
+                                </div>
+                            </>
+                        )}
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

@@ -793,6 +793,13 @@ export default function Gastos() {
                                     const status = getDueStatus(nextDue);
                                     const provision = getMonthlyProvision(cost);
                                     const tone = getFrequencyTone(cost.frecuencia || 'Mensual');
+                                    // Calendario puro (ignora fecha_ultimo_pago) vs. próximo pendiente
+                                    // (sí lo considera): si el pendiente quedó más adelante que lo que
+                                    // tocaría por calendario, es porque el ciclo actual ya se pagó.
+                                    const dueScheduled = getNextDueDateFromReference(cost, new Date());
+                                    const pagadoEsteCiclo = Boolean(
+                                        cost.fecha_ultimo_pago && nextDue && dueScheduled && nextDue.getTime() > dueScheduled.getTime()
+                                    );
                                     return (
                                     <div key={cost.id} className="bg-card glass-card border border-border/50 p-5 rounded-2xl flex flex-col group hover:shadow-lg transition-all duration-300">
                                         <div className="flex justify-between items-start">
@@ -846,6 +853,10 @@ export default function Gastos() {
                                         {recentlyPaidId === cost.id ? (
                                             <div className="mt-3 w-full flex items-center justify-center gap-2 text-xs font-semibold py-2 rounded-lg border border-[hsl(var(--emerald-premium))]/50 text-white bg-[hsl(var(--emerald-premium))]">
                                                 <CheckCircle2 size={13} /> Pago registrado hoy
+                                            </div>
+                                        ) : pagadoEsteCiclo ? (
+                                            <div className="mt-3 w-full flex items-center justify-center gap-2 text-xs font-medium py-2 rounded-lg border border-[hsl(var(--emerald-premium))]/30 text-[hsl(var(--emerald-premium))] bg-[hsl(var(--emerald-premium))]/8">
+                                                <CheckCircle2 size={13} /> Pagado — próximo{nextDue ? ` ${nextDue.toLocaleDateString('es-CL')}` : ''}
                                             </div>
                                         ) : (
                                             <button
