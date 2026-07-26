@@ -351,62 +351,86 @@ function buildPaymentIcsAttachment(project) {
     };
 }
 
-// Mismo header/footer con logo real (hero oscuro + badge) que Bienvenida/Finalización,
-// para mantener consistencia de marca en todos los correos del cockpit.
+// Misma "tarjeta Apple" (tablas, logo negro, eyebrow violeta, líneas divisorias) que
+// usa el correo de Solicitud de Usuarios (ver control-back/services/emailHtmlBuilder.js).
+// Se reconstruye acá con tablas en vez de flexbox/CSS-classes porque Gmail ignora
+// display:flex y dejaba "Monto" y el valor pegados sin espacio.
 const TEMPLATE_SEGUIMIENTO_PAGO_HTML = `<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Seguimiento de pago</title>
-<style>
-*{margin:0;padding:0;box-sizing:border-box;}
-body{background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;}
-.wrapper{width:100%;padding:40px 20px;}
-.container{max-width:600px;margin:0 auto;}
-.hero{background:linear-gradient(180deg,rgba(3,7,18,.96) 0%,rgba(15,23,42,.98) 100%);border-radius:28px 28px 0 0;padding:56px 40px;text-align:center;}
-.logo{width:170px;display:block;margin:0 auto 28px;}
-.badge{display:inline-block;padding:9px 18px;border:1px solid rgba(255,255,255,.12);border-radius:50px;color:#94A3B8;font-size:11px;letter-spacing:2px;text-transform:uppercase;}
-.title{color:#FFFFFF;font-size:28px;font-weight:700;line-height:1.2;margin-top:22px;}
-.content{background:#FFFFFF;padding:44px 40px;}
-.text{color:#475569;font-size:15px;line-height:1.7;margin-bottom:8px;white-space:pre-line;}
-.card{background:#F8FAFC;border:1px solid #E2E8F0;border-radius:16px;padding:22px 24px;margin:28px 0;}
-.row{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #E2E8F0;font-size:14px;}
-.row:last-child{border-bottom:none;}
-.row-label{color:#64748B;}
-.row-value{color:#0F172A;font-weight:600;}
-.footer{background:#0F172A;border-radius:0 0 28px 28px;padding:40px;text-align:center;}
-.footer-logo{width:150px;margin:0 auto;}
-.footer-text{color:#94A3B8;margin-top:20px;line-height:26px;font-size:13px;}
-.footer-text a{color:#94A3B8;text-decoration:none;}
-</style>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
 </head>
-<body>
-<div class="wrapper">
-<div class="container">
-    <div class="hero">
-        <img src="${LOGO_WHITE_URL}" alt="NativeCode" class="logo">
-        <div class="badge">Seguimiento de pago</div>
-        <h1 class="title">Hola {{NOMBRE}},</h1>
-    </div>
-    <div class="content">
-        <p class="text">{{MENSAJE}}</p>
-        <div class="card">
-            <div class="row"><span class="row-label">Monto</span><span class="row-value">{{MONTO}}</span></div>
-            <div class="row"><span class="row-label">Fecha de pago</span><span class="row-value">{{FECHA_PAGO}}</span></div>
-        </div>
+<body style="margin:0;padding:0;background:#f2f2f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Helvetica Neue',Arial,sans-serif;">
+
+  <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:#f2f2f7;padding:44px 16px 56px;">
+    <tr><td align="center">
+
+      <table width="100%" cellpadding="0" cellspacing="0" role="presentation"
+             style="max-width:600px;width:100%;background:#ffffff;border-radius:16px;
+                    box-shadow:0 1px 4px rgba(0,0,0,.06),0 6px 24px rgba(0,0,0,.07);overflow:hidden;">
+
+        <!-- Header / marca -->
+        <tr>
+          <td style="padding:36px 48px 24px;">
+            <img src="${LOGO_BLACK_URL}" alt="NativeCode" width="170" style="display:block;max-width:170px;height:auto;margin:0 0 18px;">
+            <p style="margin:0 0 22px;font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#8b5cf6;">SEGUIMIENTO DE PAGO</p>
+            <h1 style="margin:0;font-size:22px;font-weight:700;color:#1d1d1f;letter-spacing:-.4px;line-height:1.3;">Hola {{NOMBRE}},</h1>
+          </td>
+        </tr>
+
+        <tr><td style="padding:0 48px;">
+          <table width="100%" cellpadding="0" cellspacing="0" role="presentation"><tr><td style="border-top:1px solid #e5e5ea;"></td></tr></table>
+        </td></tr>
+
+        <!-- Cuerpo -->
+        <tr>
+          <td style="padding:28px 48px 8px;">
+            <p style="margin:0 0 24px;font-size:14.5px;line-height:1.85;color:#3a3a3c;">{{MENSAJE}}</p>
+
+            <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:#f9f9fb;border:1px solid #e5e5ea;border-radius:12px;">
+              <tr>
+                <td style="padding:14px 20px;border-bottom:1px solid #e5e5ea;font-size:13.5px;color:#6e6e73;">Monto</td>
+                <td style="padding:14px 20px;border-bottom:1px solid #e5e5ea;font-size:14.5px;color:#1d1d1f;font-weight:700;text-align:right;">{{MONTO}}</td>
+              </tr>
+              <tr>
+                <td style="padding:14px 20px;font-size:13.5px;color:#6e6e73;">Fecha de pago</td>
+                <td style="padding:14px 20px;font-size:14.5px;color:#1d1d1f;font-weight:600;text-align:right;">{{FECHA_PAGO}}</td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
         {{BOTON_PAGO}}
-    </div>
-    <div class="footer">
-        <img src="${LOGO_WHITE_URL}" alt="NativeCode" class="footer-logo">
-        <div class="footer-text">
-            Soporte NativeCode<br>
-            <a href="mailto:ingenieria.software@nativecode.cl">ingenieria.software@nativecode.cl</a><br>
-            +56 9 6609 1038
-        </div>
-    </div>
-</div>
-</div>
+
+        <tr><td style="padding:16px 48px 0;">
+          <table width="100%" cellpadding="0" cellspacing="0" role="presentation"><tr><td style="border-top:1px solid #e5e5ea;"></td></tr></table>
+        </td></tr>
+
+        <!-- Contacto -->
+        <tr>
+          <td style="padding:22px 48px 30px;">
+            <p style="margin:0;font-size:13px;color:#6e6e73;line-height:1.7;">
+              Si ya realizaste el pago, puedes ignorar este mensaje. Ante cualquier duda, contáctanos en
+              <a href="mailto:ingenieria.software@nativecode.cl" style="color:#1d1d1f;font-weight:500;text-decoration:none;">ingenieria.software@nativecode.cl</a>.
+            </p>
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="background:#f9f9fb;border-top:1px solid #e5e5ea;padding:18px 48px;">
+            <p style="margin:0;font-size:11.5px;color:#aeaeb2;text-align:center;letter-spacing:.01em;">
+              NativeCode SPA · Santiago de Chile &nbsp;·&nbsp; © ${new Date().getFullYear()}
+            </p>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+
 </body>
 </html>`;
 
@@ -414,7 +438,7 @@ const templateSeguimientoPago = (project) => ({
     subject: `Seguimiento de pago — ${project?.nombre || 'tu proyecto'}`,
     htmlTemplate: TEMPLATE_SEGUIMIENTO_PAGO_HTML,
     buildAttachment: buildPaymentIcsAttachment(project),
-    warning: !project?.fecha_proximo_pago
+    warning: (fieldValues) => !fieldValues?.FECHA_PAGO
         ? 'Este proyecto no tiene fecha de próximo pago configurada — elige una fecha abajo para poder adjuntar el recordatorio de calendario (.ics).'
         : null,
     fields: [
@@ -424,7 +448,7 @@ const templateSeguimientoPago = (project) => ({
             type: 'textarea',
             label: 'Mensaje',
             defaultValue: 'Te escribimos para hacer seguimiento de tu próximo pago. Revisa el detalle a continuación y no dudes en escribirnos si tienes alguna consulta.',
-            buildHtml: (val) => String(val || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'),
+            buildHtml: (val) => String(val || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>'),
         },
         { key: 'MONTO', label: 'Monto', defaultValue: project?.monto_acordado ? new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(project.monto_acordado) : '' },
         {
@@ -440,10 +464,14 @@ const templateSeguimientoPago = (project) => ({
             defaultValue: project?.url_cobro_mercadopago || '',
             placeholder: 'https://...',
             buildHtml: (url) => url
-                ? `<div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:16px;padding:24px;text-align:center;margin-top:8px;">
-                <p style="margin:0 0 16px 0;color:#475569;font-size:13.5px;line-height:1.6;">¿Aún no realizas tu pago o no recuerdas cómo hacerlo? Genera tu enlace de pago seguro con Mercado Pago en un solo clic.</p>
-                <a href="${url}" style="display:inline-block;background:linear-gradient(135deg,#7c3aed,#2563eb);color:#ffffff !important;text-decoration:none;padding:14px 28px;border-radius:12px;font-weight:700;font-size:15px;">Generar mi pago ahora</a>
-              </div>`
+                ? `<tr><td style="padding:20px 48px 0;">
+                <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:12px;">
+                  <tr><td style="padding:20px 24px;text-align:center;">
+                    <p style="margin:0 0 14px;font-size:13.5px;color:#4c1d95;line-height:1.6;">¿Aún no realizas tu pago o no recuerdas cómo hacerlo? Genera tu enlace de pago seguro con Mercado Pago en un solo clic.</p>
+                    <a href="${url}" style="display:inline-block;background:#7c3aed;color:#ffffff !important;text-decoration:none;padding:12px 26px;border-radius:10px;font-weight:700;font-size:14px;">Generar mi pago ahora</a>
+                  </td></tr>
+                </table>
+              </td></tr>`
                 : '',
         },
     ],

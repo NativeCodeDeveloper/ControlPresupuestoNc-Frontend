@@ -19,13 +19,14 @@ function fileToBase64(file) {
  * una promesa — así el modal no sabe (ni le importa) qué endpoint se usa.
  *
  * @param {object} proyecto - proyecto asociado (solo para el header y el email por defecto)
- * @param {{ subject: string, body?: string, file?: File, htmlTemplate?: string, fields?: Array, buildAttachment?: (fieldValues: object) => File|null, warning?: string }} draft - contenido inicial editable.
+ * @param {{ subject: string, body?: string, file?: File, htmlTemplate?: string, fields?: Array, buildAttachment?: (fieldValues: object) => File|null, warning?: string|((fieldValues: object) => string) }} draft - contenido inicial editable.
  *   Si trae `htmlTemplate` (HTML con tokens {{TOKEN}}), el modal muestra `fields` en vez del textarea de
  *   mensaje y arma el HTML final reemplazando los tokens antes de enviar. Cada field puede traer
  *   `buildHtml(val)` para transformar su valor antes de insertarlo (ej. armar un botón o esconderlo si
  *   está vacío). `buildAttachment(fieldValues)` genera un adjunto extra a partir de los valores actuales
  *   del modal al momento de enviar (ej. un .ics con la fecha que el usuario haya dejado). `warning` muestra
- *   un aviso arriba del formulario (ej. si falta un dato necesario para generar ese adjunto).
+ *   un aviso arriba del formulario (ej. si falta un dato necesario para generar ese adjunto); puede ser un
+ *   string fijo o una función `(fieldValues) => string|null` para que se actualice mientras el usuario edita.
  * @param {string} title - título del modal (ej. "Bienvenida", "Enviar Factura")
  * @param {React.ComponentType} icon - ícono del header (default Mail)
  * @param {(payload: object) => Promise} onSend - función que efectivamente envía el correo
@@ -49,10 +50,15 @@ export default function EmailModal({ proyecto, draft, title = 'Enviar correo', i
     const [adjuntos, setAdjuntos] = useState(draft?.file ? [draft.file] : []); // [{ file, name }]
     const fileInputRef = useRef(null);
 
+    // El backend acepta máx. 5 adjuntos en total (ver proyectoEmailService.js). Si este
+    // draft agrega uno extra al enviar (ej. el .ics), se reserva ese cupo acá — si no,
+    // con 5 adjuntos manuales el .ics quedaba último y se lo comía el slice(0,5) del backend.
+    const maxAdjuntosManuales = typeof draft?.buildAttachment === 'function' ? 4 : 5;
+
     const handleAddFiles = (files) => {
         const nuevos = [...files].filter(f => f.size <= 8 * 1024 * 1024); // máx 8MB por archivo
         if (nuevos.length < [...files].length) setError('Algunos archivos superan 8 MB y fueron omitidos.');
-        setAdjuntos(prev => [...prev, ...nuevos].slice(0, 5)); // máx 5 adjuntos
+        setAdjuntos(prev => [...prev, ...nuevos].slice(0, maxAdjuntosManuales));
     };
 
     const send = async () => {
@@ -89,10 +95,12 @@ export default function EmailModal({ proyecto, draft, title = 'Enviar correo', i
         }
     };
 
+    const warningText = typeof draft?.warning === 'function' ? draft.warning(fieldValues) : draft?.warning;
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-lg">
-                <div className="flex items-center justify-between p-5 border-b border-border">
+            <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
+                <div className="flex items-center justify-between p-5 border-b border-border shrink-0">
                     <div className="flex items-center gap-2">
                         <TitleIcon size={16} className="text-violet-400" />
                         <span className="font-semibold text-[14px]">{title}</span>
@@ -105,7 +113,7 @@ export default function EmailModal({ proyecto, draft, title = 'Enviar correo', i
                     </button>
                 </div>
 
-                <div className="p-5 space-y-3">
+                <div className="p-5 space-y-3 overflow-y-auto flex-1">
                     {sent ? (
                         <div className="flex flex-col items-center justify-center py-8 gap-2">
                             <CheckCircle2 size={32} className="text-emerald-400" />
@@ -113,9 +121,9 @@ export default function EmailModal({ proyecto, draft, title = 'Enviar correo', i
                         </div>
                     ) : (
                         <>
-                            {draft?.warning && (
+                            {warningText && (
                                 <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2">
-                                    <p className="text-[12px] text-amber-500">{draft.warning}</p>
+                                    <p className="text-[12px] text-amber-500">{warningText}</p>
                                 </div>
                             )}
                             <div>
@@ -219,7 +227,7 @@ export default function EmailModal({ proyecto, draft, title = 'Enviar correo', i
                             {/* Adjuntos */}
                             <div>
                                 <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1 block">
-                                    Adjuntos <span className="normal-case font-normal">(PDF, imagen, Word, Excel — máx. 8 MB c/u, hasta 5)</span>
+                                    Adjuntos <span className="normal-case font-normal">(PDF, imagen, Word, Excel — máx. 8 MB c/u, hasta {maxAdjuntosManuales}{typeof draft?.buildAttachment === 'function' ? ' — el .ics ocupa el cupo restante' : ''})</span>
                                 </label>
                                 <div
                                     onClick={() => fileInputRef.current?.click()}
@@ -260,7 +268,7 @@ export default function EmailModal({ proyecto, draft, title = 'Enviar correo', i
                 </div>
 
                 {!sent && (
-                    <div className="flex justify-end gap-2 p-5 pt-0">
+                    <div className="flex justify-end gap-2 p-5 border-t border-border shrink-0">
                         <button
                             onClick={onClose}
                             className="px-4 py-2 text-[13px] rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors"
