@@ -375,7 +375,7 @@ const TEMPLATE_SEGUIMIENTO_PAGO_HTML = `<!DOCTYPE html>
         <tr>
           <td style="padding:36px 48px 24px;">
             <img src="${LOGO_BLACK_URL}" alt="NativeCode" width="170" style="display:block;max-width:170px;height:auto;margin:0 0 18px;">
-            <p style="margin:0 0 22px;font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#8b5cf6;">SEGUIMIENTO DE PAGO</p>
+            <p style="margin:0 0 22px;font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#8b5cf6;">RECORDATORIO DE PAGO</p>
             <h1 style="margin:0;font-size:22px;font-weight:700;color:#1d1d1f;letter-spacing:-.4px;line-height:1.3;">Hola {{NOMBRE}},</h1>
           </td>
         </tr>
