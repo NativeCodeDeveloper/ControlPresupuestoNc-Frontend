@@ -42,6 +42,7 @@ import EmailModal from '../../components/EmailModal';
 const LOGO_WHITE_URL = 'https://nativecode-finance.agendaclinicas.cl/logo_template.png'; // sobre fondos oscuros
 const LOGO_BLACK_URL = 'https://nativecode-finance.agendaclinicas.cl/logo_template_negro.png'; // sobre fondos claros
 const ACADEMIA_AGENDA_CLINICA_URL = 'https://academia.agendaclinicas.cl/dashboard';
+const LOGO_MERCADOPAGO_URL = 'https://nativecode-finance.agendaclinicas.cl/logomp1.png'; // sello Mercado Pago/Visa/Mastercard/RedCompra, fondo oscuro propio
 
 // Genera el HTML de una fila de credencial (usuario + contraseña en texto plano).
 // Gmail elimina <input>/<form> de los correos recibidos, así que cualquier truco de
@@ -389,14 +390,14 @@ const TEMPLATE_SEGUIMIENTO_PAGO_HTML = `<!DOCTYPE html>
           <td style="padding:28px 48px 8px;">
             <p style="margin:0 0 24px;font-size:14.5px;line-height:1.85;color:#3a3a3c;">{{MENSAJE}}</p>
 
-            <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:#f9f9fb;border:1px solid #e5e5ea;border-radius:12px;">
+            <!-- Tarjeta de monto — estilo "precio destacado" -->
+            <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:#fafafa;border:1px solid #e5e5ea;border-radius:14px;">
               <tr>
-                <td style="padding:14px 20px;border-bottom:1px solid #e5e5ea;font-size:13.5px;color:#6e6e73;">Monto</td>
-                <td style="padding:14px 20px;border-bottom:1px solid #e5e5ea;font-size:14.5px;color:#1d1d1f;font-weight:700;text-align:right;">{{MONTO}}</td>
-              </tr>
-              <tr>
-                <td style="padding:14px 20px;font-size:13.5px;color:#6e6e73;">Fecha de pago</td>
-                <td style="padding:14px 20px;font-size:14.5px;color:#1d1d1f;font-weight:600;text-align:right;">{{FECHA_PAGO}}</td>
+                <td style="padding:30px 28px 26px;text-align:center;">
+                  <p style="margin:0 0 10px;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#8e8e93;">MONTO A PAGAR</p>
+                  <p style="margin:0;font-size:36px;font-weight:800;color:#1d1d1f;letter-spacing:-.02em;">{{MONTO}}</p>
+                  <p style="margin:12px 0 0;font-size:13px;color:#6e6e73;">Vence el {{FECHA_PAGO}}</p>
+                </td>
               </tr>
             </table>
           </td>
@@ -463,14 +464,14 @@ const templateSeguimientoPago = (project) => ({
             label: 'Link de pago (Mercado Pago) — opcional, no todos los proyectos lo tienen',
             defaultValue: project?.url_cobro_mercadopago || '',
             placeholder: 'https://...',
+            // El sello logomp1.png es la placa completa (Mercado Pago + Visa + Mastercard +
+            // RedCompra, con fondo oscuro propio) — no cabe integrado al botón, así que va
+            // aparte, debajo, como sello de confianza independiente.
             buildHtml: (url) => url
-                ? `<tr><td style="padding:20px 48px 0;">
-                <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:#eaf6fd;border:1px solid #b3e5fc;border-radius:12px;">
-                  <tr><td style="padding:20px 24px;text-align:center;">
-                    <p style="margin:0 0 14px;font-size:13.5px;color:#1a1f36;line-height:1.6;">Puedes realizar tu pago de forma rápida y segura con Mercado Pago haciendo clic en el siguiente botón.</p>
-                    <a href="${url}" style="display:inline-block;background:#009ee3;color:#ffffff !important;text-decoration:none;padding:12px 26px;border-radius:10px;font-weight:700;font-size:14px;">Pagar con Mercado Pago</a>
-                  </td></tr>
-                </table>
+                ? `<tr><td style="padding:26px 48px 0;text-align:center;">
+                <a href="${url}" style="display:inline-block;background:#000000;color:#ffffff !important;text-decoration:none;padding:15px 34px;border-radius:10px;font-weight:600;font-size:14.5px;letter-spacing:.01em;">Pagar con Mercado Pago</a>
+                <p style="margin:14px 0 0;font-size:11.5px;color:#8e8e93;">Pago seguro procesado por Mercado Pago</p>
+                <img src="${LOGO_MERCADOPAGO_URL}" alt="Mercado Pago · Visa · Mastercard · RedCompra" width="220" style="display:block;max-width:220px;height:auto;margin:18px auto 0;border-radius:8px;">
               </td></tr>`
                 : '',
         },
