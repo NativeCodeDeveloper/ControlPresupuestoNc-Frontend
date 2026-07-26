@@ -68,7 +68,7 @@ export default function EmailModal({ proyecto, draft, title = 'Enviar correo', i
                     to, subject, attachments,
                     html: Object.entries(fieldValues).reduce((html, [key, val]) => {
                         const f = fieldsByKey[key];
-                        const replacement = f?.type === 'credentials-list' ? f.buildHtml(val) : (val || '');
+                        const replacement = typeof f?.buildHtml === 'function' ? f.buildHtml(val) : (val || '');
                         return html.replaceAll(`{{${key}}}`, replacement);
                     }, draft.htmlTemplate),
                 }

@@ -286,10 +286,142 @@ const templateFinalizacion = (project) => ({
     ],
 });
 
+// ─── Seguimiento de pago — adjunta .ics del vencimiento y, si el proyecto tiene ─
+// ─── link de cobro Mercado Pago, permite incluir un botón "Pagar ahora" ────────
+
+// Igual que fmtDate: se extraen los componentes de fecha directo del string para
+// no correr un día por conversión UTC/local (Chile es UTC-3/-4).
+function icsDateParts(fecha) {
+    const s = typeof fecha === 'string' ? fecha : new Date(fecha).toISOString();
+    const [y, m, d] = s.slice(0, 10).split('-').map(Number);
+    return { y, m, d };
+}
+
+function icsAddDay({ y, m, d }) {
+    const dt = new Date(y, m - 1, d + 1);
+    return { y: dt.getFullYear(), m: dt.getMonth() + 1, d: dt.getDate() };
+}
+
+function icsFold(line) {
+    if (line.length <= 75) return line;
+    const partes = [];
+    let resto = line;
+    while (resto.length > 75) {
+        partes.push(resto.slice(0, 75));
+        resto = ' ' + resto.slice(75);
+    }
+    partes.push(resto);
+    return partes.join('\r\n');
+}
+
+function buildPaymentIcsFile(project) {
+    if (!project?.fecha_proximo_pago) return null;
+
+    const fmt = ({ y, m, d }) => `${y}${String(m).padStart(2, '0')}${String(d).padStart(2, '0')}`;
+    const inicio = icsDateParts(project.fecha_proximo_pago);
+    const fin = icsAddDay(inicio);
+
+    const now = new Date();
+    const stamp = `${now.getUTCFullYear()}${String(now.getUTCMonth() + 1).padStart(2, '0')}${String(now.getUTCDate()).padStart(2, '0')}T${String(now.getUTCHours()).padStart(2, '0')}${String(now.getUTCMinutes()).padStart(2, '0')}${String(now.getUTCSeconds()).padStart(2, '0')}Z`;
+
+    const monto = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(project.monto_acordado || 0);
+    const esc = (t) => String(t).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,');
+
+    const lineas = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//NativeCode//ES',
+        'NAME:NativeCode',
+        'X-WR-CALNAME:NativeCode',
+        'BEGIN:VEVENT',
+        `UID:pago-${project.id}-${fmt(inicio)}@nativecode.cl`,
+        `DTSTAMP:${stamp}`,
+        `DTSTART;VALUE=DATE:${fmt(inicio)}`,
+        `DTEND;VALUE=DATE:${fmt(fin)}`,
+        `SUMMARY:${esc(`Vencimiento de pago - ${project.nombre || 'Proyecto'}`)}`,
+        `DESCRIPTION:${esc(`Pago de ${monto} para ${project.nombre_cliente || 'Cliente'}.`)}`,
+        'END:VEVENT',
+        'END:VCALENDAR',
+    ];
+
+    return new File([lineas.map(icsFold).join('\r\n')], 'recordatorio-pago.ics', { type: 'text/calendar' });
+}
+
+const TEMPLATE_SEGUIMIENTO_PAGO_HTML = `<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#f5f5f7;">
+<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:#f5f5f7;padding:40px 20px;">
+  <tr><td align="center">
+    <table width="560" cellpadding="0" cellspacing="0" role="presentation"
+           style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
+      <tr><td style="background:#6366f1;height:4px;font-size:0;line-height:0;">&nbsp;</td></tr>
+      <tr><td style="padding:36px 40px 8px;">
+        <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;font-weight:600;color:#86868b;letter-spacing:.5px;">NATIVECODE</p>
+      </td></tr>
+      <tr><td style="padding:16px 40px 28px;">
+        <p style="margin:0 0 8px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:12px;color:#86868b;letter-spacing:1px;text-transform:uppercase;">SEGUIMIENTO DE PAGO</p>
+        <h1 style="margin:0 0 14px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:24px;font-weight:600;color:#1d1d1f;">Hola {{NOMBRE}},</h1>
+        <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:15px;color:#6e6e73;line-height:1.65;">Te escribimos para hacer seguimiento de tu próximo pago. Adjuntamos un recordatorio de calendario con la fecha de vencimiento.</p>
+      </td></tr>
+      <tr><td style="padding:0 40px;"><div style="height:1px;background:#f2f2f7;"></div></td></tr>
+      <tr><td style="padding:24px 40px;">
+        <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
+          <tr>
+            <td style="padding:10px 0;border-bottom:1px solid #f2f2f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;color:#86868b;">Monto</td>
+            <td style="padding:10px 0;border-bottom:1px solid #f2f2f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:15px;color:#1d1d1f;font-weight:600;text-align:right;">{{MONTO}}</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;color:#86868b;">Fecha de pago</td>
+            <td style="padding:10px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;color:#1d1d1f;font-weight:500;text-align:right;">{{FECHA_PAGO}}</td>
+          </tr>
+        </table>
+      </td></tr>
+      {{BOTON_PAGO}}
+      <tr><td style="border-top:1px solid #f2f2f7;padding:24px 40px;">
+        <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;color:#3a3a3c;line-height:1.6;">
+          Si ya realizaste el pago, puedes ignorar este mensaje. Ante cualquier duda, contáctanos en
+          <a href="mailto:ingenieria.software@nativecode.cl" style="color:#1d1d1f;text-decoration:none;font-weight:500;">ingenieria.software@nativecode.cl</a>.
+        </p>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>`;
+
+const templateSeguimientoPago = (project) => ({
+    subject: `Seguimiento de pago — ${project?.nombre || 'tu proyecto'}`,
+    htmlTemplate: TEMPLATE_SEGUIMIENTO_PAGO_HTML,
+    file: buildPaymentIcsFile(project),
+    fields: [
+        { key: 'NOMBRE', label: 'Nombre del cliente', defaultValue: project?.nombre_cliente || '' },
+        { key: 'MONTO', label: 'Monto', defaultValue: project?.monto_acordado ? new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(project.monto_acordado) : '' },
+        { key: 'FECHA_PAGO', label: 'Fecha de pago', defaultValue: project?.fecha_proximo_pago ? project.fecha_proximo_pago.slice(0, 10).split('-').reverse().join('/') : '' },
+        {
+            key: 'BOTON_PAGO',
+            label: 'Link de pago (Mercado Pago) — opcional, no todos los proyectos lo tienen',
+            defaultValue: project?.url_cobro_mercadopago || '',
+            placeholder: 'https://...',
+            buildHtml: (url) => url
+                ? `<tr><td style="padding:0 40px 32px;">
+                <div style="background:#f5f5f7;border-radius:14px;padding:22px 24px;text-align:center;">
+                  <p style="margin:0 0 16px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13.5px;color:#3a3a3c;line-height:1.6;">
+                    ¿Aún no realizas tu pago o no recuerdas cómo hacerlo? Genera tu enlace de pago seguro con Mercado Pago en un solo clic.
+                  </p>
+                  <a href="${url}" style="display:inline-block;background:linear-gradient(135deg,#7c3aed,#2563eb);color:#ffffff !important;text-decoration:none;padding:14px 28px;border-radius:12px;font-weight:700;font-size:15px;">Generar mi pago ahora</a>
+                </div>
+              </td></tr>`
+                : '',
+        },
+    ],
+});
+
 const EMAIL_TEMPLATES = {
-    bienvenida:   { title: 'Bienvenida',            icon: Sparkles,     generator: templateBienvenida },
-    usuarios:     { title: 'Solicitud de Usuarios', icon: UserPlus,     generator: templateSolicitudUsuarios },
-    finalizacion: { title: 'Finalización',          icon: CheckCircle2, generator: templateFinalizacion },
+    bienvenida:        { title: 'Bienvenida',            icon: Sparkles,     generator: templateBienvenida },
+    usuarios:          { title: 'Solicitud de Usuarios', icon: UserPlus,     generator: templateSolicitudUsuarios },
+    finalizacion:      { title: 'Finalización',          icon: CheckCircle2, generator: templateFinalizacion },
+    seguimientoPago:   { title: 'Seguimiento de Pago',   icon: Receipt,      generator: templateSeguimientoPago },
 };
 
 export default function Ingresos() {
