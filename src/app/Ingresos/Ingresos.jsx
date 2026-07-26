@@ -435,7 +435,7 @@ const TEMPLATE_SEGUIMIENTO_PAGO_HTML = `<!DOCTYPE html>
 </html>`;
 
 const templateSeguimientoPago = (project) => ({
-    subject: `Seguimiento de pago — ${project?.nombre || 'tu proyecto'}`,
+    subject: `Recordatorio de pago — ${project?.nombre || 'tu proyecto'}`,
     htmlTemplate: TEMPLATE_SEGUIMIENTO_PAGO_HTML,
     buildAttachment: buildPaymentIcsAttachment(project),
     warning: (fieldValues) => !fieldValues?.FECHA_PAGO
