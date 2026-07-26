@@ -19,9 +19,13 @@ function fileToBase64(file) {
  * una promesa — así el modal no sabe (ni le importa) qué endpoint se usa.
  *
  * @param {object} proyecto - proyecto asociado (solo para el header y el email por defecto)
- * @param {{ subject: string, body?: string, file?: File, htmlTemplate?: string, fields?: Array }} draft - contenido inicial editable.
+ * @param {{ subject: string, body?: string, file?: File, htmlTemplate?: string, fields?: Array, buildAttachment?: (fieldValues: object) => File|null, warning?: string }} draft - contenido inicial editable.
  *   Si trae `htmlTemplate` (HTML con tokens {{TOKEN}}), el modal muestra `fields` en vez del textarea de
- *   mensaje y arma el HTML final reemplazando los tokens antes de enviar.
+ *   mensaje y arma el HTML final reemplazando los tokens antes de enviar. Cada field puede traer
+ *   `buildHtml(val)` para transformar su valor antes de insertarlo (ej. armar un botón o esconderlo si
+ *   está vacío). `buildAttachment(fieldValues)` genera un adjunto extra a partir de los valores actuales
+ *   del modal al momento de enviar (ej. un .ics con la fecha que el usuario haya dejado). `warning` muestra
+ *   un aviso arriba del formulario (ej. si falta un dato necesario para generar ese adjunto).
  * @param {string} title - título del modal (ej. "Bienvenida", "Enviar Factura")
  * @param {React.ComponentType} icon - ícono del header (default Mail)
  * @param {(payload: object) => Promise} onSend - función que efectivamente envía el correo
@@ -56,8 +60,10 @@ export default function EmailModal({ proyecto, draft, title = 'Enviar correo', i
         setSending(true);
         setError('');
         try {
+            const extra = typeof draft?.buildAttachment === 'function' ? draft.buildAttachment(fieldValues) : null;
+            const archivos = extra ? [...adjuntos, extra] : adjuntos;
             const attachments = await Promise.all(
-                adjuntos.map(async (f) => ({
+                archivos.map(async (f) => ({
                     content: await fileToBase64(f),
                     name:    f.name,
                 }))
@@ -107,6 +113,11 @@ export default function EmailModal({ proyecto, draft, title = 'Enviar correo', i
                         </div>
                     ) : (
                         <>
+                            {draft?.warning && (
+                                <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2">
+                                    <p className="text-[12px] text-amber-500">{draft.warning}</p>
+                                </div>
+                            )}
                             <div>
                                 <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1 block">Para</label>
                                 <input
@@ -169,10 +180,22 @@ export default function EmailModal({ proyecto, draft, title = 'Enviar correo', i
                                                 <Plus size={12} /> Agregar usuario
                                             </button>
                                         </div>
+                                    ) : f.type === 'textarea' ? (
+                                        <div key={f.key}>
+                                            <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1 block">{f.label}</label>
+                                            <textarea
+                                                value={fieldValues[f.key] || ''}
+                                                onChange={e => setFieldValues(prev => ({ ...prev, [f.key]: e.target.value }))}
+                                                placeholder={f.placeholder || ''}
+                                                rows={f.rows || 5}
+                                                className="w-full text-[13px] bg-input border border-border rounded-lg px-3 py-2 outline-none focus:border-violet-500 transition-colors resize-none"
+                                            />
+                                        </div>
                                     ) : (
                                         <div key={f.key}>
                                             <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1 block">{f.label}</label>
                                             <input
+                                                type={f.type === 'date' ? 'date' : 'text'}
                                                 value={fieldValues[f.key] || ''}
                                                 onChange={e => setFieldValues(prev => ({ ...prev, [f.key]: e.target.value }))}
                                                 placeholder={f.placeholder || ''}
