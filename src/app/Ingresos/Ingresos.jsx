@@ -465,10 +465,10 @@ const templateSeguimientoPago = (project) => ({
             placeholder: 'https://...',
             buildHtml: (url) => url
                 ? `<tr><td style="padding:20px 48px 0;">
-                <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:12px;">
+                <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:#eaf6fd;border:1px solid #b3e5fc;border-radius:12px;">
                   <tr><td style="padding:20px 24px;text-align:center;">
-                    <p style="margin:0 0 14px;font-size:13.5px;color:#4c1d95;line-height:1.6;">¿Aún no realizas tu pago o no recuerdas cómo hacerlo? Genera tu enlace de pago seguro con Mercado Pago en un solo clic.</p>
-                    <a href="${url}" style="display:inline-block;background:#7c3aed;color:#ffffff !important;text-decoration:none;padding:12px 26px;border-radius:10px;font-weight:700;font-size:14px;">Generar mi pago ahora</a>
+                    <p style="margin:0 0 14px;font-size:13.5px;color:#1a1f36;line-height:1.6;">Puedes realizar tu pago de forma rápida y segura con Mercado Pago haciendo clic en el siguiente botón.</p>
+                    <a href="${url}" style="display:inline-block;background:#009ee3;color:#ffffff !important;text-decoration:none;padding:12px 26px;border-radius:10px;font-weight:700;font-size:14px;">Pagar con Mercado Pago</a>
                   </td></tr>
                 </table>
               </td></tr>`
