@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { usePersistedState } from '../../hooks/usePersistedState';
 import { useRealtime } from '../../hooks/useRealtime';
 import * as projectsService from '../../services/projectsService';
@@ -558,7 +559,19 @@ export default function Ingresos() {
     const [emisionResultado, setEmisionResultado] = useState(null);
 
     const [emailMenuOpenId, setEmailMenuOpenId] = useState(null);
+    const [emailMenuPos, setEmailMenuPos] = useState({ top: 0, left: 0 });
     const [emailModalState, setEmailModalState] = useState(null); // { project, type }
+
+    function toggleEmailMenu(projectId, e) {
+        if (emailMenuOpenId === projectId) { setEmailMenuOpenId(null); return; }
+        const r = e.currentTarget.getBoundingClientRect();
+        const w = 192; // w-48
+        setEmailMenuPos({
+            top: r.bottom + 4,
+            left: Math.max(8, Math.min(r.right - w, window.innerWidth - w - 8)),
+        });
+        setEmailMenuOpenId(projectId);
+    }
 
     const fmtPreview = (val) => {
         const n = Math.round(parseFloat(val) || 0);
@@ -1578,15 +1591,17 @@ export default function Ingresos() {
                                                     </select>
                                                 </div>
                                                 <div className="flex items-center gap-1">
-                                                    <div className="relative">
-                                                        <button onClick={() => setEmailMenuOpenId(emailMenuOpenId === project.id ? null : project.id)}
+                                                    <div>
+                                                        <button onClick={(e) => toggleEmailMenu(project.id, e)}
                                                             className="text-muted-foreground hover:text-violet-400 transition-colors p-1" title="Enviar correo (Bienvenida / Solicitud de Usuarios / Finalización)">
                                                             <Mail size={14} />
                                                         </button>
-                                                        {emailMenuOpenId === project.id && (
+                                                        {emailMenuOpenId === project.id && typeof document !== 'undefined' && createPortal(
                                                             <>
-                                                                <div className="fixed inset-0 z-10" onClick={() => setEmailMenuOpenId(null)} />
-                                                                <div className="absolute right-0 top-full mt-1 z-20 w-48 bg-card border border-border rounded-lg shadow-xl py-1">
+                                                                <div className="fixed inset-0 z-[99]" onClick={() => setEmailMenuOpenId(null)} />
+                                                                <div
+                                                                    style={{ position: 'fixed', top: emailMenuPos.top, left: emailMenuPos.left }}
+                                                                    className="z-[100] w-48 bg-card border border-border rounded-lg shadow-xl py-1">
                                                                     {Object.entries(EMAIL_TEMPLATES).map(([key, tpl]) => {
                                                                         const TplIcon = tpl.icon;
                                                                         return (
@@ -1599,7 +1614,8 @@ export default function Ingresos() {
                                                                         );
                                                                     })}
                                                                 </div>
-                                                            </>
+                                                            </>,
+                                                            document.body
                                                         )}
                                                     </div>
                                                     <button onClick={() => handleDteOpen(project)}
