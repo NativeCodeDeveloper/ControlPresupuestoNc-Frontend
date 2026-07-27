@@ -216,7 +216,7 @@ export default function Workspace() {
                         )}
                     </div>
                 ) : (
-                    <table className="w-full text-[13px]">
+                    <table className="w-full table-fixed text-[13px]">
                         <thead>
                             <tr className="border-b border-border/30 text-[11px] text-muted-foreground font-medium">
                                 <th className="text-left px-6 py-2.5 font-medium">Nombre</th>

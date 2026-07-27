@@ -1480,7 +1480,7 @@ export default function Ingresos() {
 
                                 return (
                                     <div key={project.id} className="bg-card border border-border rounded-xl p-5 hover:shadow-md transition-shadow group relative overflow-hidden">
-                                        <div className="flex justify-between items-start mb-4">
+                                        <div className="flex justify-between items-start gap-2 flex-wrap mb-4">
                                             <div>
                                                 <div className="flex items-center gap-2 mb-1 flex-wrap">
                                                     <span className="text-[10px] bg-secondary text-muted-foreground px-1.5 py-0.5 rounded border border-border font-mono">
@@ -1512,8 +1512,10 @@ export default function Ingresos() {
                                                     {project.rut_cliente && <span className="text-xs text-muted-foreground">RUT: {project.rut_cliente}</span>}
                                                     {project.email_cliente && (
                                                         <span className="text-xs text-muted-foreground flex items-center gap-1 flex-wrap">
-                                                            <Mail size={10} className="shrink-0" />
-                                                            {project.email_cliente}
+                                                            <span className="inline-flex items-center gap-1 min-w-0">
+                                                                <Mail size={10} className="shrink-0" />
+                                                                <span className="truncate">{project.email_cliente}</span>
+                                                            </span>
                                                             {project.ciclo_facturacion && project.ciclo_facturacion !== 'Unico' && (
                                                                 <span
                                                                     title="Recordatorios automáticos activados para este cliente"

@@ -152,41 +152,45 @@ export default function EmailModal({ proyecto, draft, title = 'Enviar correo', i
                                             <label className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1 block">{f.label}</label>
                                             <div className="space-y-2">
                                                 {(fieldValues[f.key] || []).map((row, i) => (
-                                                    <div key={i} className="flex items-center gap-2">
-                                                        <input
-                                                            value={row.nombre}
-                                                            onChange={e => setFieldValues(prev => ({
-                                                                ...prev,
-                                                                [f.key]: prev[f.key].map((r, j) => j === i ? { ...r, nombre: e.target.value } : r),
-                                                            }))}
-                                                            placeholder="Nombre"
-                                                            className="flex-1 text-[13px] bg-input border border-border rounded-lg px-3 py-2 outline-none focus:border-violet-500 transition-colors"
-                                                        />
-                                                        <input
-                                                            value={row.usuario}
-                                                            onChange={e => setFieldValues(prev => ({
-                                                                ...prev,
-                                                                [f.key]: prev[f.key].map((r, j) => j === i ? { ...r, usuario: e.target.value } : r),
-                                                            }))}
-                                                            placeholder="Usuario"
-                                                            className="flex-1 text-[13px] bg-input border border-border rounded-lg px-3 py-2 outline-none focus:border-violet-500 transition-colors"
-                                                        />
-                                                        <input
-                                                            value={row.password}
-                                                            onChange={e => setFieldValues(prev => ({
-                                                                ...prev,
-                                                                [f.key]: prev[f.key].map((r, j) => j === i ? { ...r, password: e.target.value } : r),
-                                                            }))}
-                                                            placeholder="Contraseña"
-                                                            className="flex-1 text-[13px] bg-input border border-border rounded-lg px-3 py-2 outline-none focus:border-violet-500 transition-colors"
-                                                        />
-                                                        <button
-                                                            onClick={() => setFieldValues(prev => ({ ...prev, [f.key]: prev[f.key].filter((_, j) => j !== i) }))}
-                                                            disabled={fieldValues[f.key].length <= 1}
-                                                            className="text-muted-foreground hover:text-destructive transition-colors p-1 disabled:opacity-30"
-                                                        >
-                                                            <Trash2 size={13} />
-                                                        </button>
+                                                    <div key={i} className="border border-border rounded-lg p-2.5 space-y-2">
+                                                        <div className="flex items-center gap-2">
+                                                            <input
+                                                                value={row.nombre}
+                                                                onChange={e => setFieldValues(prev => ({
+                                                                    ...prev,
+                                                                    [f.key]: prev[f.key].map((r, j) => j === i ? { ...r, nombre: e.target.value } : r),
+                                                                }))}
+                                                                placeholder="Nombre"
+                                                                className="flex-1 text-[13px] bg-input border border-border rounded-lg px-3 py-2 outline-none focus:border-violet-500 transition-colors"
+                                                            />
+                                                            <button
+                                                                onClick={() => setFieldValues(prev => ({ ...prev, [f.key]: prev[f.key].filter((_, j) => j !== i) }))}
+                                                                disabled={fieldValues[f.key].length <= 1}
+                                                                className="text-muted-foreground hover:text-destructive transition-colors p-1 disabled:opacity-30 shrink-0"
+                                                            >
+                                                                <Trash2 size={13} />
+                                                            </button>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <input
+                                                                value={row.usuario}
+                                                                onChange={e => setFieldValues(prev => ({
+                                                                    ...prev,
+                                                                    [f.key]: prev[f.key].map((r, j) => j === i ? { ...r, usuario: e.target.value } : r),
+                                                                }))}
+                                                                placeholder="Usuario"
+                                                                className="flex-1 min-w-0 text-[13px] bg-input border border-border rounded-lg px-3 py-2 outline-none focus:border-violet-500 transition-colors"
+                                                            />
+                                                            <input
+                                                                value={row.password}
+                                                                onChange={e => setFieldValues(prev => ({
+                                                                    ...prev,
+                                                                    [f.key]: prev[f.key].map((r, j) => j === i ? { ...r, password: e.target.value } : r),
+                                                                }))}
+                                                                placeholder="Contraseña"
+                                                                className="flex-1 min-w-0 text-[13px] bg-input border border-border rounded-lg px-3 py-2 outline-none focus:border-violet-500 transition-colors"
+                                                            />
+                                                        </div>
                                                     </div>
                                                 ))}
                                             </div>
