@@ -1479,9 +1479,9 @@ export default function Ingresos() {
                                 const progress = agreedAmount > 0 ? (totalPaid / agreedAmount) * 100 : 0;
 
                                 return (
-                                    <div key={project.id} className="bg-card border border-border rounded-xl p-5 hover:shadow-md transition-shadow group relative overflow-hidden">
+                                    <div key={project.id} className="bg-card border border-border rounded-xl p-5 hover:shadow-md transition-shadow group relative">
                                         <div className="flex justify-between items-start gap-2 flex-wrap mb-4">
-                                            <div>
+                                            <div className="min-w-0">
                                                 <div className="flex items-center gap-2 mb-1 flex-wrap">
                                                     <span className="text-[10px] bg-secondary text-muted-foreground px-1.5 py-0.5 rounded border border-border font-mono">
                                                         {project.codigo_interno || 'N/A'}
@@ -1559,7 +1559,7 @@ export default function Ingresos() {
                                                         </span>
                                                     )}
                                                     {project.observaciones && (
-                                                        <span className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                                                        <span className="text-xs text-muted-foreground mt-1 line-clamp-2 break-words">
                                                             Obs: {project.observaciones}
                                                         </span>
                                                     )}
