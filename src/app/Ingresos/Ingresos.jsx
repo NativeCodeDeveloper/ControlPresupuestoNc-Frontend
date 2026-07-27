@@ -48,15 +48,24 @@ const LOGO_MERCADOPAGO_URL = 'https://nativecode-finance.agendaclinicas.cl/logom
 // Gmail elimina <input>/<form> de los correos recibidos, así que cualquier truco de
 // mostrar/ocultar con checkbox no es confiable — se muestra directo para garantizar
 // que el cliente pueda leer sus credenciales en cualquier proveedor de correo.
-function credencialRowHtml({ usuario, password }, idx) {
-    if (!usuario && !password) return '';
+function credencialRowHtml({ nombre, usuario, password }, idx) {
+    if (!nombre && !usuario && !password) return '';
     const esc = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     return `
-        <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:18px;margin-top:15px;">
-            <div style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Usuario</div>
-            <div style="font-weight:600;color:#0f172a;margin-bottom:14px;">${esc(usuario)}</div>
-            <div style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Contraseña</div>
-            <div style="font-family:monospace;font-weight:600;color:#0f172a;">${esc(password)}</div>
+        <div style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:20px 22px;margin-top:15px;">
+            <div style="font-size:15px;font-weight:700;color:#0f172a;margin-bottom:16px;">${esc(nombre) || '—'}</div>
+            <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
+                <tr>
+                    <td style="width:50%;vertical-align:top;padding-right:10px;">
+                        <div style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Usuario</div>
+                        <div style="font-weight:600;color:#0f172a;word-break:break-all;">${esc(usuario)}</div>
+                    </td>
+                    <td style="width:50%;vertical-align:top;">
+                        <div style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Contraseña</div>
+                        <div style="font-family:monospace;font-weight:600;color:#0f172a;word-break:break-all;">${esc(password)}</div>
+                    </td>
+                </tr>
+            </table>
         </div>`;
 }
 
