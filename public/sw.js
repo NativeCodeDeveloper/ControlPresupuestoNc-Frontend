@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ncf-shell-v8';
+const CACHE_NAME = 'ncf-shell-v9';
 
 const SHELL_ASSETS = [
     '/',
@@ -11,6 +11,7 @@ const SHELL_ASSETS = [
     '/clientes',
     '/clientes/boveda',
     '/clientes/documentos-tributarios',
+    '/clientes/metricas',
     '/icon-192.png',
     '/icon-512.png',
     '/logonuevoblanco.png',

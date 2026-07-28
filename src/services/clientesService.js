@@ -2,6 +2,7 @@ import apiClient from './apiClient';
 
 export const getClientes           = ()        => apiClient.get('/api/clientes');
 export const getClienteProyectos   = (nombre)  => apiClient.get(`/api/clientes/${encodeURIComponent(nombre)}/proyectos`);
+export const getMetricasNegocio    = (mes, anio) => apiClient.get(`/api/clientes/metricas?mes=${mes}&anio=${anio}`);
 
 // Bóveda
 export const getBovedas            = ()        => apiClient.get('/api/clientes/boveda');
