@@ -235,13 +235,14 @@ export const getServices = async (params = {}) => {
 
 /**
  * addService - Añadir nuevo servicio al catálogo
- * 
+ *
  * @param {string} name - Nombre del servicio
+ * @param {number|null} tipoCostoVariableId - Categoría (catálogo tipos_costos_variables), opcional
  * @returns {Promise<Object>} - Servicio creado
  */
-export const addService = async (name) => {
+export const addService = async (name, tipoCostoVariableId = null) => {
     try {
-        const data = await apiClient.post('/api/servicios', { name });
+        const data = await apiClient.post('/api/servicios', { name, tipo_costo_variable_id: tipoCostoVariableId });
         return data || null;
     } catch (error) {
         console.error('Error creando servicio:', error);
@@ -250,8 +251,26 @@ export const addService = async (name) => {
 };
 
 /**
+ * updateServiceCategory - Actualiza la categoría (Marketing/Publicidad/etc.) de un servicio existente.
+ *
+ * @param {number|string} id - ID del servicio
+ * @param {string} nombre - Nombre actual del servicio (requerido por el endpoint)
+ * @param {number|null} tipoCostoVariableId - Nueva categoría
+ * @returns {Promise<Object|null>}
+ */
+export const updateServiceCategory = async (id, nombre, tipoCostoVariableId) => {
+    try {
+        const data = await apiClient.put(`/api/servicios/${id}`, { nombre, tipo_costo_variable_id: tipoCostoVariableId });
+        return data || null;
+    } catch (error) {
+        console.error(`Error actualizando categoría de servicio ${id}:`, error);
+        return null;
+    }
+};
+
+/**
  * deleteService - Eliminar servicio del catálogo
- * 
+ *
  * @param {number|string} id - ID del servicio
  * @returns {Promise<boolean>} - true si se eliminó
  */

@@ -350,17 +350,33 @@ export default function Config() {
     };
 
     // === SERVICIOS ===
-    const handleAddService = async (name) => {
+    const handleAddService = async (name, tipoCostoVariableId = null) => {
         if (!name.trim()) return;
         setIsLoading(true);
         try {
-            const result = await costsService.addService(name);
+            const result = await costsService.addService(name, tipoCostoVariableId);
             if (result && result.ok) {
                 const fresh = await costsService.getServices();
                 if (fresh && Array.isArray(fresh)) setServicesData(fresh);
             }
         } catch (error) {
             console.error('Error agregando servicio:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleChangeServiceCategory = async (service, tipoCostoVariableId) => {
+        if (typeof service === 'string' || !service.id) return;
+        setIsLoading(true);
+        try {
+            const result = await costsService.updateServiceCategory(service.id, service.nombre, tipoCostoVariableId);
+            if (result && result.ok) {
+                const fresh = await costsService.getServices();
+                if (fresh && Array.isArray(fresh)) setServicesData(fresh);
+            }
+        } catch (error) {
+            console.error('Error actualizando categoría de servicio:', error);
         } finally {
             setIsLoading(false);
         }
@@ -1011,23 +1027,39 @@ export default function Config() {
                     <div className="space-y-4">
                         <div className="flex gap-2">
                             <input
+                                id="new-service-name"
                                 type="text"
                                 placeholder="Nuevo servicio..."
                                 className="flex-1 bg-secondary/50 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter') {
-                                        handleAddService(e.currentTarget.value);
+                                        const categorySelect = document.getElementById('new-service-category');
+                                        handleAddService(e.currentTarget.value, categorySelect?.value || null);
                                         e.currentTarget.value = '';
                                     }
                                 }}
                             />
+                            <select
+                                id="new-service-category"
+                                defaultValue=""
+                                title="Categoría — usada por CAC para saber si este servicio atrae clientes (Marketing/Publicidad)"
+                                className="bg-secondary/50 border border-border rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                            >
+                                <option value="">Sin categoría</option>
+                                {(variableCostTypesData || []).map(type => {
+                                    const name = typeof type === 'string' ? type : type.nombre;
+                                    const id = typeof type === 'string' ? type : type.id;
+                                    return <option key={id} value={id}>{name}</option>;
+                                })}
+                            </select>
                             <button
                                 disabled={isLoading}
                                 className="bg-[hsl(var(--copper))] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[hsl(var(--copper-light))] transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                                onClick={(e) => {
-                                    const input = e.currentTarget.previousSibling;
+                                onClick={() => {
+                                    const input = document.getElementById('new-service-name');
+                                    const categorySelect = document.getElementById('new-service-category');
                                     if (input.value) {
-                                        handleAddService(input.value);
+                                        handleAddService(input.value, categorySelect?.value || null);
                                         input.value = '';
                                     }
                                 }}
@@ -1039,9 +1071,25 @@ export default function Config() {
                             {(servicesData || []).map(service => {
                                 const name = typeof service === 'string' ? service : service.nombre;
                                 const key = typeof service === 'string' ? service : service.id;
+                                const currentCategoryId = typeof service === 'string' ? '' : (service.tipo_costo_variable_id ?? '');
                                 return (
                                 <div key={key} className="flex items-center gap-2 bg-secondary/50 border border-border px-3 py-1.5 rounded-full text-sm animate-in zoom-in-50 duration-200">
                                     <span>{name}</span>
+                                    {typeof service !== 'string' && (
+                                        <select
+                                            value={currentCategoryId}
+                                            onChange={(e) => handleChangeServiceCategory(service, e.target.value || null)}
+                                            title="Categoría — usada por CAC para saber si este servicio atrae clientes (Marketing/Publicidad)"
+                                            className="bg-transparent border-none text-xs text-muted-foreground focus:outline-none cursor-pointer"
+                                        >
+                                            <option value="">Sin categoría</option>
+                                            {(variableCostTypesData || []).map(type => {
+                                                const typeName = typeof type === 'string' ? type : type.nombre;
+                                                const typeId = typeof type === 'string' ? type : type.id;
+                                                return <option key={typeId} value={typeId}>{typeName}</option>;
+                                            })}
+                                        </select>
+                                    )}
                                     <button
                                         onClick={() => handleRemoveService(service)}
                                         className="text-muted-foreground hover:text-destructive transition-colors"
