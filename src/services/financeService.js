@@ -40,6 +40,16 @@ export const getDueAlerts = async (days = 7) => {
     }
 };
 
+export const getProyeccionCobros = async (days = 30) => {
+    try {
+        const data = await apiClient.get(`/api/finanzas/proyeccion-cobros?dias=${days}`);
+        return data || { proyectos: [], totalProyectado: 0 };
+    } catch (error) {
+        console.error('Error obteniendo proyección de cobros:', error);
+        return { proyectos: [], totalProyectado: 0 };
+    }
+};
+
 export const getF29 = async (month = null, year = null) => {
     try {
         const params = new URLSearchParams();

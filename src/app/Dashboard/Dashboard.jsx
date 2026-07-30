@@ -39,6 +39,19 @@ const StatCard = ({ title, value, icon, color, change }) => (
     </div>
 );
 
+const ALERT_BADGE = {
+    verde: { label: 'Al día', cls: 'bg-[hsl(var(--emerald-premium))]/15 text-[hsl(var(--emerald-premium))] border-[hsl(var(--emerald-premium))]/30' },
+    naranja: { label: 'Por vencer', cls: 'bg-[hsl(var(--gold))]/15 text-[hsl(var(--gold))] border-[hsl(var(--gold))]/30' },
+    rojo: { label: 'Vencido', cls: 'bg-destructive/15 text-destructive border-destructive/30' }
+};
+
+const formatDiaMes = (isoDate) => {
+    if (!isoDate) return '—';
+    return new Date(`${isoDate}T00:00:00`).toLocaleDateString('es-CL', { day: '2-digit', month: 'short' });
+};
+
+const EMPTY_PROYECCION = { proyectos: [], totalProyectado: 0 };
+
 const EMPTY_STATS = {
     totalIncome: 0,
     totalExpenses: 0,
@@ -102,6 +115,7 @@ export default function Dashboard() {
     });
     const [cashFlowData, setCashFlowData] = useState([]);
     const [dataLoaded, setDataLoaded] = useState(false);
+    const [proyeccionCobros, setProyeccionCobros] = useState(EMPTY_PROYECCION);
 
     useEffect(() => {
         const loadData = async () => {
@@ -169,6 +183,13 @@ export default function Dashboard() {
         loadData();
     }, [selectedMonth, selectedYear]);
 
+    // Independiente del mes/año seleccionado — siempre mira hacia adelante desde hoy.
+    useEffect(() => {
+        financeService.getProyeccionCobros(30)
+            .then((data) => setProyeccionCobros(data || EMPTY_PROYECCION))
+            .catch(() => setProyeccionCobros(EMPTY_PROYECCION));
+    }, []);
+
     useRealtime(useCallback(() => {
         const currentMonth = parseInt(selectedMonth, 10);
         const currentYear  = parseInt(selectedYear, 10);
@@ -177,6 +198,10 @@ export default function Dashboard() {
             financeService.getF29(currentMonth, currentYear)
         ])
             .then(([s, f29]) => { if (s) setStats({ ...mapSummaryToStats(s), ivaAPagar: Number(f29?.iva_neto || 0) }); })
+            .catch(() => {});
+
+        financeService.getProyeccionCobros(30)
+            .then((data) => { if (data) setProyeccionCobros(data); })
             .catch(() => {});
     }, [selectedMonth, selectedYear]));
 
@@ -278,6 +303,44 @@ export default function Dashboard() {
                         <div className="text-sm text-muted-foreground text-center py-12">Cargando...</div>
                     )}
                 </div>
+            </div>
+
+            <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
+                <div className="flex items-start justify-between gap-4 flex-wrap mb-6">
+                    <div>
+                        <h3 className="text-lg font-semibold text-foreground">Proyección de Cobros</h3>
+                        <p className="text-sm text-muted-foreground mt-1">Próximos 30 días — para estimar cuándo hacer el reparto a socios</p>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-xs text-muted-foreground">Total proyectado</p>
+                        <p className="text-xl font-bold text-foreground">{formatCLP(proyeccionCobros.totalProyectado)}</p>
+                    </div>
+                </div>
+
+                {proyeccionCobros.proyectos.length === 0 ? (
+                    <div className="text-sm text-muted-foreground text-center py-8">Sin cobros proyectados en los próximos 30 días.</div>
+                ) : (
+                    <div className="max-h-96 overflow-y-auto pr-1 space-y-1">
+                        {proyeccionCobros.proyectos.map((p) => {
+                            const badge = ALERT_BADGE[p.estadoAlerta] || ALERT_BADGE.verde;
+                            return (
+                                <div key={p.id} className="flex items-center justify-between gap-3 py-2 border-b border-border/40 last:border-0">
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-medium text-foreground truncate">{p.nombreCliente}</p>
+                                        <p className="text-xs text-muted-foreground">{formatDiaMes(p.fechaProximoPago)} · {p.cicloFacturacion}</p>
+                                    </div>
+                                    <div className="flex items-center gap-3 shrink-0">
+                                        <span className={`text-[11px] px-2 py-0.5 rounded-full border ${badge.cls}`}>{badge.label}</span>
+                                        <div className="text-right w-24">
+                                            <p className="text-sm font-medium text-foreground tabular-nums">{formatCLP(p.montoProyectado)}</p>
+                                            <p className="text-[10px] text-muted-foreground tabular-nums">acum. {formatCLP(p.acumulado)}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
             </div>
         </div>
     );
