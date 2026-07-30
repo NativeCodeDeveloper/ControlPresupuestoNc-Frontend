@@ -4,8 +4,8 @@ import { useState, useEffect, useCallback, createElement } from 'react';
 import {
     Radar, TrendingUp, Users, UserMinus, Gem, Megaphone, Rocket, Loader2, RefreshCw
 } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Select } from '../../components/ui/FormElements';
+import { PointsChart } from '../../components/ui/PointsChart';
 import { cn } from '../../lib/utils';
 import { getMetricasNegocio } from '../../services/clientesService';
 
@@ -49,18 +49,18 @@ function StatCard({ title, value, icon, subtitle, hint, iconTone }) {
     );
 }
 
-function ChartPanel({ title, subtitle, children }) {
-    return (
-        <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
-            <div className="mb-4">
-                <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-                {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
-            </div>
-            <div className="h-64">
-                {children}
-            </div>
-        </div>
-    );
+// Arma la serie {date, total, change} que espera PointsChart a partir de las filas
+// {periodo, total} que devuelve el backend — change = delta vs. el mes anterior.
+function withChange(rows) {
+    return rows.map((r, i) => {
+        const total = Number(r.total || 0);
+        const prevTotal = i > 0 ? Number(rows[i - 1].total || 0) : total;
+        return {
+            date: monthLabel(r.periodo),
+            total,
+            change: i === 0 ? 0 : total - prevTotal,
+        };
+    });
 }
 
 // ── Componente principal ──────────────────────────────────────────────────────
@@ -89,15 +89,8 @@ export default function MetricasNegocio() {
 
     useEffect(() => { load(); }, [load]);
 
-    const ingresosChart = (data?.tendencia?.ingresos || []).map(r => ({
-        name: monthLabel(r.periodo),
-        total: Number(r.total || 0),
-    }));
-
-    const clientesChart = (data?.tendencia?.clientesNuevos || []).map(r => ({
-        name: monthLabel(r.periodo),
-        total: Number(r.total || 0),
-    }));
+    const ingresosChart = withChange(data?.tendencia?.ingresos || []);
+    const clientesChart = withChange(data?.tendencia?.clientesNuevos || []);
 
     return (
         <div className="space-y-6">
@@ -215,36 +208,18 @@ export default function MetricasNegocio() {
 
                     {/* Tendencia */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <ChartPanel title="Ingresos cobrados" subtitle="Últimos 12 meses — caja real">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={ingresosChart}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} dy={10} />
-                                    <YAxis axisLine={false} tickLine={false} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} dx={-10} tickFormatter={(v) => `$${Math.round(v / 1000)}k`} />
-                                    <Tooltip
-                                        formatter={(value) => fmt(value)}
-                                        contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '8px' }}
-                                        itemStyle={{ color: 'hsl(var(--foreground))' }}
-                                    />
-                                    <Bar dataKey="total" name="Ingresos" fill="hsl(var(--emerald-premium))" radius={[4, 4, 0, 0]} maxBarSize={40} />
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </ChartPanel>
+                        <PointsChart
+                            title="Ingresos cobrados"
+                            subtitle="Últimos 12 meses — caja real"
+                            data={ingresosChart}
+                            valueFormatter={fmt}
+                        />
 
-                        <ChartPanel title="Clientes nuevos" subtitle="Últimos 12 meses — primer proyecto registrado">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={clientesChart}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} dy={10} />
-                                    <YAxis axisLine={false} tickLine={false} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} dx={-10} allowDecimals={false} />
-                                    <Tooltip
-                                        contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '8px' }}
-                                        itemStyle={{ color: 'hsl(var(--foreground))' }}
-                                    />
-                                    <Bar dataKey="total" name="Clientes nuevos" fill="#f59e0b" radius={[4, 4, 0, 0]} maxBarSize={40} />
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </ChartPanel>
+                        <PointsChart
+                            title="Clientes nuevos"
+                            subtitle="Últimos 12 meses — primer proyecto registrado"
+                            data={clientesChart}
+                        />
                     </div>
                 </>
             )}
