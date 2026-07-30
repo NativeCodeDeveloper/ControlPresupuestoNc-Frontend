@@ -169,10 +169,18 @@ export default function MetricasNegocio() {
                         />
                         <StatCard
                             title="Churn Rate"
-                            value={fmtPercent(data?.churnRate)}
+                            value={data?.churnBasePeriodo > 0 ? fmtPercent(data?.churnRatePeriodo) : fmtPercent(data?.churnRate)}
                             icon={UserMinus}
-                            subtitle={`${data?.churnCancelados ?? 0} de ${data?.churnTotal ?? 0} proyectos — snapshot actual`}
-                            hint="Aproximado: no hay historial de fechas de cancelación en el sistema, por lo que es un snapshot del estado actual (Cancelado/Desactivada), no un cálculo por período."
+                            subtitle={
+                                data?.churnBasePeriodo > 0
+                                    ? `${data?.churnCanceladosPeriodo ?? 0} de ${data?.churnBasePeriodo ?? 0} cuentas — cancelados en el período`
+                                    : `${data?.churnCancelados ?? 0} de ${data?.churnTotal ?? 0} proyectos — snapshot actual`
+                            }
+                            hint={
+                                data?.churnBasePeriodo > 0
+                                    ? "Basado en fecha real de cancelación (solo se registra desde que un proyecto pasa a estado Cancelado). Desactivada no cuenta como churn."
+                                    : "Aproximado: sin cancelaciones con fecha registrada en este período todavía (la fecha solo se guarda desde que se implementó), se muestra el snapshot del estado actual (Cancelado/Desactivada)."
+                            }
                             iconTone="bg-red-500/12 text-red-400"
                         />
                     </div>
