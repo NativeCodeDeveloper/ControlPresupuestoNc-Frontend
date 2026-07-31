@@ -50,6 +50,11 @@ const formatDiaMes = (isoDate) => {
     return new Date(`${isoDate}T00:00:00`).toLocaleDateString('es-CL', { day: '2-digit', month: 'short' });
 };
 
+const formatFechaLarga = (isoDate) => {
+    if (!isoDate) return '—';
+    return new Date(`${isoDate}T00:00:00`).toLocaleDateString('es-CL', { day: 'numeric', month: 'long' });
+};
+
 const EMPTY_PROYECCION = { proyectos: [], totalProyectado: 0 };
 
 const EMPTY_STATS = {
@@ -309,11 +314,21 @@ export default function Dashboard() {
                 <div className="flex items-start justify-between gap-4 flex-wrap mb-6">
                     <div>
                         <h3 className="text-lg font-semibold text-foreground">Proyección de Cobros</h3>
-                        <p className="text-sm text-muted-foreground mt-1">Próximos 30 días — para estimar cuándo hacer el reparto a socios</p>
+                        <p className="text-sm text-muted-foreground mt-1">Panorama de cobros esperados en los próximos 30 días</p>
                     </div>
-                    <div className="text-right">
-                        <p className="text-xs text-muted-foreground">Total proyectado</p>
-                        <p className="text-xl font-bold text-foreground">{formatCLP(proyeccionCobros.totalProyectado)}</p>
+                    <div className="flex items-center gap-6">
+                        <div className="text-right">
+                            <p className="text-xs text-muted-foreground">Total proyectado</p>
+                            <p className="text-xl font-bold text-foreground">{formatCLP(proyeccionCobros.totalProyectado)}</p>
+                        </div>
+                        {proyeccionCobros.proyectos.length > 0 && (
+                            <div className="text-right border-l border-border/50 pl-6">
+                                <p className="text-xs text-muted-foreground">Todo cobrado (estimado) el</p>
+                                <p className="text-xl font-bold text-[hsl(var(--gold))]">
+                                    {formatFechaLarga(proyeccionCobros.proyectos[proyeccionCobros.proyectos.length - 1].fechaProximoPago)}
+                                </p>
+                            </div>
+                        )}
                     </div>
                 </div>
 
