@@ -26,3 +26,19 @@ export function normalizeRut(value) {
     if (!match) return clean;
     return `${match[1]}-${match[2]}`;
 }
+
+// Formatea una fecha al formato chileno (DD/MM/YYYY o "ene 2026")
+export function formatDate(date, options = {}) {
+    if (!date) return '—';
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return '—';
+
+    const { style = 'short' } = options;
+    if (style === 'short') {
+        return d.toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+    if (style === 'month') {
+        return d.toLocaleDateString('es-CL', { month: 'short', year: 'numeric' });
+    }
+    return d.toLocaleDateString('es-CL');
+}

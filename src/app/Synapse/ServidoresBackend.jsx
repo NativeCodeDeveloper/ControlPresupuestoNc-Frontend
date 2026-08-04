@@ -17,7 +17,7 @@ const ESTADO_CONFIG = {
     fuera_servicio:  { label: 'Fuera de servicio',        bg: 'bg-red-500/10',     text: 'text-red-400',     border: 'border-red-500/20' },
 };
 
-const EMPTY_FORM = { ruta_backend: '', estado: 'url_disponible', id_proyecto: '', version: '', notas: '' };
+const EMPTY_FORM = { ruta_backend: '', estado: 'url_disponible', id_proyecto: '', version: '', notas: '', api_key: '' };
 
 // ── Sub-componentes ───────────────────────────────────────────────────────────
 
@@ -41,6 +41,7 @@ function ServidorRow({ servidor, proyectos, onSave, onDelete }) {
         id_proyecto:  servidor.id_proyecto  || '',
         version:      servidor.version      || '',
         notas:        servidor.notas        || '',
+        api_key:      '', // Nunca mostramos la API key existente por seguridad
     });
     const [saving, setSaving]   = useState(false);
 
@@ -64,6 +65,7 @@ function ServidorRow({ servidor, proyectos, onSave, onDelete }) {
             id_proyecto:  servidor.id_proyecto  || '',
             version:      servidor.version      || '',
             notas:        servidor.notas        || '',
+            api_key:      '', // Nunca mostramos la API key existente
         });
         setEditing(false);
     };
@@ -117,6 +119,17 @@ function ServidorRow({ servidor, proyectos, onSave, onDelete }) {
                                 placeholder="v1.0.4"
                                 className="w-full text-[12px] bg-input border border-border rounded-lg px-2.5 py-1.5 outline-none focus:border-violet-500 transition-colors"
                             />
+                        </div>
+                        <div>
+                            <label className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5 block">API Key (Agenda Clínica)</label>
+                            <input
+                                type="password"
+                                value={form.api_key}
+                                onChange={e => setForm(f => ({ ...f, api_key: e.target.value }))}
+                                placeholder="Opcional…"
+                                className="w-full text-[12px] bg-input border border-border rounded-lg px-2.5 py-1.5 outline-none focus:border-violet-500 transition-colors"
+                            />
+                            <p className="text-[9px] text-muted-foreground mt-1">Se cifrará con AES-256-GCM antes de guardar</p>
                         </div>
                         <div className="sm:col-span-2">
                             <label className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5 block">Notas</label>
@@ -392,6 +405,17 @@ export default function ServidoresBackend() {
                                 placeholder="v1.0.4"
                                 className="w-full text-[12px] bg-input border border-border rounded-lg px-2.5 py-1.5 outline-none focus:border-violet-500 transition-colors"
                             />
+                        </div>
+                        <div>
+                            <label className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5 block">API Key (Agenda Clínica)</label>
+                            <input
+                                type="password"
+                                value={form.api_key}
+                                onChange={e => setForm(f => ({ ...f, api_key: e.target.value }))}
+                                placeholder="Opcional…"
+                                className="w-full text-[12px] bg-input border border-border rounded-lg px-2.5 py-1.5 outline-none focus:border-violet-500 transition-colors"
+                            />
+                            <p className="text-[9px] text-muted-foreground mt-1">Se cifrará con AES-256-GCM antes de guardar</p>
                         </div>
                         <div className="sm:col-span-2">
                             <label className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5 block">Notas</label>

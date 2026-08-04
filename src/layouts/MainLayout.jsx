@@ -7,7 +7,7 @@ import {
     House, LayoutDashboard, TrendingUp, TrendingDown, PieChart,
     Settings, Menu, Users, PiggyBank, Waves, BookOpen, LogOut,
     Brain, ChevronLeft, DollarSign, LayoutGrid, Gauge, Server, Terminal, CalendarDays,
-    Hammer, Rss, Building2, Shield, FlaskConical, Receipt, Radar
+    Hammer, Rss, Building2, Shield, FlaskConical, Receipt, Radar, HeartPulse
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { getTeams } from '../services/synapseService';
@@ -46,6 +46,7 @@ const MODULES = [
             { icon: Shield,  label: 'Bóveda',                 path: '/clientes/boveda',                 tone: 'text-amber-400', activeBg: 'bg-amber-500/14' },
             { icon: Receipt, label: 'Documentos Tributarios', path: '/clientes/documentos-tributarios', tone: 'text-amber-400', activeBg: 'bg-amber-500/14' },
             { icon: Radar,   label: 'Métricas de Negocio',    path: '/clientes/metricas',                tone: 'text-amber-400', activeBg: 'bg-amber-500/14' },
+            { icon: HeartPulse, label: 'Health Score',        path: '/clientes/health-score',            tone: 'text-rose-400', activeBg: 'bg-rose-500/14' },
         ],
     },
     {
@@ -95,7 +96,7 @@ function getActiveModule(pathname) {
 }
 
 const RAIL_W  = 60;   // px — columna de íconos
-const PANEL_W = 196;  // px — panel de navegación
+const PANEL_W = 230;  // px — panel de navegación (aumentado de 196 para evitar títulos cortados)
 const TOTAL_W = RAIL_W + PANEL_W; // 256px (igual que el sidebar original)
 
 // ── Componentes internos ──────────────────────────────────────────────────────
