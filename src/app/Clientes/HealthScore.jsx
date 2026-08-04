@@ -114,6 +114,23 @@ export default function HealthScore() {
     };
   }, [filteredClients]);
 
+  // Clientes que necesitan atención — críticos primero, luego en riesgo, de
+  // peor a mejor score dentro de cada grupo.
+  const atRiskClients = useMemo(() => {
+    const severity = { critical: 0, warning: 1 };
+    return filteredClients
+      .filter(c => c.status === 'critical' || c.status === 'warning')
+      .sort((a, b) => severity[a.status] - severity[b.status] || a.score - b.score);
+  }, [filteredClients]);
+
+  const handleSelectAtRiskClient = (clientId) => {
+    setSelectedClient(clientId);
+    requestAnimationFrame(() => {
+      document.getElementById(`health-score-card-${clientId}`)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  };
+
   return (
     <div className="space-y-6">
 
@@ -141,6 +158,8 @@ export default function HealthScore() {
             healthy={stats.healthy}
             warning={stats.warning}
             critical={stats.critical}
+            atRiskClients={atRiskClients}
+            onSelectClient={handleSelectAtRiskClient}
           />
           <HealthTrendChart data={history} />
         </div>
@@ -219,7 +238,7 @@ export default function HealthScore() {
         ) : (
           <div className="space-y-3">
             {filteredClients.map((client, idx) => (
-              <div key={client.clientId || idx}>
+              <div key={client.clientId || idx} id={`health-score-card-${client.clientId}`}>
                 <HealthScoreCard
                   data={{
                     ...client,
