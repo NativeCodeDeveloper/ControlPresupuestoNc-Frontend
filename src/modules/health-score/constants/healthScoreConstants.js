@@ -38,6 +38,7 @@ export const HEALTH_STATUS_CONFIG = {
     bgClass: 'bg-emerald-500/10',
     textClass: 'text-emerald-400',
     borderClass: 'border-emerald-500/20',
+    dotClass: 'bg-emerald-400',
   },
   warning: {
     color: 'amber',
@@ -46,6 +47,7 @@ export const HEALTH_STATUS_CONFIG = {
     bgClass: 'bg-amber-500/10',
     textClass: 'text-amber-400',
     borderClass: 'border-amber-500/20',
+    dotClass: 'bg-amber-400',
   },
   critical: {
     color: 'red',
@@ -54,7 +56,16 @@ export const HEALTH_STATUS_CONFIG = {
     bgClass: 'bg-red-500/10',
     textClass: 'text-red-400',
     borderClass: 'border-red-500/20',
+    dotClass: 'bg-red-400',
   },
+};
+
+// Estados de pago (Finance) → dot color, mismo lenguaje visual que arriba
+export const PAGO_DOT_CLASS = {
+  verde: 'bg-emerald-400',
+  naranja: 'bg-amber-400',
+  rojo: 'bg-red-400',
+  desconocido: 'bg-muted-foreground',
 };
 
 // Valores máximos para normalización de métricas de Agenda Clínica

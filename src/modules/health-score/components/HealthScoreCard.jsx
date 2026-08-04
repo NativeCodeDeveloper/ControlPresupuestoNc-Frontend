@@ -11,134 +11,139 @@ import { useState } from 'react';
 import { ChevronDown, ChevronUp, Clock } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import MetricProgressBar from './MetricProgressBar';
-import { HEALTH_STATUS_CONFIG } from '../constants/healthScoreConstants';
+import { HEALTH_STATUS_CONFIG, PAGO_DOT_CLASS } from '../constants/healthScoreConstants';
+
+function relativeTime(date) {
+  if (!date) return 'ahora';
+  const diffMs = Date.now() - new Date(date).getTime();
+  const min = Math.floor(diffMs / 60000);
+  if (min < 1) return 'ahora';
+  if (min < 60) return `hace ${min} min`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `hace ${hr} h`;
+  const days = Math.floor(hr / 24);
+  return `hace ${days} d`;
+}
 
 export default function HealthScoreCard({ data, isOpen, onToggle }) {
-  const { score, status, metrics, lastUpdated } = data;
+  const { score, status, metrics, calculatedAt } = data;
   const statusConfig = HEALTH_STATUS_CONFIG[status];
+  const [pagosOpen, setPagosOpen] = useState(false);
 
-  // Agrupar métricas por categoría
   const usoMetrics = Object.values(metrics).filter(m => m.category === 'uso');
   const valorMetrics = Object.values(metrics).filter(m => m.category === 'valor');
   const pagaMetrics = Object.values(metrics).filter(m => m.category === 'paga');
 
-  const [showPagos, setShowPagos] = useState(false);
+  const estadoPagos = metrics.estadoPagos?.value;
+  const dtesAlDia = metrics.dtesAlDia?.value;
 
   return (
-    <div
-      className={cn(
-        'bg-card border rounded-2xl overflow-hidden transition-all duration-200',
-        status === 'healthy' ? 'border-emerald-500/20' : status === 'warning' ? 'border-amber-500/20' : 'border-red-500/20',
-        isOpen && 'shadow-sm'
-      )}
-    >
+    <div className="bg-card border border-border/60 rounded-lg overflow-hidden">
       {/* Header */}
       <button
         onClick={onToggle}
-        className="w-full px-5 py-4 flex items-center justify-between hover:bg-foreground/[0.02] transition-colors"
+        className="w-full px-5 py-4 flex items-center justify-between gap-4 hover:bg-foreground/[0.02] transition-colors"
       >
-        <div className="flex items-center gap-4">
-          {/* Score badge */}
-          <div
-            className={cn(
-              'w-14 h-14 rounded-xl flex items-center justify-center',
-              statusConfig.bgClass
-            )}
-          >
-            <span className={cn('text-2xl font-bold tabular-nums', statusConfig.textClass)}>
-              {score}
+        <span className="font-medium text-[14px] text-foreground truncate">
+          {data.companyName || data.clientId}
+        </span>
+
+        <div className="flex items-center gap-4 shrink-0">
+          <div className="flex items-center gap-2">
+            <span className="text-[20px] font-bold tabular-nums text-foreground leading-none">{score}</span>
+            <span className={cn('w-1.5 h-1.5 rounded-full', statusConfig.dotClass)} />
+            <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              {statusConfig.label}
             </span>
           </div>
-
-          {/* Info */}
-          <div className="text-left">
-            <p className="font-semibold text-[14px] text-foreground">
-              {data.companyName || data.clientId}
-            </p>
-            <p className={cn('text-[12px]', statusConfig.textClass)}>
-              {statusConfig.label}
-            </p>
-          </div>
+          {isOpen ? <ChevronUp size={14} className="text-muted-foreground" /> : <ChevronDown size={14} className="text-muted-foreground" />}
         </div>
-
-        {isOpen ? <ChevronUp size={16} className="text-muted-foreground" /> : <ChevronDown size={16} className="text-muted-foreground" />}
       </button>
 
-      {/* Detail */}
       {isOpen && (
-        <div className="px-5 py-4 space-y-5 border-t border-border/50 bg-muted/20">
+        <div className="border-t border-border/50">
 
-          {/* USO - Protagonista (60%) */}
-          <div className="space-y-3">
-            <p className="text-[11px] font-semibold text-foreground uppercase tracking-wide">
-              USO (60%)
-            </p>
-            {usoMetrics.map(metric => (
-              <MetricProgressBar
-                key={metric.id}
-                label={metric.label}
-                value={metric.value}
-                max={metric.maxPossible}
-                score={Math.round(metric.contribution)}
-                weight={metric.weight}
-                unit={metric.unit}
-              />
-            ))}
+          {/* Pagos — resumen compacto y desplegable */}
+          <div className="border-b border-border/50">
+            <button
+              onClick={() => setPagosOpen(!pagosOpen)}
+              className="w-full px-5 py-2.5 flex items-center justify-between gap-3 hover:bg-foreground/[0.02] transition-colors"
+            >
+              <div className="flex items-center gap-2 text-[11px] min-w-0">
+                <span className="font-medium text-foreground shrink-0">Pagos</span>
+                <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', PAGO_DOT_CLASS[estadoPagos] || PAGO_DOT_CLASS.desconocido)} />
+                <span className="text-muted-foreground truncate">
+                  Estado: {estadoPagos || 'desconocido'} · DTEs {dtesAlDia ? 'al día' : 'con problema'}
+                </span>
+              </div>
+              {pagosOpen ? <ChevronUp size={12} className="text-muted-foreground shrink-0" /> : <ChevronDown size={12} className="text-muted-foreground shrink-0" />}
+            </button>
+
+            {pagosOpen && (
+              <div className="px-5 pb-4 space-y-3">
+                {pagaMetrics.map(metric => (
+                  <MetricProgressBar
+                    key={metric.id}
+                    label={metric.label}
+                    value={metric.value}
+                    max={metric.maxPossible}
+                    unit={metric.unit}
+                    weight={metric.weight}
+                    normalizedValue={metric.normalizedValue}
+                    contribution={metric.contribution}
+                  />
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* VALOR (20%) */}
-          {valorMetrics.length > 0 && (
+          <div className="px-5 py-4 space-y-5">
+            {/* USO — protagonista (60%) */}
             <div className="space-y-3">
-              <p className="text-[11px] font-semibold text-foreground uppercase tracking-wide">
-                VALOR (20%)
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                Uso · 60%
               </p>
-              {valorMetrics.map(metric => (
+              {usoMetrics.map(metric => (
                 <MetricProgressBar
                   key={metric.id}
                   label={metric.label}
                   value={metric.value}
                   max={metric.maxPossible}
-                  score={Math.round(metric.contribution)}
-                  weight={metric.weight}
                   unit={metric.unit}
+                  weight={metric.weight}
+                  normalizedValue={metric.normalizedValue}
+                  contribution={metric.contribution}
+                  noValue={metric.value === null}
                 />
               ))}
             </div>
-          )}
 
-          {/* PAGA - Desplegable (20%) */}
-          {pagaMetrics.length > 0 && (
-            <div className="space-y-3">
-              <button
-                onClick={() => setShowPagos(!showPagos)}
-                className="flex items-center justify-between w-full text-[11px] font-semibold text-foreground uppercase tracking-wide hover:text-amber-400 transition-colors"
-              >
-                <span>PAGA (20%)</span>
-                {showPagos ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-              </button>
-
-              {showPagos && (
-                <div className="space-y-3 pl-2 border-l-2 border-amber-500/20">
-                  {pagaMetrics.map(metric => (
-                    <MetricProgressBar
-                      key={metric.id}
-                      label={metric.label}
-                      value={metric.value}
-                      max={metric.maxPossible}
-                      score={Math.round(metric.contribution)}
-                      weight={metric.weight}
-                      unit={metric.unit}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+            {/* VALOR (20%) */}
+            {valorMetrics.length > 0 && (
+              <div className="space-y-3">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                  Valor · 20%
+                </p>
+                {valorMetrics.map(metric => (
+                  <MetricProgressBar
+                    key={metric.id}
+                    label={metric.label}
+                    value={metric.value}
+                    max={metric.maxPossible}
+                    unit={metric.unit}
+                    weight={metric.weight}
+                    normalizedValue={metric.normalizedValue}
+                    contribution={metric.contribution}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* Footer */}
-          <div className="pt-2 border-t border-border/50 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          <div className="px-5 py-3 border-t border-border/50 flex items-center gap-1.5 text-[11px] text-muted-foreground">
             <Clock size={11} />
-            <span>Última actualización: {lastUpdated || 'Ahora'}</span>
+            <span>Última actualización: {relativeTime(calculatedAt)}</span>
           </div>
         </div>
       )}
