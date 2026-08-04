@@ -13,7 +13,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { usePersistedState } from '../../hooks/usePersistedState';
+import { usePersistedState } from '../../../hooks/usePersistedState';
 import {
   Search,
   RefreshCw,
@@ -26,11 +26,11 @@ import {
   Filter,
   ChevronDown,
 } from 'lucide-react';
-import { cn } from '../../lib/utils';
-import * as svc from './modules/health-score/services/healthScoreService';
-import HealthScoreCard from './modules/health-score/components/HealthScoreCard';
-import CancelledClientCard from './modules/health-score/components/CancelledClientCard';
-import { HEALTH_STATUS_CONFIG } from './modules/health-score/constants/healthScoreConstants';
+import { cn } from '../../../lib/utils';
+import * as svc from '../../modules/health-score/services/healthScoreService';
+import HealthScoreCard from '../../modules/health-score/components/HealthScoreCard';
+import CancelledClientCard from '../../modules/health-score/components/CancelledClientCard';
+import { HEALTH_STATUS_CONFIG } from '../../modules/health-score/constants/healthScoreConstants';
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
