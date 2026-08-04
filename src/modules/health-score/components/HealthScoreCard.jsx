@@ -120,11 +120,11 @@ export default function HealthScoreCard({ data, isOpen, onToggle }) {
               ))}
             </div>
 
-            {/* VALOR (20%) */}
+            {/* VALOR — peso real, chico a propósito para no tapar atrasos de pago */}
             {valorMetrics.length > 0 && (
               <div className="space-y-3">
                 <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                  Valor <span className="text-muted-foreground/50 normal-case italic">· informativo</span>
+                  Valor · {valorMetrics[0]?.weight}%
                 </p>
                 {valorMetrics.map(metric => (
                   <MetricProgressBar
