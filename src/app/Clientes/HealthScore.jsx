@@ -26,6 +26,7 @@ import { cn } from '../../lib/utils';
 import * as svc from '../../modules/health-score/services/healthScoreService';
 import HealthScoreCard from '../../modules/health-score/components/HealthScoreCard';
 import CancelledClientCard from '../../modules/health-score/components/CancelledClientCard';
+import HealthDistributionBar from '../../modules/health-score/components/HealthDistributionBar';
 import { HEALTH_STATUS_CONFIG } from '../../modules/health-score/constants/healthScoreConstants';
 
 // ── Helpers ───────────────────────────────────────────────────────────────
@@ -121,6 +122,14 @@ export default function HealthScore() {
           <StatusBadge status="critical" count={stats.critical} />
         </div>
       </div>
+
+      {viewType === 'activos' && (
+        <HealthDistributionBar
+          healthy={stats.healthy}
+          warning={stats.warning}
+          critical={stats.critical}
+        />
+      )}
 
       {/* Controls */}
       <div className="flex items-center gap-3 flex-wrap">
