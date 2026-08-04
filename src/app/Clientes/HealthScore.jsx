@@ -66,18 +66,26 @@ export default function HealthScore() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [activosData, canceladosData, historyData] = await Promise.all([
+      const [activosData, canceladosData] = await Promise.all([
         svc.getAllHealthScores(),
         svc.getCancelledHealthScores(),
-        svc.getPortfolioHistory(),
       ]);
       setClients(activosData || []);
       setCancelled(canceladosData || []);
-      setHistory(historyData || []);
     } catch (error) {
       console.error('[HealthScore]', error);
     } finally {
       setLoading(false);
+    }
+
+    // Separado del bloque anterior a propósito: si el historial falla (es
+    // una feature nueva, menos probada), no debe tumbar la carga de la
+    // lista de clientes, que es lo importante de la página.
+    try {
+      const historyData = await svc.getPortfolioHistory();
+      setHistory(historyData || []);
+    } catch (error) {
+      console.error('[HealthScore] historial', error);
     }
   };
 
