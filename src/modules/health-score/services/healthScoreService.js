@@ -10,7 +10,7 @@
 
 import apiClient from '../../../services/apiClient';
 import agendaClinicaApiService from './agendaClinicaApiService.js';
-import HealthScoreCalculator from '../../utils/healthScoreCalculator.js';
+import HealthScoreCalculator from '../utils/healthScoreCalculator.js';
 
 const calculator = new HealthScoreCalculator();
 
@@ -65,7 +65,7 @@ export async function getAllHealthScores(options = {}) {
   // return await apiClient.get(`/api/health-score/companies?${params}`);
 
   // Por ahora: mock data
-  const { MOCK_CLIENTES_LIST } = await import('../../mocks/agendaClinicaMockData.js');
+  const { MOCK_CLIENTES_LIST } = await import('../mocks/agendaClinicaMockData.js');
 
   const scores = await Promise.all(
     MOCK_CLIENTES_LIST.map(async (cliente) => {
