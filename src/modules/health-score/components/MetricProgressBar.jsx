@@ -17,29 +17,35 @@ export default function MetricProgressBar({
   normalizedValue = 0,
   contribution = 0,
   noValue = false,
+  countsTowardScore = true,
   className,
 }) {
   const percentage = noValue ? 0 : Math.min(100, Math.max(0, normalizedValue));
-  const barColor = percentage === 0
-    ? 'bg-transparent'
-    : percentage >= 80
-      ? 'bg-emerald-500'
-      : percentage >= 50
-        ? 'bg-amber-500'
-        : 'bg-red-500';
+  const barColor = !countsTowardScore
+    ? 'bg-foreground/20'
+    : percentage === 0
+      ? 'bg-transparent'
+      : percentage >= 80
+        ? 'bg-emerald-500'
+        : percentage >= 50
+          ? 'bg-amber-500'
+          : 'bg-red-500';
 
   return (
     <div className={cn('space-y-1.5', className)}>
       <div className="flex items-center justify-between gap-3 text-[11px]">
         <span className="text-muted-foreground shrink-0">
-          {label} <span className="text-muted-foreground/60">{weight}%</span>
+          {label}{' '}
+          {countsTowardScore
+            ? <span className="text-muted-foreground/60">{weight}%</span>
+            : <span className="text-muted-foreground/40 italic">no pondera</span>}
         </span>
         <div className="flex items-center gap-2.5 tabular-nums shrink-0">
-          <span className="text-foreground">
+          <span className={cn(countsTowardScore ? 'text-foreground' : 'text-muted-foreground/70')}>
             {noValue ? '—' : value}
             {!noValue && unit && <span className="text-muted-foreground"> / {max} {unit}</span>}
           </span>
-          <span className="text-foreground font-semibold">
+          <span className={cn('font-semibold', countsTowardScore ? 'text-foreground' : 'text-muted-foreground/70')}>
             {noValue ? '—' : Math.round(contribution)} <span className="font-normal text-muted-foreground">pts</span>
           </span>
         </div>

@@ -91,6 +91,7 @@ export default function HealthScoreCard({ data, isOpen, onToggle }) {
                     weight={metric.weight}
                     normalizedValue={metric.normalizedValue}
                     contribution={metric.contribution}
+                    countsTowardScore={metric.countsTowardScore}
                   />
                 ))}
               </div>
@@ -98,10 +99,10 @@ export default function HealthScoreCard({ data, isOpen, onToggle }) {
           </div>
 
           <div className="px-5 py-4 space-y-5">
-            {/* USO — protagonista (60%) */}
+            {/* USO — pendiente de conectar Agenda Clínica, no pondera aún */}
             <div className="space-y-3">
               <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                Uso · 60%
+                Uso <span className="text-muted-foreground/50 normal-case italic">· sin conectar</span>
               </p>
               {usoMetrics.map(metric => (
                 <MetricProgressBar
@@ -114,6 +115,7 @@ export default function HealthScoreCard({ data, isOpen, onToggle }) {
                   normalizedValue={metric.normalizedValue}
                   contribution={metric.contribution}
                   noValue={metric.value === null}
+                  countsTowardScore={metric.countsTowardScore}
                 />
               ))}
             </div>
@@ -122,7 +124,7 @@ export default function HealthScoreCard({ data, isOpen, onToggle }) {
             {valorMetrics.length > 0 && (
               <div className="space-y-3">
                 <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                  Valor · 20%
+                  Valor <span className="text-muted-foreground/50 normal-case italic">· informativo</span>
                 </p>
                 {valorMetrics.map(metric => (
                   <MetricProgressBar
@@ -134,6 +136,7 @@ export default function HealthScoreCard({ data, isOpen, onToggle }) {
                     weight={metric.weight}
                     normalizedValue={metric.normalizedValue}
                     contribution={metric.contribution}
+                    countsTowardScore={metric.countsTowardScore}
                   />
                 ))}
               </div>
