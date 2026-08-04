@@ -27,6 +27,7 @@ import * as svc from '../../modules/health-score/services/healthScoreService';
 import HealthScoreCard from '../../modules/health-score/components/HealthScoreCard';
 import CancelledClientCard from '../../modules/health-score/components/CancelledClientCard';
 import HealthDistributionBar from '../../modules/health-score/components/HealthDistributionBar';
+import HealthTrendChart from '../../modules/health-score/components/HealthTrendChart';
 import { HEALTH_STATUS_CONFIG } from '../../modules/health-score/constants/healthScoreConstants';
 
 // ── Helpers ───────────────────────────────────────────────────────────────
@@ -55,6 +56,7 @@ function StatusBadge({ status, count }) {
 export default function HealthScore() {
   const [clients, setClients] = useState([]);
   const [cancelled, setCancelled] = useState([]);
+  const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = usePersistedState('health-score:search', '');
   const [viewType, setViewType] = useState('activos'); // 'activos' | 'cancelados'
@@ -64,12 +66,14 @@ export default function HealthScore() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [activosData, canceladosData] = await Promise.all([
+      const [activosData, canceladosData, historyData] = await Promise.all([
         svc.getAllHealthScores(),
         svc.getCancelledHealthScores(),
+        svc.getPortfolioHistory(),
       ]);
       setClients(activosData || []);
       setCancelled(canceladosData || []);
+      setHistory(historyData || []);
     } catch (error) {
       console.error('[HealthScore]', error);
     } finally {
@@ -124,11 +128,14 @@ export default function HealthScore() {
       </div>
 
       {viewType === 'activos' && (
-        <HealthDistributionBar
-          healthy={stats.healthy}
-          warning={stats.warning}
-          critical={stats.critical}
-        />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <HealthDistributionBar
+            healthy={stats.healthy}
+            warning={stats.warning}
+            critical={stats.critical}
+          />
+          <HealthTrendChart data={history} />
+        </div>
       )}
 
       {/* Controls */}

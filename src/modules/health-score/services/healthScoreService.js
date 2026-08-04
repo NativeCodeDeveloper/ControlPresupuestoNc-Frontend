@@ -54,10 +54,20 @@ export async function getHealthScoreStats() {
   return await apiClient.get('/api/health-score/stats');
 }
 
+/**
+ * Obtiene la tendencia de la distribución de cartera (un snapshot por día)
+ *
+ * GET /api/health-score/historial?days={days}
+ */
+export async function getPortfolioHistory(days = 90) {
+  return await apiClient.get(`/api/health-score/historial?days=${days}`);
+}
+
 export default {
   getHealthScore,
   getAllHealthScores,
   getCancelledHealthScores,
   getHealthScoreHistory,
   getHealthScoreStats,
+  getPortfolioHistory,
 };
