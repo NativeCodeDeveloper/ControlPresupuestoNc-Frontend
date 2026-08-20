@@ -70,8 +70,8 @@ function credencialRowHtml({ nombre, usuario, password }, idx) {
         </div>`;
 }
 
-// Template HTML diseñado (hero oscuro + tarjeta de beneficios + CTA) para el correo de Bienvenida.
-// Tokens {{NOMBRE}}, {{LINK_ACCESO}} se reemplazan antes de enviar.
+// Template HTML diseñado (hero oscuro + tarjeta de beneficios) para el correo de Bienvenida.
+// Token {{NOMBRE}} se reemplaza antes de enviar.
 const TEMPLATE_BIENVENIDA_HTML = `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -94,8 +94,6 @@ body{background:#030712;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',
 .card{background:#F8FAFC;border:1px solid #E2E8F0;border-radius:20px;padding:35px;margin:50px 0;}
 .card-title{color:#0F172A;font-size:22px;font-weight:700;margin-bottom:25px;}
 .item{color:#334155;font-size:16px;line-height:32px;margin-bottom:12px;}
-.button-container{text-align:center;margin-top:50px;}
-.button{display:inline-block;background:#F2F2F7;color:#2563EB !important;border:1px solid #E2E8F0;text-decoration:none;padding:18px 38px;border-radius:14px;font-size:15px;font-weight:600;}
 .closing{margin-top:50px;text-align:center;}
 .closing-title{color:#0F172A;font-size:28px;font-weight:700;margin-bottom:15px;}
 .closing-text{color:#64748B;font-size:18px;line-height:32px;}
@@ -129,9 +127,7 @@ body{background:#030712;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',
             <div class="item">✓ Acompañamiento durante todo el proceso.</div>
         </div>
         <p class="text">Estamos convencidos de que las mejores soluciones nacen de grandes colaboraciones, y esperamos construir una relación sólida y duradera contigo.</p>
-        <div class="button-container">
-            <a href="{{LINK_ACCESO}}" class="button" style="color:#2563EB !important;">Comenzar</a>
-        </div>
+        <p class="text">En los próximos días, nuestro equipo se pondrá en contacto contigo para coordinar los siguientes pasos de la implementación y acompañarte en cada etapa del proceso.</p>
         <div class="closing">
             <div class="closing-title">Este es solo el comienzo.</div>
             <div class="closing-text">Bienvenido a la experiencia NativeCode.</div>
@@ -156,8 +152,7 @@ const templateBienvenida = (project) => ({
     subject: 'Bienvenido a NativeCode',
     htmlTemplate: TEMPLATE_BIENVENIDA_HTML,
     fields: [
-        { key: 'NOMBRE',       label: 'Nombre del cliente', defaultValue: project?.nombre_cliente || '' },
-        { key: 'LINK_ACCESO',  label: 'Link de acceso',     defaultValue: project?.url_front || '', placeholder: 'https://...' },
+        { key: 'NOMBRE', label: 'Nombre del cliente', defaultValue: project?.nombre_cliente || '' },
     ],
 });
 
