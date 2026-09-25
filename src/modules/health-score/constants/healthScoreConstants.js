@@ -19,7 +19,6 @@ export const HEALTH_SCORE_WEIGHTS = {
   // PAGA (20%)
   estadoPagos: 10,
   morosidad: 5,
-  dtesAlDia: 5,
 };
 
 // Umbrales para determinar el estado del Health Score

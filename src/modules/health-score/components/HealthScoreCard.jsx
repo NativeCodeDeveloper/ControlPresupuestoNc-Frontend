@@ -35,7 +35,6 @@ export default function HealthScoreCard({ data, isOpen, onToggle }) {
   const pagaMetrics = Object.values(metrics).filter(m => m.category === 'paga');
 
   const estadoPagos = metrics.estadoPagos?.value;
-  const dtesAlDia = metrics.dtesAlDia?.value;
 
   return (
     <div className="bg-card border border-border/60 rounded-lg overflow-hidden">
@@ -73,7 +72,7 @@ export default function HealthScoreCard({ data, isOpen, onToggle }) {
                 <span className="font-medium text-foreground shrink-0">Pagos</span>
                 <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', PAGO_DOT_CLASS[estadoPagos] || PAGO_DOT_CLASS.desconocido)} />
                 <span className="text-muted-foreground truncate">
-                  Estado: {estadoPagos || 'desconocido'} · DTEs {dtesAlDia ? 'al día' : 'con problema'}
+                  Estado: {estadoPagos || 'desconocido'}
                 </span>
               </div>
               {pagosOpen ? <ChevronUp size={12} className="text-muted-foreground shrink-0" /> : <ChevronDown size={12} className="text-muted-foreground shrink-0" />}
