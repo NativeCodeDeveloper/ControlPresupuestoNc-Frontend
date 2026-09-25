@@ -43,6 +43,11 @@ export const createTeam = (data) => apiClient.post(`${BASE}/teams`, data);
 export const updateTeam = (id, data) => apiClient.put(`${BASE}/teams/${id}`, data);
 export const deleteTeam = (id) => apiClient.delete(`${BASE}/teams/${id}`);
 
+// ── Columnas ocultas por equipo ───────────────────────────────────────────────
+// Los estados del kanban son globales; esto define cuáles no se muestran en un equipo.
+export const getTeamEstadosOcultos = (id)      => apiClient.get(`${BASE}/teams/${id}/estados-ocultos`);
+export const setTeamEstadosOcultos = (id, ids) => apiClient.put(`${BASE}/teams/${id}/estados-ocultos`, { ids });
+
 // ── Production Cockpit ────────────────────────────────────────────────────────
 export const getCockpit = (params = {}) => {
     const qs = new URLSearchParams(

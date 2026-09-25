@@ -9,6 +9,8 @@ import {
 import { cn } from '../../lib/utils';
 import * as synapseService from '../../services/synapseService';
 import SynapseTaskModal from './SynapseTaskModal';
+import ColumnasMenu from './ColumnasMenu';
+import SynapseToast from './SynapseToast';
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 
@@ -344,6 +346,11 @@ export default function Synapse({ teamId = null }) {
 
     const [proyectosRef, setProyectosRef] = useState([]);
 
+    // Columnas ocultas de este equipo. Config compartida (vive en BD), no por usuario.
+    const [estadosOcultos, setEstadosOcultos] = useState([]);
+    const [savingCols, setSavingCols] = useState(false);
+    const [toast, setToast] = useState(null);
+
     const teamInfo = numTeamId ? teams.find(t => t.id_team === numTeamId) : null;
 
     const loadAll = useCallback(async (silent = false) => {
@@ -351,16 +358,22 @@ export default function Synapse({ teamId = null }) {
         if (!silent) setError('');
         try {
             const params = numTeamId ? { id_team: numTeamId } : {};
-            const [est, tar, proys, tms] = await Promise.all([
+            const [est, tar, proys, tms, ocultos] = await Promise.all([
                 synapseService.getEstados(),
                 synapseService.getTareas(params),
                 synapseService.getMetaProyectos(),
                 synapseService.getTeams(),
+                // Solo aplica a la vista de equipo. El catch deja el tablero funcionando
+                // (mostrando todas las columnas) si el endpoint todavía no está arriba.
+                numTeamId
+                    ? synapseService.getTeamEstadosOcultos(numTeamId).catch(() => [])
+                    : Promise.resolve([]),
             ]);
             setEstados(Array.isArray(est) ? est : []);
             setTareas(Array.isArray(tar) ? tar : []);
             setProyectosRef(Array.isArray(proys) ? proys : []);
             setTeams(Array.isArray(tms) ? tms : []);
+            setEstadosOcultos(Array.isArray(ocultos) ? ocultos : []);
         } catch (e) {
             if (!silent) setError('No se pudo cargar Synapse. Verifica la conexión.');
         } finally {
@@ -373,9 +386,25 @@ export default function Synapse({ teamId = null }) {
 
     useEffect(() => { loadAll(); }, [loadAll]);
 
+    // ── Columnas visibles ──────────────────────────────────────────────────────
+
+    // Los estados son globales; en la vista de equipo se descartan los ocultos.
+    const estadosVisibles = numTeamId
+        ? estados.filter(e => !estadosOcultos.includes(e.id_estado))
+        : estados;
+
+    // Conteo real de tickets del equipo por columna, sin aplicar los filtros de la
+    // UI: lo que decide si una columna se puede ocultar son los tickets que existen,
+    // no los que se estén mostrando en pantalla.
+    const conteosPorEstado = tareas.reduce((acc, t) => {
+        acc[t.id_estado] = (acc[t.id_estado] || 0) + 1;
+        return acc;
+    }, {});
+
     // ── Filters ────────────────────────────────────────────────────────────────
 
     const filteredTareas = tareas.filter(t => {
+        if (numTeamId && estadosOcultos.includes(t.id_estado)) return false;
         if (searchQ && !t.titulo.toLowerCase().includes(searchQ.toLowerCase())) return false;
         if (filterPrioridad && t.prioridad !== filterPrioridad) return false;
         if (filterTipo && t.tipo !== filterTipo) return false;
@@ -384,7 +413,7 @@ export default function Synapse({ teamId = null }) {
         return true;
     });
 
-    const tareasPorEstado = estados.reduce((acc, e) => {
+    const tareasPorEstado = estadosVisibles.reduce((acc, e) => {
         acc[e.id_estado] = filteredTareas.filter(t => t.id_estado === e.id_estado);
         return acc;
     }, {});
@@ -396,7 +425,7 @@ export default function Synapse({ teamId = null }) {
 
     const openCreate = (estadoId = null) => {
         setModalTarea(null);
-        setModalEstadoId(estadoId || estados[0]?.id_estado || null);
+        setModalEstadoId(estadoId || estadosVisibles[0]?.id_estado || null);
         setModalTeamId(numTeamId);
         setModalOpen(true);
     };
@@ -470,6 +499,63 @@ export default function Synapse({ teamId = null }) {
         }
     };
 
+    // ── Columnas ocultas ───────────────────────────────────────────────────────
+
+    // Si se edita un ticket que quedó dentro de una columna oculta, esa columna
+    // debe seguir disponible en el modal o el selector de estado queda inconsistente.
+    const estadosParaModal =
+        modalTarea && !estadosVisibles.some(e => e.id_estado === modalTarea.id_estado)
+            ? [...estadosVisibles, estados.find(e => e.id_estado === modalTarea.id_estado)].filter(Boolean)
+            : estadosVisibles;
+
+    const handleToggleColumna = async (idEstado) => {
+        if (!numTeamId || savingCols) return;
+
+        const ocultarAhora = !estadosOcultos.includes(idEstado);
+
+        // Ocultar una columna con tickets los sacaría de la vista sin aviso.
+        // Mostrar, en cambio, nunca se bloquea.
+        if (ocultarAhora) {
+            const enColumna = conteosPorEstado[idEstado] || 0;
+            if (enColumna > 0) {
+                const estado = estados.find(e => e.id_estado === idEstado);
+                setToast({
+                    tipo: 'error',
+                    titulo: `"${estado?.nombre?.trim()}" tiene ${enColumna} ${enColumna === 1 ? 'ticket' : 'tickets'}`,
+                    detalle: 'Muévelos a otra columna y después podrás ocultarla.',
+                });
+                return;
+            }
+            if (estadosVisibles.length === 1) {
+                setToast({ tipo: 'error', titulo: 'Debe quedar al menos una columna visible.' });
+                return;
+            }
+        }
+
+        const previos = estadosOcultos;
+        const siguientes = ocultarAhora
+            ? [...estadosOcultos, idEstado]
+            : estadosOcultos.filter(id => id !== idEstado);
+
+        setEstadosOcultos(siguientes);
+        setSavingCols(true);
+        try {
+            await synapseService.setTeamEstadosOcultos(numTeamId, siguientes);
+        } catch (e) {
+            setEstadosOcultos(previos);
+            const conTickets = e?.data?.columnas
+                ?.map(c => `${c.nombre?.trim()} (${c.total})`)
+                .join(', ');
+            setToast({
+                tipo: 'error',
+                titulo: e?.data?.error || 'No se pudo guardar la configuración de columnas.',
+                detalle: conTickets ? `Con tickets: ${conTickets}` : undefined,
+            });
+        } finally {
+            setSavingCols(false);
+        }
+    };
+
     // ── Render ─────────────────────────────────────────────────────────────────
 
     if (loading) {
@@ -488,7 +574,7 @@ export default function Synapse({ teamId = null }) {
             <div className="flex items-center justify-center min-h-[60vh]">
                 <div className="text-center space-y-3">
                     <p className="text-muted-foreground text-sm">{error}</p>
-                    <button onClick={loadAll} className="text-xs text-violet-400 hover:text-violet-300 underline">
+                    <button onClick={() => loadAll()} className="text-xs text-violet-400 hover:text-violet-300 underline">
                         Reintentar
                     </button>
                 </div>
@@ -514,7 +600,7 @@ export default function Synapse({ teamId = null }) {
                         </h1>
                         <p className="text-xs text-muted-foreground">
                             {filteredTareas.length} {filteredTareas.length === 1 ? 'tarea' : 'tareas'}
-                            {hasFilters ? ' (filtrado)' : ''} · {estados.length} columnas
+                            {hasFilters ? ' (filtrado)' : ''} · {estadosVisibles.length} {estadosVisibles.length === 1 ? 'columna' : 'columnas'}
                             {!teamInfo && teams.length > 0 ? ` · ${teams.length} equipos` : ''}
                         </p>
                     </div>
@@ -543,8 +629,18 @@ export default function Synapse({ teamId = null }) {
                         </button>
                     </div>
 
+                    {numTeamId && estados.length > 0 && (
+                        <ColumnasMenu
+                            estados={estados}
+                            ocultos={estadosOcultos}
+                            conteos={conteosPorEstado}
+                            onToggle={handleToggleColumna}
+                            saving={savingCols}
+                        />
+                    )}
+
                     <button
-                        onClick={loadAll}
+                        onClick={() => loadAll()}
                         className="p-2 text-muted-foreground hover:text-foreground hover:bg-foreground/5 rounded-xl transition-colors"
                         title="Actualizar"
                     >
@@ -639,9 +735,13 @@ export default function Synapse({ teamId = null }) {
                     <div className="text-center py-20 text-muted-foreground text-sm">
                         No hay estados configurados. Ve a Configuración → Synapse para crear columnas.
                     </div>
+                ) : estadosVisibles.length === 0 ? (
+                    <div className="text-center py-20 text-muted-foreground text-sm">
+                        Todas las columnas están ocultas en este equipo. Muestra alguna desde el menú de columnas.
+                    </div>
                 ) : (
                     <div className="flex gap-4 overflow-x-auto pb-6 -mx-4 px-4 lg:-mx-8 lg:px-8">
-                        {estados.map(estado => (
+                        {estadosVisibles.map(estado => (
                             <KanbanColumn
                                 key={estado.id_estado}
                                 estado={estado}
@@ -659,7 +759,7 @@ export default function Synapse({ teamId = null }) {
             ) : (
                 <ListView
                     tareas={filteredTareas}
-                    estados={estados}
+                    estados={estadosVisibles}
                     onCardClick={openEdit}
                     onChangeEstado={handleListChangeEstado}
                 />
@@ -669,7 +769,7 @@ export default function Synapse({ teamId = null }) {
             {modalOpen && (
                 <SynapseTaskModal
                     tarea={modalTarea}
-                    estados={estados}
+                    estados={estadosParaModal}
                     initialEstadoId={modalEstadoId}
                     initialTeamId={modalTeamId}
                     onClose={() => setModalOpen(false)}
@@ -677,6 +777,8 @@ export default function Synapse({ teamId = null }) {
                     onDeleted={handleDeleted}
                 />
             )}
+
+            <SynapseToast toast={toast} onClose={() => setToast(null)} />
         </div>
     );
 }
