@@ -53,6 +53,13 @@ function StatusBadge({ status, count }) {
 
 // ── Página principal ───────────────────────────────────────────────────────
 
+const ESTADO_FILTROS = [
+  { key: 'todos',    label: 'Todos' },
+  { key: 'healthy',  label: 'Saludables' },
+  { key: 'warning',  label: 'En riesgo' },
+  { key: 'critical', label: 'Críticos' },
+];
+
 export default function HealthScore() {
   const [clients, setClients] = useState([]);
   const [cancelled, setCancelled] = useState([]);
@@ -62,6 +69,9 @@ export default function HealthScore() {
   const [viewType, setViewType] = useState('activos'); // 'activos' | 'cancelados'
   const [selectedClient, setSelectedClient] = useState(null);
   const [showCancelled, setShowCancelled] = useState(false);
+  // Filtro por estado de salud del listado principal. 'todos' por defecto para
+  // no esconder clientes sin que el usuario lo haya pedido.
+  const [statusFilter, setStatusFilter] = useState('todos');
 
   const loadData = async () => {
     setLoading(true);
@@ -96,32 +106,40 @@ export default function HealthScore() {
   // Filtros
   const filteredClients = useMemo(() => {
     const q = search.toLowerCase().trim();
-    if (!q) return clients;
-    return clients.filter(c =>
-      c.companyName?.toLowerCase().includes(q) ||
-      c.clientId?.toLowerCase().includes(q)
-    );
-  }, [clients, search]);
+    return clients.filter(c => {
+      if (statusFilter !== 'todos' && c.status !== statusFilter) return false;
+      if (!q) return true;
+      return c.companyName?.toLowerCase().includes(q) ||
+             c.clientId?.toLowerCase().includes(q);
+    });
+  }, [clients, search, statusFilter]);
 
   // Estadísticas
+  // Sobre TODOS los clientes, no sobre filteredClients: los badges de arriba y
+  // la distribución son el retrato de la cartera completa. Si se movieran al
+  // filtrar, filtrar por "crítico" mostraría "0 saludables" y daría un susto.
   const stats = useMemo(() => {
-    const activos = filteredClients;
+    const activos = clients;
     return {
       total: activos.length,
       healthy: activos.filter(c => c.status === 'healthy').length,
       warning: activos.filter(c => c.status === 'warning').length,
       critical: activos.filter(c => c.status === 'critical').length,
     };
-  }, [filteredClients]);
+  }, [clients]);
 
   // Clientes que necesitan atención — críticos primero, luego en riesgo, de
   // peor a mejor score dentro de cada grupo.
+  // Sobre TODOS los clientes, igual que stats: la tarjeta de distribución es el
+  // retrato de la cartera completa y tiene su propio filtro. Si siguiera al
+  // filtro del listado, elegir "Saludables" abajo la dejaría diciendo "todos
+  // los clientes están saludables", que sería falso.
   const atRiskClients = useMemo(() => {
     const severity = { critical: 0, warning: 1 };
-    return filteredClients
+    return clients
       .filter(c => c.status === 'critical' || c.status === 'warning')
       .sort((a, b) => severity[a.status] - severity[b.status] || a.score - b.score);
-  }, [filteredClients]);
+  }, [clients]);
 
   const handleSelectAtRiskClient = (clientId) => {
     setSelectedClient(clientId);
@@ -204,6 +222,29 @@ export default function HealthScore() {
             Cancelados
           </button>
         </div>
+
+        {/* Filtro por estado de salud — solo aplica al listado de activos */}
+        {viewType === 'activos' && (
+          <div className="flex items-center border border-border rounded-lg overflow-hidden">
+            {ESTADO_FILTROS.map(f => (
+              <button
+                key={f.key}
+                onClick={() => setStatusFilter(f.key)}
+                className={cn(
+                  'px-3 py-2 text-[12px] font-medium transition-colors whitespace-nowrap',
+                  statusFilter === f.key
+                    ? 'bg-rose-500/10 text-rose-400'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                {f.label}
+                {f.key !== 'todos' && (
+                  <span className="ml-1.5 tabular-nums opacity-60">{stats[f.key]}</span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Refresh */}
         <button
