@@ -173,8 +173,7 @@ export default function MainLayout({ children }) {
             >
                 {/* Logo pequeño */}
                 <div className="flex items-center justify-center w-full mb-3">
-                    <img src="/logonuevoblanco.png" alt="NC" className="h-8 w-8 object-contain hidden dark:block" />
-                    <img src="/nuevologofinance1.JPG" alt="NC" className="h-8 w-8 object-contain block dark:hidden" />
+                    <img src="/logonuevoblanco.png" alt="NC" className="h-8 w-8 object-contain brightness-0 dark:brightness-100" />
                 </div>
 
                 {/* Íconos de módulos */}
@@ -260,12 +259,7 @@ export default function MainLayout({ children }) {
                             <img
                                 src="/logonuevoblanco.png"
                                 alt="NativeCode"
-                                className="h-8 object-contain hidden dark:block"
-                            />
-                            <img
-                                src="/nuevologofinance1.JPG"
-                                alt="NativeCode"
-                                className="h-8 object-contain block dark:hidden"
+                                className="h-8 object-contain brightness-0 dark:brightness-100"
                             />
                             <span className="text-sm font-semibold tracking-widest text-foreground">FINANCE</span>
                         </div>
@@ -317,8 +311,7 @@ export default function MainLayout({ children }) {
                     {/* Footer */}
                     <div className="px-3 py-4 border-t border-border/30 shrink-0">
                         <div className="flex items-center gap-2 px-1">
-                            <img src="/logonuevoblanco.png" alt="NC" className="h-5 w-5 object-contain shrink-0 hidden dark:block" />
-                            <img src="/nuevologofinance1.JPG" alt="NC" className="h-5 w-5 object-contain shrink-0 block dark:hidden" />
+                            <img src="/logonuevoblanco.png" alt="NC" className="h-5 w-5 object-contain shrink-0 brightness-0 dark:brightness-100" />
                             <p className="text-[9px] text-muted-foreground leading-tight">
                                 © 2026 NativeCode.<br />
                                 Todos los derechos<br />

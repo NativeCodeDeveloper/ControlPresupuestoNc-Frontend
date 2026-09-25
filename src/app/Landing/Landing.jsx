@@ -14,8 +14,7 @@ export default function Landing() {
             <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-6xl flex-col px-6 py-10 sm:py-12">
                 <header className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <img src="/ico2.png" alt="NativeCode" className="h-8 w-8 object-contain" />
-                        <p className="text-xs font-medium uppercase tracking-[0.24em] text-white/75">NATIVECODE</p>
+                        <img src="/logo-nativecode.png" alt="NativeCode" className="h-6 w-auto object-contain" />
                     </div>
                     <div className="flex items-center gap-3">
                         <p className="hidden sm:block text-[11px] uppercase tracking-[0.2em] text-blue-100/65">Finance Platform</p>
