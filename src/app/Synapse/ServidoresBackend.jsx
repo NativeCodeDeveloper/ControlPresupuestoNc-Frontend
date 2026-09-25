@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
     Server, Plus, RefreshCw, Loader2, ExternalLink,
-    Pencil, Trash2, Check, X, Search
+    Pencil, Trash2, Check, X, Search, KeyRound, Copy
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import * as synapseService from '../../services/synapseService';
@@ -20,6 +20,97 @@ const ESTADO_CONFIG = {
 const EMPTY_FORM = { ruta_backend: '', estado: 'url_disponible', id_proyecto: '', version: '', notas: '', api_key: '' };
 
 // ── Sub-componentes ───────────────────────────────────────────────────────────
+
+/**
+ * Campo de API key con generador.
+ *
+ * Existe porque hay que configurar una key distinta por cliente (49 y subiendo)
+ * y escribirlas a mano es el tipo de tarea que se hace mal a la décima vez:
+ * keys cortas, repetidas entre clientes, o tipeadas con un carácter de menos.
+ *
+ * Se genera en el navegador con crypto.getRandomValues (32 bytes → 64 hex,
+ * el mismo tamaño que `openssl rand -hex 32`). No viaja a ningún servidor
+ * antes de que el usuario decida guardar, y al guardar el backend la cifra
+ * con AES-256-GCM.
+ *
+ * Al generarla queda visible a propósito: Finance nunca vuelve a mostrar una
+ * key guardada, así que este es el único momento para copiarla al .env del
+ * backend del cliente.
+ */
+function CampoApiKey({ valor, onChange }) {
+    const [visible, setVisible] = useState(false);
+    const [copiado, setCopiado] = useState(false);
+
+    const generar = () => {
+        const bytes = new Uint8Array(32);
+        crypto.getRandomValues(bytes);
+        onChange(Array.from(bytes, b => b.toString(16).padStart(2, '0')).join(''));
+        setVisible(true);
+        setCopiado(false);
+    };
+
+    const copiar = async () => {
+        try {
+            await navigator.clipboard.writeText(valor);
+            setCopiado(true);
+            setTimeout(() => setCopiado(false), 2000);
+        } catch {
+            // Sin permiso de portapapeles: el campo queda visible igual para
+            // copiarla a mano. No vale la pena molestar al usuario con un error.
+            setVisible(true);
+        }
+    };
+
+    return (
+        <div>
+            <label className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5 block">
+                API Key (Agenda Clínica)
+            </label>
+
+            <div className="flex items-center gap-1.5">
+                <input
+                    type={visible ? 'text' : 'password'}
+                    value={valor}
+                    onChange={e => onChange(e.target.value)}
+                    placeholder="Generar o pegar…"
+                    className="flex-1 min-w-0 text-[12px] bg-input border border-border rounded-lg px-2.5 py-1.5 outline-none focus:border-violet-500 transition-colors font-mono"
+                />
+
+                <button
+                    type="button"
+                    onClick={generar}
+                    title="Generar una key aleatoria de 64 caracteres"
+                    className="shrink-0 flex items-center gap-1 px-2 py-1.5 text-[11px] border border-border rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors"
+                >
+                    <KeyRound size={12} />
+                    Generar
+                </button>
+
+                {valor && (
+                    <button
+                        type="button"
+                        onClick={copiar}
+                        title="Copiar al portapapeles"
+                        className="shrink-0 p-1.5 border border-border rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors"
+                    >
+                        {copiado ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                    </button>
+                )}
+            </div>
+
+            {visible && valor ? (
+                <p className="text-[9px] text-amber-400 mt-1">
+                    Cópiala ahora — no se vuelve a mostrar. Va en <span className="font-mono">HEALTH_METRICS_API_KEY</span> del .env del backend de este cliente.
+                </p>
+            ) : (
+                <p className="text-[9px] text-muted-foreground mt-1">
+                    Se cifrará con AES-256-GCM antes de guardar
+                </p>
+            )}
+        </div>
+    );
+}
+
 
 function EstadoBadge({ estado }) {
     const cfg = ESTADO_CONFIG[estado] || ESTADO_CONFIG.url_disponible;
@@ -120,17 +211,10 @@ function ServidorRow({ servidor, proyectos, onSave, onDelete }) {
                                 className="w-full text-[12px] bg-input border border-border rounded-lg px-2.5 py-1.5 outline-none focus:border-violet-500 transition-colors"
                             />
                         </div>
-                        <div>
-                            <label className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5 block">API Key (Agenda Clínica)</label>
-                            <input
-                                type="password"
-                                value={form.api_key}
-                                onChange={e => setForm(f => ({ ...f, api_key: e.target.value }))}
-                                placeholder="Opcional…"
-                                className="w-full text-[12px] bg-input border border-border rounded-lg px-2.5 py-1.5 outline-none focus:border-violet-500 transition-colors"
-                            />
-                            <p className="text-[9px] text-muted-foreground mt-1">Se cifrará con AES-256-GCM antes de guardar</p>
-                        </div>
+                        <CampoApiKey
+                            valor={form.api_key}
+                            onChange={valor => setForm(f => ({ ...f, api_key: valor }))}
+                        />
                         <div className="sm:col-span-2">
                             <label className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5 block">Notas</label>
                             <input
@@ -406,17 +490,10 @@ export default function ServidoresBackend() {
                                 className="w-full text-[12px] bg-input border border-border rounded-lg px-2.5 py-1.5 outline-none focus:border-violet-500 transition-colors"
                             />
                         </div>
-                        <div>
-                            <label className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5 block">API Key (Agenda Clínica)</label>
-                            <input
-                                type="password"
-                                value={form.api_key}
-                                onChange={e => setForm(f => ({ ...f, api_key: e.target.value }))}
-                                placeholder="Opcional…"
-                                className="w-full text-[12px] bg-input border border-border rounded-lg px-2.5 py-1.5 outline-none focus:border-violet-500 transition-colors"
-                            />
-                            <p className="text-[9px] text-muted-foreground mt-1">Se cifrará con AES-256-GCM antes de guardar</p>
-                        </div>
+                        <CampoApiKey
+                            valor={form.api_key}
+                            onChange={valor => setForm(f => ({ ...f, api_key: valor }))}
+                        />
                         <div className="sm:col-span-2">
                             <label className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5 block">Notas</label>
                             <input
