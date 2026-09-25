@@ -8,9 +8,16 @@
 
 'use client';
 
+import { useState, useMemo } from 'react';
 import { AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { HEALTH_STATUS_CONFIG } from '../constants/healthScoreConstants';
+
+const FILTROS = [
+  { key: 'todos',    label: 'Todos' },
+  { key: 'critical', label: 'Crítico' },
+  { key: 'warning',  label: 'En riesgo' },
+];
 
 const SEGMENT_STYLES = {
   healthy: { bar: 'bg-emerald-500', label: 'Saludable' },
@@ -27,6 +34,12 @@ export default function HealthDistributionBar({
   className,
 }) {
   const total = healthy + warning + critical;
+
+  const [filtro, setFiltro] = useState('todos');
+  const visibles = useMemo(
+    () => (filtro === 'todos' ? atRiskClients : atRiskClients.filter(c => c.status === filtro)),
+    [atRiskClients, filtro]
+  );
 
   const segments = [
     { key: 'healthy', count: healthy },
@@ -67,12 +80,49 @@ export default function HealthDistributionBar({
             Todos los clientes están saludables
           </div>
         ) : (
-          <div className="space-y-1">
-            <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground mb-2">
-              <AlertTriangle size={12} className="shrink-0" />
-              Necesitan atención
-            </p>
-            {atRiskClients.map(client => {
+          <div>
+            <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+              <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                <AlertTriangle size={12} className="shrink-0" />
+                Necesitan atención
+                <span className="text-muted-foreground/60">({visibles.length})</span>
+              </p>
+
+              {/* Filtro por estado. Con cientos de clientes, "revisar los
+                  críticos" y "revisar los que están en riesgo" son dos tareas
+                  distintas y mezclarlas hace perder los urgentes de vista. */}
+              <div className="flex items-center gap-1">
+                {FILTROS.map(f => (
+                  <button
+                    key={f.key}
+                    onClick={() => setFiltro(f.key)}
+                    className={cn(
+                      'px-2 py-0.5 rounded-md text-[10px] font-medium transition-colors',
+                      filtro === f.key
+                        ? 'bg-foreground/[0.08] text-foreground'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04]'
+                    )}
+                  >
+                    {f.label}
+                    {f.key !== 'todos' && (
+                      <span className="ml-1 tabular-nums opacity-60">
+                        {atRiskClients.filter(c => c.status === f.key).length}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Altura tope y scroll propio: la cartera va a crecer a cientos de
+                clientes y sin esto la tarjeta se estira sin fin y empuja todo
+                lo demás fuera de la pantalla. */}
+            <div className="space-y-1 max-h-[280px] overflow-y-auto pr-1 -mr-1">
+            {visibles.length === 0 ? (
+              <p className="text-[12px] text-muted-foreground py-3 text-center">
+                Ninguno en este estado
+              </p>
+            ) : visibles.map(client => {
               const config = HEALTH_STATUS_CONFIG[client.status];
               return (
                 <button
@@ -90,6 +140,7 @@ export default function HealthDistributionBar({
                 </button>
               );
             })}
+            </div>
           </div>
         )}
       </div>

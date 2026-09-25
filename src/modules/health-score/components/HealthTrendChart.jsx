@@ -63,8 +63,11 @@ export default function HealthTrendChart({ data = [], height = 220, className })
         </div>
       ) : (
         <div style={{ height }}>
+          {/* margin.left va en 0 y no en negativo: con margen negativo el eje Y
+              queda fuera del área de dibujo y recorta el primer dígito de los
+              valores de dos cifras (28 se veía como 8). */}
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
+            <LineChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="3 3" vertical={false} />
               <XAxis
                 dataKey="fecha"
@@ -79,7 +82,7 @@ export default function HealthTrendChart({ data = [], height = 220, className })
                 tickLine={false}
                 axisLine={false}
                 tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
-                width={32}
+                width={40}
               />
               <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'hsl(var(--border))', strokeDasharray: '4 4' }} />
               {SERIES.map(s => (
